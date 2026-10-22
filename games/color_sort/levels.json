@@ -1,0 +1,365 @@
+{
+ "star_metric": "moves_used (lower is better)",
+ "levels": [
+  {
+   "id": 1,
+   "seed": 1000,
+   "colors": 3,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    18,
+    12,
+    9
+   ]
+  },
+  {
+   "id": 2,
+   "seed": 8919,
+   "colors": 3,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    18,
+    12,
+    9
+   ]
+  },
+  {
+   "id": 3,
+   "seed": 16838,
+   "colors": 4,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    24,
+    16,
+    12
+   ]
+  },
+  {
+   "id": 4,
+   "seed": 24757,
+   "colors": 4,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    24,
+    16,
+    12
+   ]
+  },
+  {
+   "id": 5,
+   "seed": 32676,
+   "colors": 4,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    24,
+    16,
+    12
+   ]
+  },
+  {
+   "id": 6,
+   "seed": 40595,
+   "colors": 5,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    30,
+    20,
+    15
+   ]
+  },
+  {
+   "id": 7,
+   "seed": 48514,
+   "colors": 5,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    30,
+    20,
+    15
+   ]
+  },
+  {
+   "id": 8,
+   "seed": 56433,
+   "colors": 5,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    30,
+    20,
+    15
+   ]
+  },
+  {
+   "id": 9,
+   "seed": 64352,
+   "colors": 5,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    30,
+    20,
+    15
+   ]
+  },
+  {
+   "id": 10,
+   "seed": 72271,
+   "colors": 6,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    36,
+    24,
+    18
+   ]
+  },
+  {
+   "id": 11,
+   "seed": 80190,
+   "colors": 6,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    36,
+    24,
+    18
+   ]
+  },
+  {
+   "id": 12,
+   "seed": 88109,
+   "colors": 6,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    36,
+    24,
+    18
+   ]
+  },
+  {
+   "id": 13,
+   "seed": 96028,
+   "colors": 7,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    42,
+    28,
+    21
+   ]
+  },
+  {
+   "id": 14,
+   "seed": 103947,
+   "colors": 7,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    42,
+    28,
+    21
+   ]
+  },
+  {
+   "id": 15,
+   "seed": 111866,
+   "colors": 7,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    42,
+    28,
+    21
+   ]
+  },
+  {
+   "id": 16,
+   "seed": 119785,
+   "colors": 8,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    48,
+    32,
+    24
+   ]
+  },
+  {
+   "id": 17,
+   "seed": 127704,
+   "colors": 8,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    48,
+    32,
+    24
+   ]
+  },
+  {
+   "id": 18,
+   "seed": 135623,
+   "colors": 8,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    48,
+    32,
+    24
+   ]
+  },
+  {
+   "id": 19,
+   "seed": 143542,
+   "colors": 9,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    54,
+    36,
+    27
+   ]
+  },
+  {
+   "id": 20,
+   "seed": 151461,
+   "colors": 9,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    54,
+    36,
+    27
+   ]
+  },
+  {
+   "id": 21,
+   "seed": 159380,
+   "colors": 9,
+   "capacity": 4,
+   "empty_tubes": 1,
+   "stars": [
+    54,
+    36,
+    27
+   ]
+  },
+  {
+   "id": 22,
+   "seed": 167299,
+   "colors": 10,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    60,
+    40,
+    30
+   ]
+  },
+  {
+   "id": 23,
+   "seed": 175218,
+   "colors": 10,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    60,
+    40,
+    30
+   ]
+  },
+  {
+   "id": 24,
+   "seed": 183137,
+   "colors": 10,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    60,
+    40,
+    30
+   ]
+  },
+  {
+   "id": 25,
+   "seed": 191056,
+   "colors": 10,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    60,
+    40,
+    30
+   ]
+  },
+  {
+   "id": 26,
+   "seed": 198975,
+   "colors": 11,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    66,
+    44,
+    33
+   ]
+  },
+  {
+   "id": 27,
+   "seed": 206894,
+   "colors": 11,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    66,
+    44,
+    33
+   ]
+  },
+  {
+   "id": 28,
+   "seed": 214813,
+   "colors": 11,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    66,
+    44,
+    33
+   ]
+  },
+  {
+   "id": 29,
+   "seed": 222732,
+   "colors": 12,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    72,
+    48,
+    36
+   ]
+  },
+  {
+   "id": 30,
+   "seed": 230651,
+   "colors": 12,
+   "capacity": 4,
+   "empty_tubes": 2,
+   "stars": [
+    72,
+    48,
+    36
+   ]
+  }
+ ]
+}

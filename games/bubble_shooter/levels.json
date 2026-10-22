@@ -1,0 +1,365 @@
+{
+ "star_metric": "shots_left",
+ "levels": [
+  {
+   "id": 1,
+   "seed": 1000,
+   "rows": 4,
+   "colors": 3,
+   "shots": 30,
+   "stars": [
+    0,
+    8,
+    14
+   ]
+  },
+  {
+   "id": 2,
+   "seed": 8919,
+   "rows": 4,
+   "colors": 3,
+   "shots": 30,
+   "stars": [
+    0,
+    8,
+    14
+   ]
+  },
+  {
+   "id": 3,
+   "seed": 16838,
+   "rows": 4,
+   "colors": 3,
+   "shots": 31,
+   "stars": [
+    0,
+    8,
+    14
+   ]
+  },
+  {
+   "id": 4,
+   "seed": 24757,
+   "rows": 5,
+   "colors": 3,
+   "shots": 31,
+   "stars": [
+    0,
+    8,
+    14
+   ]
+  },
+  {
+   "id": 5,
+   "seed": 32676,
+   "rows": 5,
+   "colors": 3,
+   "shots": 31,
+   "stars": [
+    0,
+    8,
+    13
+   ]
+  },
+  {
+   "id": 6,
+   "seed": 40595,
+   "rows": 5,
+   "colors": 4,
+   "shots": 32,
+   "stars": [
+    0,
+    8,
+    13
+   ]
+  },
+  {
+   "id": 7,
+   "seed": 48514,
+   "rows": 5,
+   "colors": 4,
+   "shots": 32,
+   "stars": [
+    0,
+    8,
+    13
+   ]
+  },
+  {
+   "id": 8,
+   "seed": 56433,
+   "rows": 6,
+   "colors": 4,
+   "shots": 32,
+   "stars": [
+    0,
+    8,
+    13
+   ]
+  },
+  {
+   "id": 9,
+   "seed": 64352,
+   "rows": 6,
+   "colors": 4,
+   "shots": 33,
+   "stars": [
+    0,
+    7,
+    13
+   ]
+  },
+  {
+   "id": 10,
+   "seed": 72271,
+   "rows": 6,
+   "colors": 4,
+   "shots": 33,
+   "stars": [
+    0,
+    7,
+    13
+   ]
+  },
+  {
+   "id": 11,
+   "seed": 80190,
+   "rows": 6,
+   "colors": 4,
+   "shots": 33,
+   "stars": [
+    0,
+    7,
+    13
+   ]
+  },
+  {
+   "id": 12,
+   "seed": 88109,
+   "rows": 7,
+   "colors": 4,
+   "shots": 34,
+   "stars": [
+    0,
+    7,
+    12
+   ]
+  },
+  {
+   "id": 13,
+   "seed": 96028,
+   "rows": 7,
+   "colors": 4,
+   "shots": 34,
+   "stars": [
+    0,
+    7,
+    12
+   ]
+  },
+  {
+   "id": 14,
+   "seed": 103947,
+   "rows": 7,
+   "colors": 4,
+   "shots": 34,
+   "stars": [
+    0,
+    7,
+    12
+   ]
+  },
+  {
+   "id": 15,
+   "seed": 111866,
+   "rows": 7,
+   "colors": 4,
+   "shots": 35,
+   "stars": [
+    0,
+    7,
+    12
+   ]
+  },
+  {
+   "id": 16,
+   "seed": 119785,
+   "rows": 8,
+   "colors": 5,
+   "shots": 35,
+   "stars": [
+    0,
+    7,
+    12
+   ]
+  },
+  {
+   "id": 17,
+   "seed": 127704,
+   "rows": 8,
+   "colors": 5,
+   "shots": 36,
+   "stars": [
+    0,
+    7,
+    12
+   ]
+  },
+  {
+   "id": 18,
+   "seed": 135623,
+   "rows": 8,
+   "colors": 5,
+   "shots": 36,
+   "stars": [
+    0,
+    7,
+    12
+   ]
+  },
+  {
+   "id": 19,
+   "seed": 143542,
+   "rows": 8,
+   "colors": 5,
+   "shots": 36,
+   "stars": [
+    0,
+    7,
+    12
+   ]
+  },
+  {
+   "id": 20,
+   "seed": 151461,
+   "rows": 9,
+   "colors": 5,
+   "shots": 37,
+   "stars": [
+    0,
+    7,
+    11
+   ]
+  },
+  {
+   "id": 21,
+   "seed": 159380,
+   "rows": 9,
+   "colors": 5,
+   "shots": 37,
+   "stars": [
+    0,
+    7,
+    11
+   ]
+  },
+  {
+   "id": 22,
+   "seed": 167299,
+   "rows": 9,
+   "colors": 5,
+   "shots": 37,
+   "stars": [
+    0,
+    7,
+    11
+   ]
+  },
+  {
+   "id": 23,
+   "seed": 175218,
+   "rows": 9,
+   "colors": 5,
+   "shots": 38,
+   "stars": [
+    0,
+    6,
+    11
+   ]
+  },
+  {
+   "id": 24,
+   "seed": 183137,
+   "rows": 10,
+   "colors": 5,
+   "shots": 38,
+   "stars": [
+    0,
+    6,
+    11
+   ]
+  },
+  {
+   "id": 25,
+   "seed": 191056,
+   "rows": 10,
+   "colors": 5,
+   "shots": 38,
+   "stars": [
+    0,
+    6,
+    11
+   ]
+  },
+  {
+   "id": 26,
+   "seed": 198975,
+   "rows": 10,
+   "colors": 6,
+   "shots": 39,
+   "stars": [
+    0,
+    6,
+    11
+   ]
+  },
+  {
+   "id": 27,
+   "seed": 206894,
+   "rows": 10,
+   "colors": 6,
+   "shots": 39,
+   "stars": [
+    0,
+    6,
+    10
+   ]
+  },
+  {
+   "id": 28,
+   "seed": 214813,
+   "rows": 11,
+   "colors": 6,
+   "shots": 39,
+   "stars": [
+    0,
+    6,
+    10
+   ]
+  },
+  {
+   "id": 29,
+   "seed": 222732,
+   "rows": 11,
+   "colors": 6,
+   "shots": 40,
+   "stars": [
+    0,
+    6,
+    10
+   ]
+  },
+  {
+   "id": 30,
+   "seed": 230651,
+   "rows": 11,
+   "colors": 6,
+   "shots": 40,
+   "stars": [
+    0,
+    6,
+    10
+   ]
+  }
+ ]
+}

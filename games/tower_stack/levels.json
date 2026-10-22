@@ -1,0 +1,395 @@
+{
+ "star_metric": "perfect_drops",
+ "levels": [
+  {
+   "id": 1,
+   "seed": 1000,
+   "target_height": 10,
+   "speed": 260,
+   "speed_step": 4.0,
+   "block_width": 360,
+   "stars": [
+    0,
+    3,
+    6
+   ]
+  },
+  {
+   "id": 2,
+   "seed": 8919,
+   "target_height": 11,
+   "speed": 272,
+   "speed_step": 4.3,
+   "block_width": 357,
+   "stars": [
+    0,
+    3,
+    7
+   ]
+  },
+  {
+   "id": 3,
+   "seed": 16838,
+   "target_height": 12,
+   "speed": 285,
+   "speed_step": 4.6,
+   "block_width": 353,
+   "stars": [
+    0,
+    4,
+    7
+   ]
+  },
+  {
+   "id": 4,
+   "seed": 24757,
+   "target_height": 14,
+   "speed": 297,
+   "speed_step": 4.8,
+   "block_width": 350,
+   "stars": [
+    0,
+    4,
+    8
+   ]
+  },
+  {
+   "id": 5,
+   "seed": 32676,
+   "target_height": 15,
+   "speed": 310,
+   "speed_step": 5.1,
+   "block_width": 346,
+   "stars": [
+    0,
+    4,
+    8
+   ]
+  },
+  {
+   "id": 6,
+   "seed": 40595,
+   "target_height": 16,
+   "speed": 322,
+   "speed_step": 5.4,
+   "block_width": 343,
+   "stars": [
+    0,
+    5,
+    9
+   ]
+  },
+  {
+   "id": 7,
+   "seed": 48514,
+   "target_height": 17,
+   "speed": 334,
+   "speed_step": 5.7,
+   "block_width": 339,
+   "stars": [
+    0,
+    5,
+    9
+   ]
+  },
+  {
+   "id": 8,
+   "seed": 56433,
+   "target_height": 18,
+   "speed": 347,
+   "speed_step": 5.9,
+   "block_width": 336,
+   "stars": [
+    0,
+    5,
+    10
+   ]
+  },
+  {
+   "id": 9,
+   "seed": 64352,
+   "target_height": 20,
+   "speed": 359,
+   "speed_step": 6.2,
+   "block_width": 332,
+   "stars": [
+    0,
+    5,
+    10
+   ]
+  },
+  {
+   "id": 10,
+   "seed": 72271,
+   "target_height": 21,
+   "speed": 372,
+   "speed_step": 6.5,
+   "block_width": 329,
+   "stars": [
+    0,
+    6,
+    11
+   ]
+  },
+  {
+   "id": 11,
+   "seed": 80190,
+   "target_height": 22,
+   "speed": 384,
+   "speed_step": 6.8,
+   "block_width": 326,
+   "stars": [
+    0,
+    6,
+    12
+   ]
+  },
+  {
+   "id": 12,
+   "seed": 88109,
+   "target_height": 23,
+   "speed": 397,
+   "speed_step": 7.0,
+   "block_width": 322,
+   "stars": [
+    0,
+    6,
+    12
+   ]
+  },
+  {
+   "id": 13,
+   "seed": 96028,
+   "target_height": 24,
+   "speed": 409,
+   "speed_step": 7.3,
+   "block_width": 319,
+   "stars": [
+    0,
+    7,
+    13
+   ]
+  },
+  {
+   "id": 14,
+   "seed": 103947,
+   "target_height": 26,
+   "speed": 421,
+   "speed_step": 7.6,
+   "block_width": 315,
+   "stars": [
+    0,
+    7,
+    13
+   ]
+  },
+  {
+   "id": 15,
+   "seed": 111866,
+   "target_height": 27,
+   "speed": 434,
+   "speed_step": 7.9,
+   "block_width": 312,
+   "stars": [
+    0,
+    7,
+    14
+   ]
+  },
+  {
+   "id": 16,
+   "seed": 119785,
+   "target_height": 28,
+   "speed": 446,
+   "speed_step": 8.1,
+   "block_width": 308,
+   "stars": [
+    0,
+    8,
+    14
+   ]
+  },
+  {
+   "id": 17,
+   "seed": 127704,
+   "target_height": 29,
+   "speed": 459,
+   "speed_step": 8.4,
+   "block_width": 305,
+   "stars": [
+    0,
+    8,
+    15
+   ]
+  },
+  {
+   "id": 18,
+   "seed": 135623,
+   "target_height": 31,
+   "speed": 471,
+   "speed_step": 8.7,
+   "block_width": 301,
+   "stars": [
+    0,
+    8,
+    15
+   ]
+  },
+  {
+   "id": 19,
+   "seed": 143542,
+   "target_height": 32,
+   "speed": 483,
+   "speed_step": 9.0,
+   "block_width": 298,
+   "stars": [
+    0,
+    9,
+    16
+   ]
+  },
+  {
+   "id": 20,
+   "seed": 151461,
+   "target_height": 33,
+   "speed": 496,
+   "speed_step": 9.2,
+   "block_width": 294,
+   "stars": [
+    0,
+    9,
+    16
+   ]
+  },
+  {
+   "id": 21,
+   "seed": 159380,
+   "target_height": 34,
+   "speed": 508,
+   "speed_step": 9.5,
+   "block_width": 291,
+   "stars": [
+    0,
+    9,
+    17
+   ]
+  },
+  {
+   "id": 22,
+   "seed": 167299,
+   "target_height": 35,
+   "speed": 521,
+   "speed_step": 9.8,
+   "block_width": 288,
+   "stars": [
+    0,
+    10,
+    18
+   ]
+  },
+  {
+   "id": 23,
+   "seed": 175218,
+   "target_height": 37,
+   "speed": 533,
+   "speed_step": 10.1,
+   "block_width": 284,
+   "stars": [
+    0,
+    10,
+    18
+   ]
+  },
+  {
+   "id": 24,
+   "seed": 183137,
+   "target_height": 38,
+   "speed": 546,
+   "speed_step": 10.3,
+   "block_width": 281,
+   "stars": [
+    0,
+    10,
+    19
+   ]
+  },
+  {
+   "id": 25,
+   "seed": 191056,
+   "target_height": 39,
+   "speed": 558,
+   "speed_step": 10.6,
+   "block_width": 277,
+   "stars": [
+    0,
+    10,
+    19
+   ]
+  },
+  {
+   "id": 26,
+   "seed": 198975,
+   "target_height": 40,
+   "speed": 570,
+   "speed_step": 10.9,
+   "block_width": 274,
+   "stars": [
+    0,
+    11,
+    20
+   ]
+  },
+  {
+   "id": 27,
+   "seed": 206894,
+   "target_height": 41,
+   "speed": 583,
+   "speed_step": 11.2,
+   "block_width": 270,
+   "stars": [
+    0,
+    11,
+    20
+   ]
+  },
+  {
+   "id": 28,
+   "seed": 214813,
+   "target_height": 43,
+   "speed": 595,
+   "speed_step": 11.4,
+   "block_width": 267,
+   "stars": [
+    0,
+    11,
+    21
+   ]
+  },
+  {
+   "id": 29,
+   "seed": 222732,
+   "target_height": 44,
+   "speed": 608,
+   "speed_step": 11.7,
+   "block_width": 263,
+   "stars": [
+    0,
+    12,
+    21
+   ]
+  },
+  {
+   "id": 30,
+   "seed": 230651,
+   "target_height": 45,
+   "speed": 620,
+   "speed_step": 12.0,
+   "block_width": 260,
+   "stars": [
+    0,
+    12,
+    22
+   ]
+  }
+ ]
+}

@@ -1,0 +1,21 @@
+# Godot 4
+.godot/
+.import/
+*.translation
+export.cfg
+export_presets.cfg
+*.tmp
+
+# Builds and signing
+export/
+build/
+*.apk
+*.aab
+*.ipa
+*.keystore
+*.jks
+
+# Python / OS
+__pycache__/
+.DS_Store
+Thumbs.db
