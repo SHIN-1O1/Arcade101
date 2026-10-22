@@ -4,105 +4,141 @@
   {
    "id": 1,
    "seed": 1000,
+   "goal": "clear",
+   "layout": "full",
    "rows": 4,
    "colors": 3,
    "shots": 30,
+   "drop_every": 0,
    "stars": [
     0,
-    8,
-    14
+    9,
+    15
    ]
   },
   {
    "id": 2,
    "seed": 8919,
+   "goal": "color",
+   "layout": "full",
    "rows": 4,
    "colors": 3,
-   "shots": 30,
+   "shots": 22,
+   "drop_every": 0,
+   "target_color": 1,
+   "target_n": 9,
    "stars": [
     0,
-    8,
-    14
+    6,
+    11
    ]
   },
   {
    "id": 3,
    "seed": 16838,
+   "goal": "gems",
+   "layout": "full",
    "rows": 4,
    "colors": 3,
-   "shots": 31,
+   "shots": 22,
+   "drop_every": 0,
+   "gems": 2,
    "stars": [
     0,
-    8,
-    14
+    6,
+    11
    ]
   },
   {
    "id": 4,
    "seed": 24757,
+   "goal": "clear",
+   "layout": "full",
    "rows": 5,
    "colors": 3,
-   "shots": 31,
+   "shots": 32,
+   "drop_every": 0,
    "stars": [
     0,
-    8,
-    14
+    9,
+    16
    ]
   },
   {
    "id": 5,
    "seed": 32676,
+   "goal": "color",
+   "layout": "full",
    "rows": 5,
    "colors": 3,
-   "shots": 31,
+   "shots": 24,
+   "drop_every": 0,
+   "target_color": 1,
+   "target_n": 12,
    "stars": [
     0,
-    8,
-    13
+    7,
+    12
    ]
   },
   {
    "id": 6,
    "seed": 40595,
+   "goal": "gems",
+   "layout": "full",
    "rows": 5,
    "colors": 4,
-   "shots": 32,
+   "shots": 26,
+   "drop_every": 0,
+   "gems": 3,
    "stars": [
     0,
-    8,
+    7,
     13
    ]
   },
   {
    "id": 7,
    "seed": 48514,
+   "goal": "clear",
+   "layout": "gaps",
    "rows": 5,
    "colors": 4,
-   "shots": 32,
+   "shots": 34,
+   "drop_every": 0,
    "stars": [
     0,
-    8,
-    13
+    10,
+    17
    ]
   },
   {
    "id": 8,
    "seed": 56433,
-   "rows": 6,
+   "goal": "color",
+   "layout": "pillars",
+   "rows": 5,
    "colors": 4,
-   "shots": 32,
+   "shots": 26,
+   "drop_every": 0,
+   "target_color": 3,
+   "target_n": 16,
    "stars": [
     0,
-    8,
+    7,
     13
    ]
   },
   {
    "id": 9,
    "seed": 64352,
-   "rows": 6,
+   "goal": "gems",
+   "layout": "hang",
+   "rows": 5,
    "colors": 4,
-   "shots": 33,
+   "shots": 26,
+   "drop_every": 0,
+   "gems": 4,
    "stars": [
     0,
     7,
@@ -112,253 +148,337 @@
   {
    "id": 10,
    "seed": 72271,
+   "goal": "clear",
+   "layout": "gaps",
    "rows": 6,
    "colors": 4,
-   "shots": 33,
+   "shots": 37,
+   "drop_every": 0,
    "stars": [
     0,
-    7,
-    13
+    11,
+    18
    ]
   },
   {
    "id": 11,
    "seed": 80190,
+   "goal": "color",
+   "layout": "pillars",
    "rows": 6,
    "colors": 4,
-   "shots": 33,
+   "shots": 29,
+   "drop_every": 0,
+   "target_color": 2,
+   "target_n": 19,
    "stars": [
     0,
-    7,
-    13
+    8,
+    14
    ]
   },
   {
    "id": 12,
    "seed": 88109,
-   "rows": 7,
+   "goal": "gems",
+   "layout": "hang",
+   "rows": 6,
    "colors": 4,
-   "shots": 34,
+   "shots": 29,
+   "drop_every": 0,
+   "gems": 4,
    "stars": [
     0,
-    7,
-    12
+    8,
+    14
    ]
   },
   {
    "id": 13,
    "seed": 96028,
-   "rows": 7,
+   "goal": "clear",
+   "layout": "gaps",
+   "rows": 6,
    "colors": 4,
-   "shots": 34,
+   "shots": 37,
+   "drop_every": 0,
    "stars": [
     0,
-    7,
-    12
+    11,
+    18
    ]
   },
   {
    "id": 14,
    "seed": 103947,
-   "rows": 7,
+   "goal": "color",
+   "layout": "pillars",
+   "rows": 6,
    "colors": 4,
-   "shots": 34,
+   "shots": 29,
+   "drop_every": 0,
+   "target_color": 1,
+   "target_n": 22,
    "stars": [
     0,
-    7,
-    12
+    8,
+    14
    ]
   },
   {
    "id": 15,
    "seed": 111866,
-   "rows": 7,
+   "goal": "gems",
+   "layout": "hang",
+   "rows": 6,
    "colors": 4,
-   "shots": 35,
+   "shots": 29,
+   "drop_every": 0,
+   "gems": 5,
    "stars": [
     0,
-    7,
-    12
+    8,
+    14
    ]
   },
   {
    "id": 16,
    "seed": 119785,
-   "rows": 8,
+   "goal": "clear",
+   "layout": "gaps",
+   "rows": 7,
    "colors": 5,
-   "shots": 35,
+   "shots": 41,
+   "drop_every": 0,
    "stars": [
     0,
-    7,
-    12
+    12,
+    20
    ]
   },
   {
    "id": 17,
    "seed": 127704,
-   "rows": 8,
+   "goal": "color",
+   "layout": "pillars",
+   "rows": 7,
    "colors": 5,
-   "shots": 36,
+   "shots": 29,
+   "drop_every": 9,
+   "target_color": 1,
+   "target_n": 26,
    "stars": [
     0,
-    7,
-    12
+    8,
+    14
    ]
   },
   {
    "id": 18,
    "seed": 135623,
-   "rows": 8,
+   "goal": "gems",
+   "layout": "hang",
+   "rows": 7,
    "colors": 5,
-   "shots": 36,
+   "shots": 29,
+   "drop_every": 9,
+   "gems": 6,
    "stars": [
     0,
-    7,
-    12
+    8,
+    14
    ]
   },
   {
    "id": 19,
    "seed": 143542,
-   "rows": 8,
+   "goal": "clear",
+   "layout": "gaps",
+   "rows": 7,
    "colors": 5,
-   "shots": 36,
+   "shots": 41,
+   "drop_every": 0,
    "stars": [
     0,
-    7,
-    12
+    12,
+    20
    ]
   },
   {
    "id": 20,
    "seed": 151461,
-   "rows": 9,
+   "goal": "color",
+   "layout": "pillars",
+   "rows": 7,
    "colors": 5,
-   "shots": 37,
+   "shots": 29,
+   "drop_every": 8,
+   "target_color": 4,
+   "target_n": 29,
    "stars": [
     0,
-    7,
-    11
+    8,
+    14
    ]
   },
   {
    "id": 21,
    "seed": 159380,
-   "rows": 9,
+   "goal": "gems",
+   "layout": "hang",
+   "rows": 7,
    "colors": 5,
-   "shots": 37,
+   "shots": 29,
+   "drop_every": 8,
+   "gems": 6,
    "stars": [
     0,
-    7,
-    11
+    8,
+    14
    ]
   },
   {
    "id": 22,
    "seed": 167299,
-   "rows": 9,
+   "goal": "clear",
+   "layout": "gaps",
+   "rows": 8,
    "colors": 5,
-   "shots": 37,
+   "shots": 44,
+   "drop_every": 0,
    "stars": [
     0,
-    7,
-    11
+    13,
+    22
    ]
   },
   {
    "id": 23,
    "seed": 175218,
-   "rows": 9,
+   "goal": "color",
+   "layout": "pillars",
+   "rows": 8,
    "colors": 5,
-   "shots": 38,
+   "shots": 32,
+   "drop_every": 8,
+   "target_color": 2,
+   "target_n": 32,
    "stars": [
     0,
-    6,
-    11
+    9,
+    16
    ]
   },
   {
    "id": 24,
    "seed": 183137,
-   "rows": 10,
+   "goal": "gems",
+   "layout": "hang",
+   "rows": 8,
    "colors": 5,
-   "shots": 38,
+   "shots": 32,
+   "drop_every": 7,
+   "gems": 7,
    "stars": [
     0,
-    6,
-    11
+    9,
+    16
    ]
   },
   {
    "id": 25,
    "seed": 191056,
-   "rows": 10,
+   "goal": "clear",
+   "layout": "gaps",
+   "rows": 8,
    "colors": 5,
-   "shots": 38,
+   "shots": 44,
+   "drop_every": 0,
    "stars": [
     0,
-    6,
-    11
+    13,
+    22
    ]
   },
   {
    "id": 26,
    "seed": 198975,
-   "rows": 10,
+   "goal": "color",
+   "layout": "pillars",
+   "rows": 8,
    "colors": 6,
-   "shots": 39,
+   "shots": 34,
+   "drop_every": 7,
+   "target_color": 1,
+   "target_n": 36,
    "stars": [
     0,
-    6,
-    11
+    10,
+    17
    ]
   },
   {
    "id": 27,
    "seed": 206894,
-   "rows": 10,
+   "goal": "gems",
+   "layout": "hang",
+   "rows": 8,
    "colors": 6,
-   "shots": 39,
+   "shots": 34,
+   "drop_every": 7,
+   "gems": 7,
    "stars": [
     0,
-    6,
-    10
+    10,
+    17
    ]
   },
   {
    "id": 28,
    "seed": 214813,
-   "rows": 11,
+   "goal": "clear",
+   "layout": "gaps",
+   "rows": 9,
    "colors": 6,
-   "shots": 39,
+   "shots": 48,
+   "drop_every": 0,
    "stars": [
     0,
-    6,
-    10
+    14,
+    24
    ]
   },
   {
    "id": 29,
    "seed": 222732,
-   "rows": 11,
+   "goal": "color",
+   "layout": "pillars",
+   "rows": 9,
    "colors": 6,
-   "shots": 40,
+   "shots": 36,
+   "drop_every": 6,
+   "target_color": 4,
+   "target_n": 39,
    "stars": [
     0,
-    6,
-    10
+    10,
+    18
    ]
   },
   {
    "id": 30,
    "seed": 230651,
-   "rows": 11,
+   "goal": "gems",
+   "layout": "hang",
+   "rows": 9,
    "colors": 6,
-   "shots": 40,
+   "shots": 36,
+   "drop_every": 6,
+   "gems": 8,
    "stars": [
     0,
-    6,
-    10
+    10,
+    18
    ]
   }
  ]

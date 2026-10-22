@@ -17,7 +17,7 @@ Plugins (both free, open source):
 - **AdMob**: "AdMob" by Poing Studios (`poingstudios/godot-admob-plugin`, v5.x, needs Godot 4.5+, you use 4.7.2).
 - **Billing**: "Godot Google Play Billing" (`godot-sdk-integrations/godot-google-play-billing`, official, Godot 4.2+).
 
-CI runs Godot 4.3 and never loads these plugins, so it stays green without them.
+CI runs Godot 4.3 and never loads these plugins, so it stays green without them. The real provider scripts look the plugin classes up by name at runtime, so the editor shows no errors while the plugins are not installed (and none are needed to start installing them).
 
 ---
 
