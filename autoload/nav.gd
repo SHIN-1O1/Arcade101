@@ -84,7 +84,9 @@ func play(id: String, level: int) -> void:
 
 
 func back() -> void:
-	if _busy:
+	# During a full-screen ad, leaving would let the ad's close callback (Next / Levels)
+	# drag the player back to wherever the card was heading.
+	if _busy or Ads.is_showing():
 		return
 	# A screen with a popup open (hub mode picker) closes that first.
 	var scene := get_tree().current_scene

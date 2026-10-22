@@ -132,6 +132,7 @@ func _test_monetization() -> int:
 	ads.show_rewarded()
 	await create_timer(0.6).timeout
 	if granted != [true]: push_error("rewarded not granted"); errors += 1
+	save.set_no_ads(false)  # reset_all keeps purchases; don't leave No Ads on in the dev save
 	save.reset_all()
 	print("monetization checks done")
 	return errors
