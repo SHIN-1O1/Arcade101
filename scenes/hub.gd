@@ -229,5 +229,22 @@ class GameCard extends Button:
 					for i in 3 - row:
 						var p := c + Vector2((i - (2 - row) / 2.0) * br * 2.05, (row - 1) * br * 1.8)
 						FX.draw_ball(self, p, br, bcols[(i + row) % 4])
+			"mahjong_match":
+				var tw := s * 0.95
+				var th := tw * 1.22
+				var spots := [Vector2(-0.62, 0.12), Vector2(0.62, 0.12), Vector2(0.0, -0.18)]
+				for k in 3:
+					var tr := Rect2(c + spots[k] * tw - Vector2(tw, th) / 2.0, Vector2(tw, th))
+					FX.draw_tile(self, tr, Color("#fff6df"), 8, k < 2)
+					var tc := tr.get_center() + Vector2(0, -th * 0.04)
+					match k:
+						0:
+							for dx in [-1, 1]:
+								draw_circle(tc + Vector2(dx * tw * 0.2, 0), tw * 0.13, Color("#2b7bd6"))
+						1:
+							draw_rect(Rect2(tc - Vector2(tw * 0.09, th * 0.26), Vector2(tw * 0.18, th * 0.52)), Color("#2f9e5b"))
+						_:
+							draw_circle(tc, tw * 0.22, Color("#e5484d"))
+							draw_circle(tc, tw * 0.12, Color("#fff6df"))
 			_:
 				FX.draw_ball(self, c, s * 0.7, col.lightened(0.3), String(game.get("name", "?")).left(1))

@@ -124,7 +124,17 @@ Per-game params (defined in tools/gen_levels.py):
 | block_puzzle | Block Fit (8x8 drag pieces, clear lines) | grid, goal (lines/clear), target_lines, prefilled, piece_set | score |
 | number_merge | Merge Tiles (2048-like swipe) | none: endless only (games.json `endless` block: ramp_score) | high score |
 | bubble_shooter | Bubble Burst | rows, colors, shots | shots left |
-Tube Sort, Block Fit and Merge Tiles (endless only) are playable; the other three are placeholders (stub_game.gd). `status` in games.json tracks this.
+| mahjong_match | Mahjong Match (stacked tile pairs) | shape, layers, tiles, types, hints, shuffles, undos | seconds + penalties, lower better |
+Tube Sort, Block Fit, Mahjong Match and Merge Tiles (endless only) are playable; the other three are placeholders (stub_game.gd). `status` in games.json tracks this.
+
+## Mahjong Match (games/mahjong_match/)
+`layout.gd` is the logic with no drawing (shapes, stacking, free rule, solvable pair order, shuffle); `faces.gd` draws the
+27 tile faces; `game.gd` is the scene. Boards are built by removing random free pairs until empty, then giving each pair one
+match key, so every board is solvable. Levels store params only (the board is regenerated from `seed`); `tools/gen_levels.py`
+mirrors the shape/size maths so `tiles` is what the board really holds. Campaign stars use time plus penalties (hint 8 s,
+shuffle 12 s, undo 4 s); endless scores pairs with a combo and refills a shuffle and hint per cleared board.
+`check.gd` (`check_levels`) proves all 30 layouts solvable with an independent free-rule and search; the smoke test runs it for
+any game that ships a `check.gd`.
 
 ## Add or implement a game
 1. Create `games/<id>/` with `game.gd` (`extends BaseGame`) and `game.tscn` whose
