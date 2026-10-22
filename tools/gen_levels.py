@@ -98,11 +98,12 @@ NUMBER_MERGE = [
 def number_merge(i, t):
     # Every move spawns a 2 (90%) or 4 (10%) = 2.2 on average, so reaching `target` needs at least
     # target / 2.2 moves ("par"); leftover tiles on the board cost extra. Stars count moves used:
-    # 1 = reach the target (or stay inside the move limit), 2 / 3 = within K2 / K3 times par.
+    # 1 = reach the target (the first threshold only scales the HUD star meter: the move limit when
+    # there is one, else 2x par), 2 / 3 = within K2 / K3 times par.
     target, grid, blockers, limited = NUMBER_MERGE[i]
     par = math.ceil(target / 2.2)
     k3, k2 = lerp(1.22, 1.14, t), lerp(1.45, 1.3, t)
-    one = math.ceil(par * lerp(1.75, 1.5, t)) if limited else 10_000
+    one = math.ceil(par * lerp(1.75, 1.5, t)) if limited else par * 2
     return {"grid": grid, "target_tile": target, "blockers": blockers, "move_limit": one if limited else 0,
             "par": par, "stars": [one, math.ceil(par * k2), math.ceil(par * k3)]}
 

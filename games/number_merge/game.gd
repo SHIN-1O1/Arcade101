@@ -2,7 +2,7 @@ extends BaseGame
 ## Merge Tiles: swipe (or arrow keys / WASD) to slide every tile; equal tiles merge into their sum.
 ## Reach the target tile to win. Fewer moves = more stars. Some levels have immovable blockers
 ## and/or a move limit; the level fails when the limit runs out or no move is left.
-## Level data: "grid", "target_tile", "blockers", "move_limit" (0 = none), "stars" (moves, lower better).
+## Level data: "grid", "target_tile", "blockers", "move_limit" (0 = none), "stars" (moves, lower better; the first is the move limit, or 2x par when there is none).
 ## Grid cells: 0 empty, -1 blocker, otherwise the tile value. Drawn in code with the FX kit.
 
 const FX := preload("res://core/fx.gd")
@@ -13,7 +13,7 @@ const BOARD_BG := Color("#1c1b4a")
 const CELL_BG := Color("#2d2c78")
 const STONE := Color("#5b59b0")
 const BLOCKER := -1
-const HEADER := 150.0
+const HEADER := 130.0
 const BOTTOM_BAR := 128.0
 const SLIDE_TIME := 0.12
 const POP_TIME := 0.22
@@ -118,20 +118,9 @@ func _make_button(text: String, on_press: Callable) -> Button:
 
 func _report() -> void:
 	status_changed.emit("Goal %d  ·  Best %d" % [target, best])
+	report_progress(moves, true)
 	if _undo_btn:
 		_undo_btn.disabled = history.is_empty() or _done or _finished
-
-
-# --- live star meter data (read by the HUD, and by a shared meter later) -----
-
-## Star thresholds in moves, [one, two, three]; the first is the move limit (or 10000 when none).
-func star_thresholds() -> Array:
-	return level.get("stars", [10000, 10000, 10000])
-
-
-## Stars the player would get if they reached the target right now.
-func stars_now() -> int:
-	return stars_for(moves, true)
 
 
 # --- game logic -------------------------------------------------------------
@@ -524,21 +513,11 @@ func _draw_header(lay: Dictionary) -> void:
 	var gl := Rect2(goal.position + Vector2(8, 8), goal.size - Vector2(16, 16))
 	FX.draw_tile(self, gl, _tile_color(target), 14)
 	var gd := str(target).length()
-	FX.draw_text_centered(self, gl.get_center(), str(target), 40 if gd <= 3 else 32, Color(1, 1, 1, 0.97), font)
+	FX.draw_text_centered(self, gl.get_center(), str(target), 40 if gd <= 2 else 32 if gd == 3 else 26, Color(1, 1, 1, 0.97), font)
 	# moves (centre)
-	var cx := size.x * 0.43
+	var cx := size.x * 0.5
 	FX.draw_text_centered(self, Vector2(cx, 26.0), "MOVES", 24, Color(1, 1, 1, 0.7), font)
 	var txt := str(moves) if move_limit == 0 else "%d / %d" % [moves, move_limit]
 	var warn := move_limit > 0 and move_limit - moves <= 5
 	FX.draw_text_centered(self, Vector2(cx, 84.0), txt, 56 if move_limit == 0 else 46,
 		TANGERINE if warn else Color.WHITE, font)
-	# star meter (right): a star stays lit while its move budget has not been spent
-	var th := star_thresholds()
-	for i in 3:
-		var t: int = th[i] if i < th.size() else 10000
-		var lit := moves <= t
-		var c := Vector2(size.x - 40.0 - (2 - i) * 78.0 - 32.0, 62.0)
-		FX.draw_star(self, c, 26.0, LEMON, lit)
-		var label := "win" if t >= 10000 else str(t)
-		FX.draw_text_centered(self, c + Vector2(0, 46.0), label, 24,
-			Color(1, 1, 1, 0.9 if lit else 0.35), font)

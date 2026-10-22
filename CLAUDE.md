@@ -77,9 +77,9 @@ Per-game params (defined in tools/gen_levels.py):
 | color_sort | Tube Sort (water/ball sort) | colors, capacity, empty_tubes | moves used, lower better |
 | tower_stack | Sky Stacker (one-tap stacker) | target_height, speed, speed_step, block_width | perfect drops |
 | block_puzzle | Block Fit (8x8 drag pieces, clear lines) | grid, goal (lines/clear), target_lines, prefilled, piece_set | score |
-| number_merge | Merge Tiles (2048-like) | grid, target_tile, blockers, move_limit | moves used, lower better |
+| number_merge | Merge Tiles (2048-like swipe) | grid, target_tile, blockers, move_limit, par | moves used, lower better |
 | bubble_shooter | Bubble Burst | rows, colors, shots | shots left |
-Block Fit is playable; the other five are placeholders (stub_game.gd). `status` in games.json tracks this.
+Tube Sort, Block Fit and Merge Tiles are playable; the other three are placeholders (stub_game.gd). `status` in games.json tracks this.
 
 ## Add or implement a game
 1. Create `games/<id>/` with `game.gd` (`extends BaseGame`) and `game.tscn` whose
