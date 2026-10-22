@@ -123,8 +123,8 @@ Per-game params (defined in tools/gen_levels.py):
 | tower_stack | Sky Stacker (one-tap stacker) | target_height, speed, speed_step, block_width | perfect drops |
 | block_puzzle | Block Fit (8x8 drag pieces, clear lines) | grid, goal (lines/clear), target_lines, prefilled, piece_set | score |
 | number_merge | Merge Tiles (2048-like swipe) | none: endless only (games.json `endless` block: ramp_score) | high score |
-| bubble_shooter | Bubble Burst | rows, colors, shots | shots left |
-Tube Sort, Block Fit and Merge Tiles (endless only) are playable; the other three are placeholders (stub_game.gd). `status` in games.json tracks this.
+| bubble_shooter | Bubble Burst (aim-and-pop) | goal (clear/color/gems), layout, rows, colors, shots, drop_every, target_color, target_n, gems; also has an endless mode | shots left (endless: score) |
+Tube Sort, Block Fit, Bubble Burst and Merge Tiles (endless only) are playable; the other two are placeholders (stub_game.gd). `status` in games.json tracks this.
 
 ## Add or implement a game
 1. Create `games/<id>/` with `game.gd` (`extends BaseGame`) and `game.tscn` whose

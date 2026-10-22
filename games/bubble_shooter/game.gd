@@ -28,11 +28,16 @@ var gems_total := 0
 var gems_freed := 0
 var shots_left := 0
 var shots_fired := 0
+var score := 0
+var since_drop := 0
+var endless := false
 var drop_every := 0
 var cur := 0
 var nxt := 0
 var over := false
 var aiming := false
+var swap_tap := false
+var press_pos := Vector2.ZERO
 var aim_dir := Vector2.UP
 var flying := false
 var fly_pos := Vector2.ZERO
@@ -56,7 +61,10 @@ func _on_start() -> void:
 	rng = make_rng()
 	goal = str(level.get("goal", "clear"))
 	colors_n = clampi(int(level.get("colors", 3)), 2, COLORS.size())
-	shots_left = int(level.get("shots", 30))
+	endless = is_endless()
+	score = 0
+	since_drop = 0
+	shots_left = 9999 if endless else int(level.get("shots", 30))
 	drop_every = int(level.get("drop_every", 0))
 	target_color = clampi(int(level.get("target_color", 0)), 0, colors_n - 1)
 	target_n = int(level.get("target_n", 0))
@@ -152,10 +160,17 @@ func _present_colors() -> Array[int]:
 	return out
 
 
+## Endless: number of colours in play grows with score (3 -> 6).
+func _cur_colors() -> int:
+	if not endless:
+		return colors_n
+	return clampi(3 + int(difficulty(score) * 3.99), 3, COLORS.size())
+
+
 func _pick_color() -> int:
 	var present := _present_colors()
 	if present.is_empty():
-		return rng.randi_range(0, colors_n - 1)
+		return rng.randi_range(0, _cur_colors() - 1)
 	if goal == "color" and present.has(target_color) and rng.randf() < 0.3:
 		return target_color
 	return present[rng.randi_range(0, present.size() - 1)]
@@ -165,8 +180,8 @@ func _build_grid() -> void:
 	rows.clear()
 	gem_rows.clear()
 	par = 0
-	var n := int(level.get("rows", 5))
-	var layout := str(level.get("layout", "full"))
+	var n := 5 if endless else int(level.get("rows", 5))
+	var layout := "full" if endless else str(level.get("layout", "full"))
 	_ensure_rows(n)
 	for y in n:
 		for c in COLS:
@@ -180,7 +195,7 @@ func _build_grid() -> void:
 					"hang": hole = 0.35 if y > 2 else 0.04
 			if rng.randf() < hole:
 				continue
-			var col := rng.randi_range(0, colors_n - 1)
+			var col := rng.randi_range(0, _cur_colors() - 1)
 			if rng.randf() < 0.45:  # clump colours a little so matches are possible
 				if c > 0 and rows[y][c - 1] >= 0:
 					col = rows[y][c - 1]
@@ -189,7 +204,7 @@ func _build_grid() -> void:
 			rows[y][c] = col
 	_drop_floaters(false)
 	gems_total = 0
-	if goal == "gems":
+	if goal == "gems" and not endless:
 		var spots: Array[Vector2i] = []
 		for y in range(1, rows.size()):
 			for c in COLS:
@@ -201,7 +216,7 @@ func _build_grid() -> void:
 			gem_rows[spots[k].y][spots[k].x] = 1
 			spots.remove_at(k)
 			gems_total += 1
-	if goal == "color":
+	if goal == "color" and not endless:
 		var have := 0
 		for row: PackedInt32Array in rows:
 			for v in row:
@@ -387,13 +402,16 @@ func _land(cell: Vector2i, color: int) -> void:
 	gem_rows[cell.y][cell.x] = 0
 	var group := _flood(cell, color)
 	var total := 0
+	since_drop += 1
 	if group.size() >= 3:
 		for v: Vector2i in group:
 			_count_removed(rows[v.y][v.x], gem_rows[v.y][v.x] == 1)
 			pops.append({"pos": _pos(v.y, v.x), "color": color, "t": 0.0})
 			rows[v.y][v.x] = EMPTY
 			gem_rows[v.y][v.x] = 0
-		total = group.size() + _drop_floaters(true)
+		var floaters := _drop_floaters(true)
+		total = group.size() + floaters
+		score += group.size() * 10 + floaters * 20
 		Feedback.sfx("pop")
 		if total >= 6:
 			Feedback.sfx("clear")
@@ -408,7 +426,16 @@ func _land(cell: Vector2i, color: int) -> void:
 	cur = nxt
 	_trim_rows()
 	nxt = _pick_color()
-	if drop_every > 0 and shots_fired % drop_every == 0 and not _goal_met():
+	if endless:
+		if not _has_bubbles():  # board cleared: bonus and a fresh start
+			score += 200
+			for i in 3:
+				_add_top_row()
+			since_drop = 0
+		elif since_drop >= _drop_interval():
+			since_drop = 0
+			_add_top_row()
+	elif drop_every > 0 and shots_fired % drop_every == 0 and not _goal_met():
 		_add_top_row()
 	_report()
 	_check_end()
@@ -452,13 +479,22 @@ func _row_empty(y: int) -> bool:
 	return true
 
 
+## Endless: shots between ceiling drops shrinks with score (7 -> 3).
+func _drop_interval() -> int:
+	return int(round(lerpf(7.0, 3.0, difficulty(score))))
+
+
 func _add_top_row() -> void:
 	par ^= 1
 	var row := _new_row(_shift(0))
 	var present := _present_colors()
+	var holes := 0.28 * difficulty(score) if endless else 0.0  # awkward gappy rows later on
 	for c in COLS:
 		if row[c] != VOID:
-			row[c] = present[rng.randi_range(0, present.size() - 1)] if not present.is_empty() else 0
+			if endless:
+				row[c] = EMPTY if rng.randf() < holes else rng.randi_range(0, _cur_colors() - 1)
+			else:
+				row[c] = present[rng.randi_range(0, present.size() - 1)] if not present.is_empty() else 0
 	rows.insert(0, row)
 	var g := PackedByteArray()
 	g.resize(COLS)
@@ -471,6 +507,8 @@ func _add_top_row() -> void:
 
 
 func _goal_met() -> bool:
+	if endless:
+		return false
 	match goal:
 		"gems":
 			return gems_freed >= gems_total
@@ -487,6 +525,13 @@ func _lowest_row() -> int:
 
 
 func _check_end() -> void:
+	if endless:
+		_drop_floaters(true)  # a new row can strand nothing, but holes might
+		if _lowest_row() > max_row:
+			over = true
+			Feedback.vibrate(40)
+			get_tree().create_timer(0.7).timeout.connect(func() -> void: end_run(score))
+		return
 	if _goal_met():
 		over = true
 		var st := maxi(1, stars_for(shots_left))
@@ -498,6 +543,9 @@ func _check_end() -> void:
 
 
 func _report() -> void:
+	if endless:
+		report_score(score)
+		return
 	var goal_txt := ""
 	match goal:
 		"gems":
@@ -522,15 +570,19 @@ func _gui_input(event: InputEvent) -> void:
 			if not can_shoot():
 				return
 			var preview := Vector2(shooter.x - r * 4.2, shooter.y + r * 0.2)
-			if event.position.distance_to(preview) < r * 1.6 or event.position.distance_to(shooter) < r * 1.2:
-				swap()
-				return
-			aiming = true
-			_aim_to(event.position)
-		elif aiming:
+			press_pos = event.position
+			swap_tap = event.position.distance_to(preview) < r * 1.6 or event.position.distance_to(shooter) < r * 1.2
+			aiming = not swap_tap or event.position.distance_to(shooter) < r * 1.2
+			if aiming:
+				_aim_to(event.position)
+		elif aiming or swap_tap:
+			var moved: float = event.position.distance_to(press_pos)
 			aiming = false
-			if event.position.distance_to(shooter) > r * 1.3 and aim_dir.y < -0.12:
+			if swap_tap and moved < r * 0.8:
+				swap()  # a tap on the shooter or the preview swaps
+			elif event.position.distance_to(shooter) > r * 1.3 and aim_dir.y < -0.12:
 				shoot(aim_dir)
+			swap_tap = false
 			queue_redraw()
 	elif event is InputEventMouseMotion and aiming:
 		_aim_to(event.position)
@@ -563,10 +615,12 @@ func _draw() -> void:
 		return
 	FX.draw_background(self, Rect2(Vector2.ZERO, size))
 	var goal_text := "Clear every bubble"
+	if endless:
+		goal_text = "Hold the line!"
 	match goal:
-		"gems":
+		"gems" when not endless:
 			goal_text = "Free %d gems (%d left)" % [gems_total, gems_total - gems_freed]
-		"color":
+		"color" when not endless:
 			goal_text = "Pop %d %s bubbles" % [target_n, COLOR_NAMES[target_color]]
 	FX.draw_text_centered(self, Vector2(size.x / 2.0, 30), goal_text, 34, FX.LEMON, FX.font())
 	# play field with a danger line
