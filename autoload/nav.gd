@@ -15,6 +15,7 @@ const UNDER_TINT := Color(0.55, 0.55, 0.65)  # the screen underneath dims a litt
 
 var game_id := ""
 var level_index := 0
+var mode := "levels"  # "levels" or "endless" for the game being played
 
 var _busy := false
 var _blocker: Control
@@ -54,8 +55,24 @@ func to_settings() -> void:
 	_go(SETTINGS, true)
 
 
+## Hub card tap: endless-only games start straight away, level-only games open the level
+## list. Games with both modes are handled by the hub's mode picker (see hub.gd).
+func open_game(id: String) -> void:
+	if Games.has_levels(id):
+		to_level_select(id)
+	else:
+		play_endless(id)
+
+
+func play_endless(id: String) -> void:
+	game_id = id
+	mode = "endless"
+	_go(GAME_HOST, true)
+
+
 func play(id: String, level: int) -> void:
 	game_id = id
+	mode = "levels"
 	level_index = level
 	_go(GAME_HOST, true)
 
@@ -65,7 +82,10 @@ func back() -> void:
 		return
 	match _current():
 		GAME_HOST:
-			to_level_select(game_id)
+			if mode == "endless":
+				to_hub()
+			else:
+				to_level_select(game_id)
 		LEVEL_SELECT, SETTINGS:
 			to_hub()
 		_:
