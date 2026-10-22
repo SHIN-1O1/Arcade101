@@ -1,4 +1,4 @@
-# Pocket Arcade: guide for AI assistants (read this before exploring code)
+# Arcade 101: guide for AI assistants (read this before exploring code)
 
 Godot 4.3, GDScript, 2D portrait (720x1280 base, `canvas_items` stretch, expand aspect),
 Compatibility renderer, Android first. Offline. Free with ads + one-time "remove_ads".
@@ -17,7 +17,10 @@ autoload/              singletons (names as used in code)
 core/
   base_game.gd     class BaseGame: the contract every game implements
   stub_game.gd     placeholder game (debug Win/Fail buttons)
-  ui.gd            class UI: colors, button(), label(), screen(), stars_text()
+  ui.gd            class UI: menu kit: screen(), button(), icon_button(), title(), top_bar(),
+                   star_pill(), card_box(), stagger_pop(), widgets Backdrop/IconButton/Switch
+  fonts/           LilitaOne-Regular.ttf (OFL, licence in OFL.txt), via FX.font()/FX.theme()
+  fx.gd            shared visual kit, preload as FX (see "Look and feel")
 scenes/            hub, level_select, game_host, settings (.tscn + .gd)
 data/games.json    game registry (order = hub order)
 games/<id>/        game.tscn (+ scripts/assets) and levels.json (30 levels)
@@ -42,6 +45,22 @@ Level N unlocks when level N-1 has >= 1 star.
 - `status_changed.emit("Score 120")` updates the HUD line.
 - `make_rng()` gives a RNG seeded from `level.seed` (levels replay identically).
 - Use `Feedback.sfx()/vibrate()`; never touch Save/Ads/Nav from a game.
+
+## Look and feel (core/fx.gd)
+Every game should use the kit so the library looks consistent, no image assets needed.
+Load it with `const FX := preload("res://core/fx.gd")` (it has no class_name on purpose:
+a fresh pull into an open editor does not know new global classes yet).
+- In `_draw()`: `FX.draw_background(self, Rect2(Vector2.ZERO, size))`, `draw_shadow`, `draw_glow`,
+  `draw_ball(self, c, r, color, label, airborne)` (glossy sphere), `draw_tile(self, rect, color)`
+  (glossy rounded block), `draw_text_centered`. Palette: `FX.INDIGO/TANGERINE/LEMON`.
+- Nodes: `FX.style_button(b)` (3D button + press squash), `pop`, `scale_to`, `ease_smooth`,
+  `FX.burst(self, pos, colors)` particles, `FX.shake(self)` for clears and wins.
+- Input: handle taps in `_gui_input` and skip `event.device == InputEvent.DEVICE_ID_EMULATION`;
+  mouse/touch emulation is on, so every tap also arrives as an emulated twin.
+- Example: games/color_sort/game.gd.
+- Menus: `UI.screen(root, accent)` sets `FX.theme()` (Lilita One, outlined text) and the
+  gradient Backdrop; `FX.draw_star`, `draw_lock`, `draw_icon` draw icons (the font has no ★).
+  Screens: scenes/hub.gd (game cards with drawn emblems), level_select.gd (LevelTile states).
 
 ## Level data
 `games/<id>/levels.json` = `{"star_metric": "...", "levels": [ {id, seed, stars, ...game params} x30 ]}`.

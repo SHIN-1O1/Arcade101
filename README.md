@@ -1,4 +1,4 @@
-# Pocket Arcade
+# Arcade 101
 
 Offline mini-games collection for Android (iOS later), built with Godot 4.3.
 Six games x 30 levels, a hub, level select with stars, settings, and stubbed ads/purchases.
@@ -19,11 +19,11 @@ One-time setup:
    and *Android SDK Path* (usually `C:\Users\<you>\AppData\Local\Android\Sdk`).
 3. **Editor > Manage Export Templates > Download and Install**.
 4. Create a release keystore (keep it safe and backed up, never commit it):
-   `keytool -genkeypair -v -keystore release.keystore -alias pocketarcade -keyalg RSA -keysize 2048 -validity 10000`
+   `keytool -genkeypair -v -keystore release.keystore -alias arcade101 -keyalg RSA -keysize 2048 -validity 10000`
 
 Export:
 1. **Project > Export > Add... > Android**.
-2. Set *Package > Unique Name* (e.g. `com.yourname.pocketarcade`), *Version Code/Name*, and
+2. Set *Package > Unique Name* (e.g. `com.shin1o1.arcade101`), *Version Code/Name*, and
    *Screen orientation* is already portrait from project settings.
 3. Under *Keystore > Release* fill the keystore path, alias and password.
 4. Quick test: enable USB debugging on your phone, plug it in, and press the Android icon in the
