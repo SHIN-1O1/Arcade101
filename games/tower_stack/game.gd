@@ -6,6 +6,9 @@ extends BaseGame
 ## (px counted as perfect), wind (0..1, speed wobble), sway (px, the slide range drifts),
 ## stars [0, perfects_for_2, perfects_for_3]; 1 star is the win itself.
 ##
+## Endless mode (level.endless): no target, score = 10 per drop + perfect/combo bonuses, speed, wind,
+## sway and tolerance ramp with difficulty(score), run ends when a block misses entirely, and the
+## sky cycles through space as the tower climbs.
 ## The HUD star meter is fed by report_progress(perfects) (star metric: perfect drops).
 ## All x values are measured from the horizontal centre; world y is up-negative from the ground.
 
@@ -21,7 +24,9 @@ const GRAVITY := 2600.0
 const SPEED_CAP := 1.7  # speed never exceeds this multiple of the level's base speed
 const REGROW := 10.0
 const REGROW_COMBO := 3  # perfects in a row before the block regrows
-const END_DELAY := 0.9  # celebrate / watch it fall before the result overlay
+const END_DELAY := 0.9
+const ENDLESS_SPEED := Vector2(280.0, 640.0)  # slide speed at difficulty 0 -> 1
+const ENDLESS_WIDTH := 340.0  # celebrate / watch it fall before the result overlay
 const SKY: Array = [  # [top, bottom] at 0, 1/3, 2/3 and 1 of the climb
 	[Color("#2B2A6B"), Color("#FF9A55")],
 	[Color("#231f63"), Color("#6a4fc4")],
@@ -33,6 +38,7 @@ enum { PLAY, WON, LOST }
 var tower: Array = []  # {x, w, col}; index 0 is the base slab
 var perfects := 0
 var combo := 0
+var score := 0  # endless only
 
 var _target := 10
 var _start_w := 300.0
@@ -60,6 +66,7 @@ var _clouds: Array = []  # Vector3(x 0..1, y 0..1, scale)
 
 func _on_start() -> void:
 	_rng = make_rng()
+	score = 0
 	_target = int(level.get("target_height", 10))
 	_start_w = float(level.get("block_width", 300))
 	_tol = float(level.get("tolerance", 10))
@@ -67,6 +74,10 @@ func _on_start() -> void:
 	_speed_step = float(level.get("speed_step", 5))
 	_wind = float(level.get("wind", 0))
 	_sway = float(level.get("sway", 0))
+	if is_endless():
+		_target = 1 << 30
+		_start_w = ENDLESS_WIDTH
+		_apply_difficulty()
 	_w = _start_w
 	perfects = 0
 	combo = 0
@@ -119,7 +130,17 @@ func _color(i: int) -> Color:
 	return Color.from_hsv(fposmod(0.07 + i * 0.047, 1.0), 0.72, 1.0)
 
 
+## Endless: map difficulty(score) onto the slide knobs (speed itself is read in _speed_now).
+func _apply_difficulty() -> void:
+	var d := difficulty(score)
+	_tol = lerpf(13.0, 8.0, d)
+	_wind = 0.0 if d < 0.25 else lerpf(0.2, 0.55, (d - 0.25) / 0.75)
+	_sway = 0.0 if d < 0.5 else lerpf(30.0, 90.0, (d - 0.5) / 0.5)
+
+
 func _speed_now() -> float:
+	if is_endless():
+		return lerpf(ENDLESS_SPEED.x, ENDLESS_SPEED.y, difficulty(score))
 	return minf(_speed + _speed_step * height(), _speed * SPEED_CAP)
 
 
@@ -141,6 +162,10 @@ func _spawn_slider() -> void:
 
 
 func _report() -> void:
+	if is_endless():
+		status_changed.emit("Height %d   Perfect %d" % [height(), perfects])
+		report_score(score)
+		return
 	status_changed.emit("Height %d / %d   Perfect %d" % [height(), _target, perfects])
 	report_progress(perfects)
 
@@ -171,11 +196,12 @@ func drop() -> void:
 		perfects += 1
 		var nw := _w
 		if combo >= REGROW_COMBO:
-			nw = minf(_start_w, _w + REGROW)
+			nw = minf(_start_w, _w + REGROW * (1.0 - 0.7 * difficulty(score) if is_endless() else 1.0))
 		_w = nw
 		tower.append({"x": top.x, "w": nw, "col": col})
 		_flash = 1.0
 		_land = 1.0
+		score += 25 + 5 * mini(combo, 10)
 		var label := "Perfect!" if combo < 2 else "Perfect x%d" % combo
 		_pops.append({"text": label, "x": top.x, "y": wy - BLOCK_H * 2.2, "t": 0.0, "col": LEMON})
 		FX.burst(self, Vector2(size.x / 2.0 + float(top.x), _sy(wy)), [LEMON, TANGERINE, Color.WHITE], 22)
@@ -199,6 +225,7 @@ func drop() -> void:
 		else:
 			_pieces.append(_piece(_x - _w / 2.0, l, wy, col, -1.0))
 		_w = r - l
+		score += 10
 		tower.append({"x": (l + r) / 2.0, "w": _w, "col": col})
 		_land = 1.0
 		FX.shake(self, 7.0, 0.25)
@@ -215,6 +242,8 @@ func drop() -> void:
 		FX.burst(self, tp + Vector2(120, 40), [TANGERINE, col], 26, 1.1)
 		FX.shake(self, 10.0, 0.35)
 	else:
+		if is_endless():
+			_apply_difficulty()
 		_spawn_slider()
 
 
@@ -267,7 +296,10 @@ func _process(delta: float) -> void:
 			if _state == WON:
 				win(maxi(1, stars_for(perfects)))
 			else:
-				fail()
+				if is_endless():
+					end_run(score)
+				else:
+					fail()
 	queue_redraw()
 
 
@@ -287,6 +319,9 @@ func _draw() -> void:
 	var r := Rect2(Vector2.ZERO, size)
 	var cx := size.x / 2.0
 	var climb := _cam / maxf(1.0, _target * BLOCK_H * 0.8)
+	if is_endless():  # cycle sunset -> space -> sunset every ~40 blocks
+		var ph := fposmod(_cam / (40.0 * BLOCK_H), 2.0)
+		climb = ph if ph < 1.0 else 2.0 - ph
 	_draw_sky(r, climb)
 	var g := _sy(0.0)
 	if g < size.y + 20.0:
@@ -353,4 +388,5 @@ func _draw_sky(r: Rect2, t: float) -> void:
 
 ## Height counter; the stars live in the host's shared star meter (fed by report_progress).
 func _draw_meter(cx: float) -> void:
-	FX.draw_text_centered(self, Vector2(cx, 44.0), "%d / %d" % [height(), _target], 62)
+	var label := str(height()) if is_endless() else "%d / %d" % [height(), _target]
+	FX.draw_text_centered(self, Vector2(cx, 44.0), label, 62)

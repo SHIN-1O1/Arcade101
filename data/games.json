@@ -2,7 +2,7 @@
   "games": [
     {"id": "fruit_merge",    "name": "Fruit Fusion", "tagline": "Drop & merge fruit",   "color": "#e76f51", "scene": "res://games/fruit_merge/game.tscn",    "status": "placeholder"},
     {"id": "color_sort",     "name": "Tube Sort",    "tagline": "Sort the colours",     "color": "#8e7dbe", "scene": "res://games/color_sort/game.tscn",     "status": "playable"},
-    {"id": "tower_stack",    "name": "Sky Stacker",  "tagline": "One tap, stack high",  "color": "#2a9d8f", "scene": "res://games/tower_stack/game.tscn",    "status": "playable"},
+    {"id": "tower_stack",    "name": "Sky Stacker",  "tagline": "One tap, stack high",  "color": "#2a9d8f", "scene": "res://games/tower_stack/game.tscn",    "status": "playable", "modes": ["levels", "endless"], "endless": {"ramp_score": 3000}},
     {"id": "block_puzzle",   "name": "Block Fit",    "tagline": "Fill lines, clear",    "color": "#457b9d", "scene": "res://games/block_puzzle/game.tscn",   "status": "playable"},
     {"id": "number_merge",   "name": "Merge Tiles",  "tagline": "Slide to double up",   "color": "#e9c46a", "scene": "res://games/number_merge/game.tscn",   "status": "playable", "modes": ["endless"], "endless": {"ramp_score": 8000}},
     {"id": "bubble_shooter", "name": "Bubble Burst", "tagline": "Aim, match, pop",      "color": "#f4a261", "scene": "res://games/bubble_shooter/game.tscn", "status": "placeholder"}
