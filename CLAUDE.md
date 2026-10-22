@@ -1,4 +1,4 @@
-# Pocket Arcade: guide for AI assistants (read this before exploring code)
+# Arcade 101: guide for AI assistants (read this before exploring code)
 
 Godot 4.3, GDScript, 2D portrait (720x1280 base, `canvas_items` stretch, expand aspect),
 Compatibility renderer, Android first. Offline. Free with ads + one-time "remove_ads".

@@ -30,8 +30,8 @@ func _ready() -> void:
 
 	var heading := VBoxContainer.new()
 	heading.add_theme_constant_override("separation", -26)
-	heading.add_child(UI.title("POCKET", 90, FX.LEMON))
-	heading.add_child(UI.title("ARCADE", 90, FX.TANGERINE))
+	heading.add_child(UI.title("ARCADE", 90, FX.LEMON))
+	heading.add_child(UI.title("101", 90, FX.TANGERINE))
 	col.add_child(heading)
 
 	var scroll := ScrollContainer.new()
