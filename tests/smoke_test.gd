@@ -16,6 +16,13 @@ func _run() -> void:
 		if not game is BaseGame:
 			push_error("%s root is not BaseGame" % g.id); errors += 1
 		game.free()
+	var fb: Node = root.get_node("Feedback")
+	for sfx_name in fb.SFX:
+		if load("%s%s.ogg" % [fb.SFX_DIR, fb.SFX[sfx_name][0]]) == null:
+			push_error("missing sfx %s" % sfx_name); errors += 1
+	for track in ["menu", "game"]:
+		if load("%s%s.ogg" % [fb.MUSIC_DIR, track]) == null:
+			push_error("missing music %s" % track); errors += 1
 	var save: Node = root.get_node("Save")
 	save.reset_all()
 	assert(save.is_unlocked("color_sort", 0) and not save.is_unlocked("color_sort", 1))

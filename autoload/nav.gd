@@ -88,6 +88,7 @@ func _go(path: String, forward: bool) -> void:
 		tree.change_scene_to_file(path)
 		return
 	_busy = true
+	Feedback.play_music("game" if path == GAME_HOST else "menu")
 	_blocker.visible = true
 	var new := (load(path) as PackedScene).instantiate() as Control
 	old.process_mode = Node.PROCESS_MODE_DISABLED
