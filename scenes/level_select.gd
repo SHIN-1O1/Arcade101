@@ -75,10 +75,11 @@ func _level_tile(id: String, i: int, accent: Color) -> LevelTile:
 	UI.squash(t)
 	t.pressed.connect(func():
 		if t.state == LevelTile.LOCKED:
+			Feedback.sfx("locked")
 			Feedback.vibrate(30)
 			FX.shake(t, 6.0, 0.25)
 		else:
-			Feedback.sfx("tap")
+			Feedback.sfx("select")
 			Feedback.vibrate(15)
 			Nav.play(id, i))
 	return t

@@ -51,14 +51,14 @@ static func icon_button(icon: String, on_press: Callable, color := FX.INDIGO.lig
 	b.custom_minimum_size = Vector2(88, 88)
 	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	FX.style_button(b, color)
-	wire(b, on_press)
+	wire(b, on_press, "back" if icon == "back" else "button")
 	return b
 
 
-## Tap sound + buzz, then on_press.
-static func wire(b: BaseButton, on_press: Callable) -> void:
+## Click sound + buzz, then on_press.
+static func wire(b: BaseButton, on_press: Callable, sound := "button") -> void:
 	b.pressed.connect(func():
-		Feedback.sfx("tap")
+		Feedback.sfx(sound)
 		Feedback.vibrate(15)
 		on_press.call())
 

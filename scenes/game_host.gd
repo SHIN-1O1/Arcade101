@@ -76,7 +76,7 @@ func _on_finished(won: bool, stars: int) -> void:
 		Feedback.sfx("win")
 		Feedback.vibrate(60)
 	else:
-		Feedback.sfx("lose")
+		Feedback.sfx("fail")
 		Feedback.vibrate(120)
 	Ads.on_level_finished()
 	_show_result(won, stars, best)

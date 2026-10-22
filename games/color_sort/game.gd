@@ -170,7 +170,7 @@ func _tap(i: int) -> void:
 	if selected == -1:
 		if not tubes[i].is_empty():
 			selected = i
-			Feedback.sfx("tap")
+			Feedback.sfx("select")
 	elif selected == i:
 		selected = -1
 	elif can_pour(selected, i):
