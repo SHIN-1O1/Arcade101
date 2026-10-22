@@ -39,6 +39,7 @@ func _run() -> void:
 	save.reset_all()
 	errors += await _test_monetization()
 	errors += _test_cards()
+	errors += _test_freecell()
 	for path in ["res://scenes/hub.tscn", "res://scenes/level_select.tscn", "res://scenes/settings.tscn", "res://scenes/game_host.tscn"]:
 		root.get_node("Nav").game_id = "fruit_merge"
 		change_scene_to_file(path)
@@ -185,4 +186,81 @@ func _test_cards() -> int:
 		push_error("klondike undo did not restore the deal (%d)" % undone); errors += 1
 	t.free()
 	print("card checks done")
+	return errors
+
+
+## FreeCell: stored decks, capacity maths, and a full headless win of level 1 from the solver's move list.
+func _test_freecell() -> int:
+	var errors := 0
+	var Deck = load("res://core/cards/deck.gd")
+	var CardTable = load("res://core/cards/card_table.gd")
+	var Rules = load("res://games/freecell/freecell_rules.gd")
+	var Pile = load("res://core/cards/pile.gd")
+	var base: Array = Deck.codes()
+	var games: Node = root.get_node("Games")
+	for lv in games.get_levels("freecell"):
+		var d: Array = lv.deck.map(func(x): return int(x))
+		d.sort()
+		if d != base:
+			push_error("freecell level %d has a bad deck" % lv.id); errors += 1
+	var pool = JSON.parse_string(FileAccess.get_file_as_string("res://games/freecell/deals.json"))
+	if typeof(pool) != TYPE_ARRAY or pool.size() < 100:
+		push_error("freecell pool too small"); errors += 1
+	var moves = JSON.parse_string(FileAccess.get_file_as_string("res://tests/freecell_level1_moves.json"))
+	var t = CardTable.new()
+	t.sfx = false
+	var rules = Rules.new()
+	rules.auto_foundation = false
+	t.rules = rules
+	for i in 4:
+		t.add_pile("c%d" % i, "cell")
+	for i in 4:
+		t.add_pile("f%d" % i, "foundation")
+	for i in 8:
+		t.add_pile("t%d" % i, "tableau", Pile.Fan.DOWN)
+	var cards: Array = Deck.make_cards(games.get_levels("freecell")[0].deck)
+	for i in cards.size():
+		cards[i].face_up = true
+		t.add_cards([cards[i]], "t%d" % (i % 8))
+	var player_moves := 0
+	for m in moves:
+		var src = null
+		var idx := -1
+		for p in t.piles_of("tableau") + t.piles_of("cell"):
+			for k in p.cards.size():
+				if p.cards[k].code() == int(m[1]):
+					src = p
+					idx = k
+		if src == null:
+			push_error("freecell replay: card %s not found" % [m]); errors += 1
+			break
+		var to = null
+		match m[0]:
+			"F", "A":
+				to = rules.foundation_for(t, src.cards[idx])
+			"C":
+				for c in t.piles_of("cell"):
+					if c.cards.is_empty():
+						to = c
+						break
+			"T":
+				to = t.pile("t%d" % int(m[2]))
+		if to == null or not rules.can_pick(t, src, idx) or not rules.can_drop(t, src.cards.slice(idx), src, to):
+			push_error("freecell replay: illegal move %s" % [m]); errors += 1
+			break
+		if m[0] != "A":
+			player_moves += 1
+		t.move_cards(src, idx, to)
+	if not rules.is_won(t) or rules.moves != moves.size():
+		push_error("freecell replay did not win (moves %d of %d)" % [rules.moves, moves.size()]); errors += 1
+	var undone := 0
+	while t.undo():
+		undone += 1
+	if undone != moves.size() or t.pile("t0").cards.size() != 7 or rules.moves != 0:
+		push_error("freecell undo did not restore the deal (%d)" % undone); errors += 1
+	# capacity: all cells free + no empty column = 5 cards; with one empty column 10
+	if Rules.max_cards(t) != 5:
+		push_error("freecell capacity is %d, expected 5" % Rules.max_cards(t)); errors += 1
+	t.free()
+	print("freecell checks done (par %d)" % player_moves)
 	return errors

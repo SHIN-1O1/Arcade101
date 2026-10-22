@@ -237,5 +237,14 @@ class GameCard extends Button:
 					draw_set_transform(c + Vector2((i - 1) * s * 0.42, s * 0.78), deg_to_rad((i - 1) * 19.0), Vector2.ONE)
 					CardArt.draw_face(self, Rect2(Vector2(-cw / 2.0, -ch), Vector2(cw, ch)), [0, 1, 2][i], 1, 0.0, true)
 				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			"freecell":
+				var fw := s * 0.62
+				var fh := fw * 1.4
+				for i in 3:  # three free cells along the top...
+					var slot := Rect2(c + Vector2((i - 1) * fw * 1.12 - fw / 2.0, -s * 0.98), Vector2(fw, fh) * 0.62)
+					draw_style_box(UI.box(Color(1, 1, 1, 0.2), 8), slot)
+				for i in 3:  # ...and a cascade below
+					var r := Rect2(c + Vector2((i - 1) * fw * 1.06 - fw / 2.0, -s * 0.08 + (i % 2) * s * 0.1), Vector2(fw, fh))
+					CardArt.draw_face(self, r, [1, 0, 2][i], [12, 11, 10][i], 0.0, true)
 			_:
 				FX.draw_ball(self, c, s * 0.7, col.lightened(0.3), String(game.get("name", "?")).left(1))

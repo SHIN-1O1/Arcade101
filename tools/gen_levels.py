@@ -118,6 +118,22 @@ def klondike(i, t):
 
 _KL = None
 
+def freecell(i, t):
+    """Verified-winnable deals from tools/freecell_deals.json (python tools/freecell_solver.py build), easiest first.
+    Difficulty = solver solution length + search effort. Stars on effort = max(moves, secs * time_k) + 2 per undo."""
+    global _FC
+    if _FC is None:
+        path = os.path.join(os.path.dirname(__file__), "freecell_deals.json")
+        data = json.load(open(path))
+        pool = sorted(data, key=lambda d: d["moves"] + min(d["nodes"], 6000) / 60.0)
+        _FC = {"pool": pool, "picks": [pool[round(0.04 * len(pool) + k * (0.88 * len(pool) - 1) / (N - 1))] for k in range(N)]}
+    d = _FC["picks"][i]
+    par = d["moves"]
+    return {"seed": d["seed"], "deck": d["deck"], "par": par, "time_k": 0.35,
+            "stars": [round(par * 2.6), round(par * 1.7), round(par * 1.25)]}
+
+_FC = None
+
 GAMES = {
     "fruit_merge":    (fruit_merge,    "score"),
     "color_sort":     (color_sort,     "moves_used (lower is better)"),
@@ -125,6 +141,7 @@ GAMES = {
     "block_puzzle":   (block_puzzle,   "score"),
     "bubble_shooter": (bubble_shooter, "shots_left"),
     "klondike":       (klondike,       "effort = max(moves, seconds * time_k), lower is better"),
+    "freecell":       (freecell,       "effort = max(moves, seconds * time_k) + 2 per undo, lower is better"),
 }
 
 root = os.path.join(os.path.dirname(__file__), "..", "games")
@@ -140,4 +157,7 @@ for gid, (fn, metric) in GAMES.items():
 if _KL:  # endless pool for Klondike: every verified deal
     with open(os.path.join(root, "klondike", "deals.json"), "w") as f:
         json.dump({"draw1": _KL["draw1_all"], "draw3": _KL["draw3_all"]}, f, separators=(",", ":"))
+if _FC:  # endless pool for FreeCell: every verified deal, easiest first
+    with open(os.path.join(root, "freecell", "deals.json"), "w") as f:
+        json.dump([d["deck"] for d in _FC["pool"]], f, separators=(",", ":"))
 print("wrote", len(GAMES), "games x", N, "levels")

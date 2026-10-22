@@ -6,6 +6,7 @@
     {"id": "block_puzzle",   "name": "Block Fit",    "tagline": "Fill lines, clear",    "color": "#457b9d", "scene": "res://games/block_puzzle/game.tscn",   "status": "playable", "modes": ["levels", "endless"], "endless": {"ramp_score": 2500}},
     {"id": "number_merge",   "name": "Merge Tiles",  "tagline": "Slide to double up",   "color": "#e9c46a", "scene": "res://games/number_merge/game.tscn",   "status": "playable", "modes": ["endless"], "endless": {"ramp_score": 8000}},
     {"id": "klondike",       "name": "Klondike",     "tagline": "Classic solitaire",    "color": "#2f8f5b", "scene": "res://games/klondike/game.tscn",       "status": "playable", "modes": ["levels", "endless"], "endless": {"ramp_score": 4000}},
+    {"id": "freecell",       "name": "FreeCell",     "tagline": "Every card in view",   "color": "#3f7cac", "scene": "res://games/freecell/game.tscn",       "status": "playable", "modes": ["levels", "endless"], "endless": {"ramp_score": 6000}},
     {"id": "bubble_shooter", "name": "Bubble Burst", "tagline": "Aim, match, pop",      "color": "#f4a261", "scene": "res://games/bubble_shooter/game.tscn", "status": "placeholder"}
   ]
 }
