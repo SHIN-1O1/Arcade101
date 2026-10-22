@@ -1,4 +1,4 @@
-"""Regenerates games/<id>/levels.json with a smooth difficulty curve.
+"""Regenerates games/<id>/levels.json (endless-only games such as number_merge have none) with a smooth difficulty curve.
 Run from the project root:  python tools/gen_levels.py
 Hand-edit the JSON afterwards if a level needs tuning; re-running overwrites it.
 Every level has "seed" (deterministic layout) and "stars": [1-star, 2-star, 3-star]
@@ -70,8 +70,14 @@ def color_sort(i, t):
             "stars": [par * 2 + 4, int(par * 1.5) + 1, int(par * 1.15) + 1]}
 
 def tower_stack(i, t):
-    return {"target_height": ri(10, 45, t), "speed": round(lerp(260, 620, t)), "speed_step": round(lerp(4, 12, t), 1),
-            "block_width": ri(360, 260, t), "stars": [0, ri(3, 12, t), ri(6, 22, t)]}
+    # Taller, faster, narrower; wind (speed wobble) from level 8 on every 3rd level,
+    # sway (the slide range drifts) from level 12 on every 4th level.
+    target = ri(8, 40, t)
+    wind = round(lerp(0.25, 0.6, t), 2) if i >= 7 and i % 3 == 1 else 0
+    sway = ri(40, 100, t) if i >= 11 and i % 4 == 3 else 0
+    return {"target_height": target, "speed": round(lerp(240, 560, t)), "speed_step": round(lerp(3, 9, t), 1),
+            "block_width": ri(360, 240, t), "tolerance": ri(14, 9, t), "wind": wind, "sway": sway,
+            "stars": [0, max(3, round(target * 0.35)), max(5, round(target * 0.65))]}
 
 def block_puzzle(i, t):
     # Every 3rd level (from the 3rd) is "clear all marked blocks"; the rest are "clear N lines".
@@ -85,12 +91,6 @@ def block_puzzle(i, t):
     return {"grid": 8, "goal": "lines", "target_lines": lines, "prefilled": ri(0, 14, t),
             "piece_set": piece_set, "stars": [0, lines * 22, lines * 34]}
 
-def number_merge(i, t):
-    tiers = [128, 128, 256, 256, 256, 512, 512, 512, 512, 1024]
-    target = tiers[i] if i < len(tiers) else (1024 if i < 18 else 2048 if i < 26 else 4096)
-    return {"grid": 5 if i < 4 else 4, "target_tile": target, "blockers": 0 if i < 12 else ri(1, 3, t),
-            "move_limit": 0, "stars": [10_000, int(target * 1.2), int(target * 0.8)]}
-
 def bubble_shooter(i, t):
     return {"rows": ri(4, 11, t), "colors": ri(3, 6, t), "shots": ri(30, 40, t),
             "stars": [0, ri(8, 6, t), ri(14, 10, t)]}
@@ -100,7 +100,6 @@ GAMES = {
     "color_sort":     (color_sort,     "moves_used (lower is better)"),
     "tower_stack":    (tower_stack,    "perfect_drops"),
     "block_puzzle":   (block_puzzle,   "score"),
-    "number_merge":   (number_merge,   "moves_used (lower is better)"),
     "bubble_shooter": (bubble_shooter, "shots_left"),
 }
 

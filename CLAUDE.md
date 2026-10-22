@@ -8,7 +8,7 @@ All UI is built in code (core/ui.gd); .tscn files are just a root Control + scri
 ```
 project.godot          autoloads, display, renderer
 autoload/              singletons (names as used in code)
-  save_manager.gd  Save      user://save.json: progress stars, settings, no_ads
+  save_manager.gd  Save      user://save.json: progress stars, endless high scores, settings, no_ads
   game_registry.gd Games     reads data/games.json + games/<id>/levels.json
   nav.gd           Nav       scene changes (slide transitions, input blocked meanwhile),
                              current game_id/level_index, Android back
@@ -94,6 +94,25 @@ classes, so they are loaded by path only when the addon exists; never preload th
 `core/monetization/ad_config.gd` holds Google TEST ad IDs and a marked place for real ones; keep it test-only in git
 until release. `IAP.purchase()`, `IAP.restore_purchases()`, signals `purchase_finished`, `restore_finished`.
 
+## Endless mode (high-score games, no levels)
+A game offers `"modes": ["levels"]` (default), `["endless"]` or both in data/games.json. An optional
+`"endless": {...}` block holds its endless params (always `ramp_score`); there is no levels.json for an
+endless-only game and `tools/gen_levels.py` skips it. Hub card tap (`Nav.open_game`): levels-only opens
+level select, endless-only starts the run, both shows a Campaign / Endless picker.
+- The host builds the level dict with `Games.endless_level(id)` (the endless block + `endless: true`,
+  `id: 0`, fresh random `seed`) and calls `start_level(dict, 0)`; `is_endless()` tells a game which mode it is in.
+  `Nav.mode` is "levels" or "endless"; the host shows a shared Score / Best bar instead of the star meter.
+- Game side: `report_score(score)` at start (0) and whenever it changes; `end_run(score)` exactly once
+  when the run is over (never `win`/`fail` in endless). Never call `report_progress` in endless mode.
+- Host side (already done): `Save.record_score(id, score)` keeps the best in `Save.data.highscores`
+  (`Save.get_high_score(id)`); the result card shows the endless variant (score, "New best!", Play
+  again / Home); the hub card shows BEST instead of the star bar (a small tag when a game has both).
+- Difficulty by score: `difficulty(score)` returns 0..1 (score / `ramp_score`). Map it to the game's own
+  knobs, e.g. Merge Tiles: share of 4s 10% -> 35%, and from 0.2 up occasional stones that crumble.
+  Tune `ramp_score` in games.json, not in code.
+- Adding endless to a levels game (e.g. Block Fit): set `"modes": ["levels", "endless"]`, add the
+  `endless` block, and branch on `is_endless()` in `_on_start()`; keep the level code path as is.
+
 ## Level data
 `games/<id>/levels.json` = `{"star_metric": "...", "levels": [ {id, seed, stars, ...game params} x30 ]}`.
 Per-game params (defined in tools/gen_levels.py):
@@ -103,9 +122,9 @@ Per-game params (defined in tools/gen_levels.py):
 | color_sort | Tube Sort (water/ball sort) | colors, capacity, empty_tubes | moves used, lower better |
 | tower_stack | Sky Stacker (one-tap stacker) | target_height, speed, speed_step, block_width | perfect drops |
 | block_puzzle | Block Fit (8x8 drag pieces, clear lines) | grid, goal (lines/clear), target_lines, prefilled, piece_set | score |
-| number_merge | Merge Tiles (2048-like) | grid, target_tile, blockers, move_limit | moves used, lower better |
+| number_merge | Merge Tiles (2048-like swipe) | none: endless only (games.json `endless` block: ramp_score) | high score |
 | bubble_shooter | Bubble Burst | rows, colors, shots | shots left |
-Block Fit is playable; the other five are placeholders (stub_game.gd). `status` in games.json tracks this.
+Tube Sort, Block Fit and Merge Tiles (endless only) are playable; the other three are placeholders (stub_game.gd). `status` in games.json tracks this.
 
 ## Add or implement a game
 1. Create `games/<id>/` with `game.gd` (`extends BaseGame`) and `game.tscn` whose
