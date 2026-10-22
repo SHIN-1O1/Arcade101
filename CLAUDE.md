@@ -85,7 +85,7 @@ New sound: add a recipe in gen_audio.py `SFX`, an entry in `Feedback.SFX`, and l
 ## Ads and purchases (autoload/ad_service.gd, iap_service.gd, core/monetization/, docs/MONETIZATION.md)
 Games never touch ads: the host does. `Ads.on_level_finished(won, level_index)` records a finished level;
 the interstitial plays only via `Ads.run_after_interstitial(next)` wrapped around the result card's
-Next/Levels buttons (every 3rd win, 60 s cooldown, not after levels 1-2, never on fail, off with No Ads).
+Next/Levels buttons (every 2nd win (`INTERSTITIAL_EVERY` in ad_config.gd), 60 s cooldown, not after level 1, never on fail, off with No Ads).
 Endless modes: call `on_level_finished(won)` with level_index -1 and wrap their "play again/home" the same way.
 Rewarded hook for hints/undo: `Ads.rewarded_available()`, `Ads.show_rewarded()`, signal `rewarded_finished(granted)`.
 Backends are chosen at startup: AdMob / Play Billing plugins on Android when `addons/admob` /

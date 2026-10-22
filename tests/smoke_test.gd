@@ -66,18 +66,18 @@ func _test_monetization() -> int:
 			push_error("non-test ad unit id in use: %s" % id); errors += 1
 	var shown := []
 	var go := func(): shown.append(ads.provider.shown_interstitials)
-	# Levels 1-3 won: the 3rd completed level makes an interstitial due.
-	ads.on_level_finished(true, 0); ads.on_level_finished(true, 1)
-	if ads.interstitial_due(): push_error("ad due after 2 wins"); errors += 1
-	ads.on_level_finished(false, 2)  # a fail never counts
+	# Level 1 won, level 2 failed, level 2 won: the 2nd completed level makes an interstitial due.
+	ads.on_level_finished(true, 0)
+	if ads.interstitial_due(): push_error("ad due after 1 win"); errors += 1
+	ads.on_level_finished(false, 1)  # a fail never counts
 	if ads.interstitial_due(): push_error("fail counted toward an ad"); errors += 1
-	ads.on_level_finished(true, 2)
-	if not ads.interstitial_due(): push_error("no ad due after 3 wins"); errors += 1
+	ads.on_level_finished(true, 1)
+	if not ads.interstitial_due(): push_error("no ad due after 2 wins"); errors += 1
 	ads.run_after_interstitial(go)
 	if ads.provider.shown_interstitials != 1 or shown.size() != 1:
 		push_error("interstitial not shown exactly once"); errors += 1
-	# Cooldown: three more wins right away must not show another ad within 60 s.
-	for i in 3:
+	# Cooldown: more wins right away must not show another ad within 60 s.
+	for i in 2:
 		ads.on_level_finished(true, 5 + i)
 	if ads.interstitial_due(): push_error("cooldown ignored"); errors += 1
 	ads.run_after_interstitial(go)

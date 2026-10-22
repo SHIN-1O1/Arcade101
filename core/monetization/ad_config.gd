@@ -24,9 +24,9 @@ const REAL_BANNER := ""
 const USE_TEST_ADS := true
 
 # --- Pacing rules -----------------------------------------------------------
-const INTERSTITIAL_EVERY := 3        # completed (won) levels between interstitials
+const INTERSTITIAL_EVERY := 2        # completed (won) levels between interstitials
 const INTERSTITIAL_COOLDOWN_SEC := 60  # minimum gap between any two full-screen ads
-const MIN_LEVEL_INDEX := 2           # 0-based: no interstitial after levels 1 and 2 of a game
+const MIN_LEVEL_INDEX := 1           # 0-based: no interstitial after level 1 of a game (first ad: after level 2)
 
 ## Hub banner. Off by default: banners earn little and crowd the portrait layout.
 const BANNER_ENABLED := false

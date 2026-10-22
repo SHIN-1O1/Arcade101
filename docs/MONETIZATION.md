@@ -4,7 +4,7 @@ What is built (all in code, works today with no plugin installed):
 
 | Piece | Where | Behaviour |
 |---|---|---|
-| Ad policy | `autoload/ad_service.gd` (`Ads`) | Interstitial after every 3rd **won** level, at least 60 s apart, never after levels 1-2, never after a fail, never mid-level (plays when the player taps Next or Levels on the result card). Off for No Ads buyers. |
+| Ad policy | `autoload/ad_service.gd` (`Ads`) | Interstitial after every 2nd **won** level (one value: `INTERSTITIAL_EVERY` in `ad_config.gd`), at least 60 s apart, never after level 1, never after a fail, never mid-level (plays when the player taps Next or Levels on the result card). Off for No Ads buyers. |
 | Ad IDs and switches | `core/monetization/ad_config.gd` | Google **test** ad units only. A marked place for your real IDs. Banner flag, consent and audience flags. |
 | Ad backends | `core/monetization/ad_provider_*.gd` | `mock` (desktop, CI, any build without the plugin) and `admob` (Android + AdMob plugin). |
 | Purchase | `autoload/iap_service.gd` (`IAP`) | One non-consumable product `remove_ads`. Buy, restore (also silently at every launch), acknowledge. |
@@ -31,7 +31,7 @@ CI runs Godot 4.3 and never loads these plugins, so it stays green without them.
 6. Commit `addons/` and `android/`. The big native libraries are in `.gitignore` and are re-downloaded by the plugin on each machine.
 7. If CI starts failing after adding addons (they target newer Godot than CI's 4.3), change `GODOT_VERSION` in `.github/workflows/smoke-test.yml` to `4.7.2`.
 
-Check: run on a phone with USB debugging. In the logs (`adb logcat -s poing-godot-admob godot`) you should see the ads initialise, and an interstitial after finishing three levels (levels 3, 6, 9... never 1-2). Test ads are labelled "Test Ad".
+Check: run on a phone with USB debugging. In the logs (`adb logcat -s poing-godot-admob godot`) you should see the ads initialise, and an interstitial after finishing two levels (after levels 2, 4, 6..., never after level 1, and never twice within 60 s). Test ads are labelled "Test Ad".
 
 ## Part 2. AdMob account, app and ad units
 
