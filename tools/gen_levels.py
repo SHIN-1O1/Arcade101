@@ -70,8 +70,14 @@ def color_sort(i, t):
             "stars": [par * 2 + 4, int(par * 1.5) + 1, int(par * 1.15) + 1]}
 
 def tower_stack(i, t):
-    return {"target_height": ri(10, 45, t), "speed": round(lerp(260, 620, t)), "speed_step": round(lerp(4, 12, t), 1),
-            "block_width": ri(360, 260, t), "stars": [0, ri(3, 12, t), ri(6, 22, t)]}
+    # Taller, faster, narrower; wind (speed wobble) from level 8 on every 3rd level,
+    # sway (the slide range drifts) from level 12 on every 4th level.
+    target = ri(8, 40, t)
+    wind = round(lerp(0.25, 0.6, t), 2) if i >= 7 and i % 3 == 1 else 0
+    sway = ri(40, 100, t) if i >= 11 and i % 4 == 3 else 0
+    return {"target_height": target, "speed": round(lerp(240, 560, t)), "speed_step": round(lerp(3, 9, t), 1),
+            "block_width": ri(360, 240, t), "tolerance": ri(14, 9, t), "wind": wind, "sway": sway,
+            "stars": [0, max(3, round(target * 0.35)), max(5, round(target * 0.65))]}
 
 def block_puzzle(i, t):
     # Every 3rd level (from the 3rd) is "clear all marked blocks"; the rest are "clear N lines".
