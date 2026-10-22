@@ -262,3 +262,98 @@ class Switch extends Button:
 		var rad := r.size.y / 2.0 - 5.0
 		var x := lerpf(r.position.x + rad + 5.0, r.end.x - rad - 5.0, _t)
 		FX.draw_ball(self, Vector2(x, r.get_center().y), rad, Color("#f4f1ff"), "", true)
+
+
+## Live star meter for the in-game HUD. set_progress(value, thresholds, lower_is_better)
+## with thresholds = level "stars" [one, two, three]. Higher-is-better metrics fill the
+## bar towards the 3-star mark; lower-is-better ones (moves) start full and drain, and
+## the stars drop off as their limit is passed. Stars pop when gained or lost.
+class StarMeter extends Control:
+	const TRACK_H := 22.0
+	const STAR_R := 19.0
+
+	var _fill := 0.0  # shown fill, eased towards _target
+	var _target := 0.0
+	var _marks: Array[float] = [0.0, 0.0, 0.0]  # where each star sits along the bar, 0..1
+	var _labels: Array[String] = ["", "", ""]
+	var _lit := -1  # stars currently earned; -1 until the first update
+	var _pop: Array[float] = [1.0, 1.0, 1.0]
+	var _tw: Tween
+
+	func _init() -> void:
+		custom_minimum_size = Vector2(440, 68)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		resized.connect(queue_redraw)
+
+	func set_progress(value: float, t: Array, lower_is_better := false) -> void:
+		if t.size() < 3:
+			return
+		var lit := 0
+		for i in 3:
+			if (value <= t[i]) if lower_is_better else (value >= t[i]):
+				lit = i + 1
+			if lower_is_better:
+				var limit := maxf(float(t[0]), 1.0)
+				_marks[i] = 1.0 - float(t[i]) / limit
+			else:
+				_marks[i] = float(t[i]) / maxf(float(t[2]), 1.0)
+			_labels[i] = str(int(t[i])) if (lower_is_better or float(t[i]) > 0.0) else ""
+		if lower_is_better:
+			_target = clampf(1.0 - value / maxf(float(t[0]), 1.0), 0.0, 1.0)
+		else:
+			_target = clampf(value / maxf(float(t[2]), 1.0), 0.0, 1.0)
+		if _lit < 0:
+			_fill = _target
+		elif lit != _lit:
+			var star := (lit if lit > _lit else _lit) - 1  # the star that changed
+			_pop_star(star, lit > _lit)
+		_lit = lit
+		if _tw:
+			_tw.kill()
+		_tw = create_tween()
+		_tw.tween_method(func(v: float):
+			_fill = v
+			queue_redraw(), _fill, _target, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		queue_redraw()
+
+	func _pop_star(i: int, gained: bool) -> void:
+		var tw := create_tween()
+		tw.tween_method(func(v: float):
+			_pop[i] = v
+			queue_redraw(), 1.7 if gained else 0.4, 1.0, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		if gained:
+			Feedback.sfx("star")
+			FX.burst(self, _star_pos(i), [FX.LEMON, Color.WHITE], 12, 0.45)
+
+	func _track() -> Rect2:
+		var pad := STAR_R + 4.0
+		return Rect2(pad, 8.0 + STAR_R - TRACK_H / 2.0, size.x - pad * 2.0, TRACK_H)
+
+	func _star_pos(i: int) -> Vector2:
+		var tr := _track()
+		return Vector2(tr.position.x + tr.size.x * _marks[i], tr.get_center().y)
+
+	func _draw() -> void:
+		var tr := _track()
+		var sb := UI.box(Color(0.03, 0.02, 0.12, 0.65), int(TRACK_H / 2.0))
+		sb.border_color = Color(1, 1, 1, 0.12)
+		sb.set_border_width_all(2)
+		draw_style_box(sb, tr.grow(3.0))
+		if _fill > 0.0:
+			var fr := Rect2(tr.position, Vector2(maxf(TRACK_H, tr.size.x * _fill), TRACK_H))
+			FX.draw_round_gradient(self, fr, TRACK_H / 2.0, FX.LEMON.lightened(0.2), FX.TANGERINE)
+			FX.draw_round_gradient(self, Rect2(fr.position + Vector2(6, 3), Vector2(fr.size.x - 12, 6)),
+				3.0, Color(1, 1, 1, 0.45), Color(1, 1, 1, 0.1))
+		var f := FX.font()
+		for i in 3:
+			var c := _star_pos(i)
+			var on := i < _lit
+			FX.draw_star(self, c, STAR_R * (_pop[i] if on else 1.0) * (1.0 if on else 0.8), FX.LEMON, on)
+			if not on and _pop[i] < 1.0:  # just lost: a shrinking ghost of the star
+				FX.draw_star(self, c, STAR_R * _pop[i], Color(FX.LEMON, 0.5), true)
+			if _labels[i] != "":
+				var w := f.get_string_size(_labels[i], HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
+				draw_string_outline(f, Vector2(c.x - w / 2.0, size.y - 2.0), _labels[i],
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 20, 5, Color(0, 0, 0, 0.6))
+				draw_string(f, Vector2(c.x - w / 2.0, size.y - 2.0), _labels[i],
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(1, 1, 1, 0.85 if on else 0.5))

@@ -79,6 +79,33 @@ static func draw_vgradient(ci: CanvasItem, r: Rect2, top: Color, bottom: Color) 
 		Vector2(r.position.x, r.end.y)]), PackedColorArray([top, top, bottom, bottom]))
 
 
+## Rounded rect with a vertical gradient (cards, banners). round_bottom = false keeps
+## the bottom corners square, e.g. for a coloured header band across a card's top.
+static func draw_round_gradient(ci: CanvasItem, r: Rect2, radius: float, top: Color, bottom: Color,
+		round_bottom := true) -> void:
+	var pts := round_rect_points(r, radius, round_bottom)
+	var cols := PackedColorArray()
+	for p in pts:
+		cols.append(top.lerp(bottom, clampf((p.y - r.position.y) / r.size.y, 0.0, 1.0)))
+	ci.draw_polygon(pts, cols)
+
+
+## Outline of a rounded rect, clockwise from the top edge (for draw_polygon / draw_polyline).
+static func round_rect_points(r: Rect2, radius: float, round_bottom := true) -> PackedVector2Array:
+	radius = minf(radius, minf(r.size.x, r.size.y) / 2.0)
+	var centres := [Vector2(r.end.x - radius, r.position.y + radius), Vector2(r.end.x - radius, r.end.y - radius),
+		Vector2(r.position.x + radius, r.end.y - radius), Vector2(r.position.x + radius, r.position.y + radius)]
+	var pts := PackedVector2Array()
+	for i in 4:
+		if not round_bottom and (i == 1 or i == 2):
+			pts.append(Vector2(r.end.x if i == 1 else r.position.x, r.end.y))
+			continue
+		for s in 9:
+			var a := -PI / 2.0 + i * PI / 2.0 + s * PI / 16.0
+			pts.append(centres[i] + Vector2(cos(a), sin(a)) * radius)
+	return pts
+
+
 ## Soft elliptical shadow filling r (e.g. a flat rect under an object's base).
 static func draw_shadow(ci: CanvasItem, r: Rect2, alpha := 0.7) -> void:
 	ci.draw_texture_rect(shadow_tex(), r, false, Color(1, 1, 1, alpha))

@@ -11,6 +11,8 @@ extends Control
 signal finished(won: bool, stars: int)
 ## Optional: update the host's HUD line (score, moves left, etc).
 signal status_changed(text: String)
+## Optional but expected: drives the host's live star meter. Emit through report_progress().
+signal star_progress(value: float, lower_is_better: bool)
 
 var level: Dictionary = {}
 var level_index := 0
@@ -38,6 +40,12 @@ func stars_for(value: float, lower_is_better := false) -> int:
 		if (value <= t[i]) if lower_is_better else (value >= t[i]):
 			stars = i + 1
 	return stars
+
+
+## Call whenever the star metric changes (and once at start) so the player sees which
+## star they are heading for. Same value and direction you pass to stars_for().
+func report_progress(value: float, lower_is_better := false) -> void:
+	star_progress.emit(value, lower_is_better)
 
 
 func win(stars: int) -> void:

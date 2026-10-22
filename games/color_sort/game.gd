@@ -101,6 +101,7 @@ func _make_button(text: String, on_press: Callable) -> Button:
 
 func _report() -> void:
 	status_changed.emit("Moves %d" % moves)
+	report_progress(moves, true)
 	if _undo_btn:
 		_undo_btn.disabled = history.is_empty() or _done or _solved
 

@@ -1,11 +1,14 @@
 extends Control
-## Hosts any BaseGame: top bar, game area, result overlay, saving and ads.
+## Hosts any BaseGame: top bar, live star meter, game area, result overlay, saving and ads.
+
+const ResultOverlay := preload("res://scenes/result_overlay.gd")
 
 var _game_def: Dictionary
 var _levels: Array
 var _game: BaseGame
 var _area: Control
 var _status: Label
+var _meter: UI.StarMeter
 var _overlay: Control
 
 
@@ -25,6 +28,10 @@ func _ready() -> void:
 
 	_status = UI.label("", 28, UI.ACCENT)
 	col.add_child(_status)
+	_meter = UI.StarMeter.new()
+	_meter.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_meter.visible = false  # shown once the game reports progress
+	col.add_child(_meter)
 
 	_area = Control.new()
 	_area.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -35,8 +42,9 @@ func _ready() -> void:
 
 
 func _start() -> void:
+	var restart := _game != null
 	if _overlay:
-		_overlay.queue_free()
+		_overlay.close()
 		_overlay = null
 	if _game:
 		_game.queue_free()
@@ -46,43 +54,44 @@ func _start() -> void:
 	_area.add_child(_game)
 	_game.finished.connect(_on_finished)
 	_game.status_changed.connect(func(t): _status.text = t)
+	_game.star_progress.connect(func(v: float, lower: bool):
+		_meter.visible = true
+		_meter.set_progress(v, _levels[Nav.level_index].get("stars", []), lower))
 	_status.text = ""
 	_game.start_level(_levels[Nav.level_index], Nav.level_index)
+	if restart:  # fresh board fades and grows in instead of snapping
+		_game.pivot_offset = _area.size / 2.0
+		_game.modulate.a = 0.0
+		_game.scale = Vector2(0.96, 0.96)
+		var tw := _game.create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(_game, "modulate:a", 1.0, 0.28)
+		tw.tween_property(_game, "scale", Vector2.ONE, 0.32)
 
 
 func _on_finished(won: bool, stars: int) -> void:
+	var best := false
 	if won:
-		Save.record_result(Nav.game_id, Nav.level_index, stars)
+		var had := Save.get_stars(Nav.game_id, Nav.level_index)
+		best = Save.record_result(Nav.game_id, Nav.level_index, stars) and had > 0
 		Feedback.sfx("win")
 		Feedback.vibrate(60)
 	else:
 		Feedback.sfx("lose")
 		Feedback.vibrate(120)
 	Ads.on_level_finished()
-	_show_result(won, stars)
+	_show_result(won, stars, best)
 
 
-func _show_result(won: bool, stars: int) -> void:
-	_overlay = ColorRect.new()
-	(_overlay as ColorRect).color = Color(0, 0, 0, 0.7)
-	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(_overlay)
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_overlay.add_child(center)
-	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UI.box(UI.CARD, 32))
-	panel.custom_minimum_size = Vector2(560, 0)
-	center.add_child(panel)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 20)
-	panel.add_child(box)
-
-	box.add_child(UI.label("Level complete!" if won else "Try again", 48, UI.GOOD if won else UI.BAD))
-	if won:
-		box.add_child(UI.label(UI.stars_text(stars), 72, UI.ACCENT))
-	var has_next := Nav.level_index + 1 < _levels.size()
-	if won and has_next:
-		box.add_child(UI.button("Next", func(): Nav.play(Nav.game_id, Nav.level_index + 1), UI.GOOD))
-	box.add_child(UI.button("Retry", _start))
-	box.add_child(UI.button("Levels", func(): Nav.to_level_select(Nav.game_id)))
+func _show_result(won: bool, stars: int, best: bool) -> void:
+	var o := ResultOverlay.new()
+	o.won = won
+	o.stars = stars
+	o.stat = _status.text
+	o.new_best = best
+	o.accent = Color(_game_def.get("color", "#FF8A1F"))
+	if Nav.level_index + 1 < _levels.size():
+		o.on_next = func(): Nav.play(Nav.game_id, Nav.level_index + 1)
+	o.on_retry = _start
+	o.on_levels = func(): Nav.to_level_select(Nav.game_id)
+	_overlay = o
+	add_child(o)
