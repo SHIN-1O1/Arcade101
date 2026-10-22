@@ -9,9 +9,10 @@ const PALETTE: Array[Color] = [
 	Color("#9b5de5"), Color("#ff8a1f"), Color("#00c2b8"), Color("#f15bb5"),
 	Color("#8d99ae"), Color("#7cb518"), Color("#a0522d"), Color("#f8f9fa"),
 ]
-const INDIGO := FX.INDIGO
-const TANGERINE := FX.TANGERINE
-const LEMON := FX.LEMON
+const FX := preload("res://core/fx.gd")
+const INDIGO := Color("#2B2A6B")
+const TANGERINE := Color("#FF8A1F")
+const LEMON := Color("#FFD23F")
 const BOTTOM_BAR := 128.0
 const GAP := 24.0
 const MAX_COLS := 7
@@ -94,7 +95,7 @@ func _build_buttons() -> void:
 
 func _make_button(text: String, on_press: Callable) -> Button:
 	var b := UI.button(text, on_press, INDIGO, 32)
-	FX.style_button(b)
+	FX.style_button(b, INDIGO.lightened(0.12))
 	return b
 
 
@@ -313,7 +314,7 @@ func _flyer_pos(f: Dictionary) -> Vector2:
 	var p2: Vector2 = f["p2"]
 	var p3: Vector2 = f["p3"]
 	if k < 0.7:
-		var u := FX.ease_smooth(k / 0.7)
+		var u: float = FX.ease_smooth(k / 0.7)
 		return p0 * (1.0 - u) * (1.0 - u) + p1 * 2.0 * (1.0 - u) * u + p2 * u * u
 	var v := (k - 0.7) / 0.3
 	return p2.lerp(p3, v * v)
@@ -383,7 +384,7 @@ func _draw_tube(i: int, r: Rect2, ball: float) -> void:
 
 	# glow: pulsing tangerine when selected, a lemon flash when completed
 	var glow := _pulse[i]
-	var glow_col := LEMON
+	var glow_col: Color = LEMON
 	if sel:
 		glow = maxf(glow, 0.6 + 0.2 * sin(_time * 6.0))
 		glow_col = TANGERINE

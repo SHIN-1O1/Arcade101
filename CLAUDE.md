@@ -18,7 +18,7 @@ core/
   base_game.gd     class BaseGame: the contract every game implements
   stub_game.gd     placeholder game (debug Win/Fail buttons)
   ui.gd            class UI: colors, button(), label(), screen(), stars_text()
-  fx.gd            class FX: shared visual kit (see "Look and feel")
+  fx.gd            shared visual kit, preload as FX (see "Look and feel")
 scenes/            hub, level_select, game_host, settings (.tscn + .gd)
 data/games.json    game registry (order = hub order)
 games/<id>/        game.tscn (+ scripts/assets) and levels.json (30 levels)
@@ -45,7 +45,9 @@ Level N unlocks when level N-1 has >= 1 star.
 - Use `Feedback.sfx()/vibrate()`; never touch Save/Ads/Nav from a game.
 
 ## Look and feel (core/fx.gd)
-Every game should use `FX` so the library looks consistent, no image assets needed.
+Every game should use the kit so the library looks consistent, no image assets needed.
+Load it with `const FX := preload("res://core/fx.gd")` (it has no class_name on purpose:
+a fresh pull into an open editor does not know new global classes yet).
 - In `_draw()`: `FX.draw_background(self, Rect2(Vector2.ZERO, size))`, `draw_shadow`, `draw_glow`,
   `draw_ball(self, c, r, color, label, airborne)` (glossy sphere), `draw_tile(self, rect, color)`
   (glossy rounded block), `draw_text_centered`. Palette: `FX.INDIGO/TANGERINE/LEMON`.

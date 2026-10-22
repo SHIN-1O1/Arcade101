@@ -1,6 +1,7 @@
-class_name FX
 extends RefCounted
-## Shared visual kit so every game gets the same polish with no image assets.
+## Shared visual kit. Load it with `const FX := preload("res://core/fx.gd")` (no class_name, so it
+## works on a fresh clone before the editor rebuilds its global class cache).
+## Every game gets the same polish with no image assets.
 ## Draw helpers take the CanvasItem to draw on (call them from its _draw()).
 ## Node helpers (style_button, pop, burst, shake) work on any Control/Node2D.
 ## Textures are tiny radial gradients built once and shared.
@@ -147,7 +148,7 @@ static func ease_smooth(x: float) -> float:
 # --- node helpers -----------------------------------------------------------
 
 ## Chunky 3D button look (raised face, shadow) plus a squash on press.
-static func style_button(b: Button, col := INDIGO.lightened(0.12)) -> void:
+static func style_button(b: Button, col: Color) -> void:
 	b.add_theme_stylebox_override("normal", button_box(col, false))
 	b.add_theme_stylebox_override("hover", button_box(col.lightened(0.08), false))
 	b.add_theme_stylebox_override("pressed", button_box(col.darkened(0.1), true))
