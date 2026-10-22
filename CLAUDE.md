@@ -10,7 +10,8 @@ project.godot          autoloads, display, renderer
 autoload/              singletons (names as used in code)
   save_manager.gd  Save      user://save.json: progress stars, settings, no_ads
   game_registry.gd Games     reads data/games.json + games/<id>/levels.json
-  nav.gd           Nav       scene changes, current game_id/level_index, Android back
+  nav.gd           Nav       scene changes (slide transitions, input blocked meanwhile),
+                             current game_id/level_index, Android back
   ad_service.gd    Ads       STUB: interstitial every 3 levels, rewarded, banner
   iap_service.gd   IAP       STUB: purchase("remove_ads") auto-succeeds
   feedback.gd      Feedback  sfx(name) from res://audio/<name>.ogg|wav, vibrate(ms)
@@ -21,7 +22,8 @@ core/
                    star_pill(), card_box(), stagger_pop(), widgets Backdrop/IconButton/Switch
   fonts/           LilitaOne-Regular.ttf (OFL, licence in OFL.txt), via FX.font()/FX.theme()
   fx.gd            shared visual kit, preload as FX (see "Look and feel")
-scenes/            hub, level_select, game_host, settings (.tscn + .gd)
+scenes/            hub, level_select, game_host, settings (.tscn + .gd);
+                   result_overlay.gd = level complete/failed card (preloaded by game_host)
 data/games.json    game registry (order = hub order)
 games/<id>/        game.tscn (+ scripts/assets) and levels.json (30 levels)
 tools/gen_levels.py  regenerates every levels.json (overwrites hand edits!)
@@ -33,7 +35,8 @@ hub -> level_select (Nav.game_id) -> game_host (Nav.level_index).
 game_host instances `games.json[scene]`, connects `finished`/`status_changed`,
 calls `start_level(level_dict, index)`. On `finished(won, stars)` it saves via
 `Save.record_result` (keeps best), calls `Ads.on_level_finished()`, shows result
-overlay (Next/Retry/Levels). Restart button re-instances the game scene.
+overlay (Next/Retry/Levels). Restart button re-instances the game scene (fades the new board in).
+Scenes change via Nav only (never change_scene_* directly) so transitions stay consistent.
 Level N unlocks when level N-1 has >= 1 star.
 
 ## BaseGame contract (core/base_game.gd)
@@ -43,6 +46,9 @@ Level N unlocks when level N-1 has >= 1 star.
 - Call `win(stars)` (1..3) or `fail()` exactly once. `stars_for(value, lower_is_better)`
   maps a metric to stars using `level.stars` thresholds `[one, two, three]`.
 - `status_changed.emit("Score 120")` updates the HUD line.
+- `report_progress(value, lower_is_better)` drives the HUD star meter (UI.StarMeter) so players
+  see which star they are heading for. Call it at start and whenever the star metric changes,
+  with the same value/direction you pass to `stars_for()`. Every game must do this.
 - `make_rng()` gives a RNG seeded from `level.seed` (levels replay identically).
 - Use `Feedback.sfx()/vibrate()`; never touch Save/Ads/Nav from a game.
 
@@ -52,7 +58,7 @@ Load it with `const FX := preload("res://core/fx.gd")` (it has no class_name on 
 a fresh pull into an open editor does not know new global classes yet).
 - In `_draw()`: `FX.draw_background(self, Rect2(Vector2.ZERO, size))`, `draw_shadow`, `draw_glow`,
   `draw_ball(self, c, r, color, label, airborne)` (glossy sphere), `draw_tile(self, rect, color)`
-  (glossy rounded block), `draw_text_centered`. Palette: `FX.INDIGO/TANGERINE/LEMON`.
+  (glossy rounded block), `draw_round_gradient` (rounded gradient card), `draw_text_centered`. Palette: `FX.INDIGO/TANGERINE/LEMON`.
 - Nodes: `FX.style_button(b)` (3D button + press squash), `pop`, `scale_to`, `ease_smooth`,
   `FX.burst(self, pos, colors)` particles, `FX.shake(self)` for clears and wins.
 - Input: handle taps in `_gui_input` and skip `event.device == InputEvent.DEVICE_ID_EMULATION`;

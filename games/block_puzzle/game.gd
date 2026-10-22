@@ -220,6 +220,7 @@ func _finish(won: bool) -> void:
 
 
 func _report() -> void:
+	report_progress(score)
 	if goal == "clear":
 		status_changed.emit("%d / %d left  ·  Score %d" % [blockers_left, blockers_total, score])
 	else:
