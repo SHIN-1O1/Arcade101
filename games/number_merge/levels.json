@@ -5,390 +5,420 @@
    "id": 1,
    "seed": 1000,
    "grid": 5,
-   "target_tile": 128,
+   "target_tile": 64,
    "blockers": 0,
    "move_limit": 0,
+   "par": 30,
    "stars": [
     10000,
-    153,
-    102
+    44,
+    37
    ]
   },
   {
    "id": 2,
    "seed": 8919,
-   "grid": 5,
-   "target_tile": 128,
+   "grid": 4,
+   "target_tile": 64,
    "blockers": 0,
    "move_limit": 0,
+   "par": 30,
    "stars": [
     10000,
-    153,
-    102
+    44,
+    37
    ]
   },
   {
    "id": 3,
    "seed": 16838,
    "grid": 5,
-   "target_tile": 256,
+   "target_tile": 128,
    "blockers": 0,
    "move_limit": 0,
+   "par": 59,
    "stars": [
     10000,
-    307,
-    204
+    85,
+    72
    ]
   },
   {
    "id": 4,
    "seed": 24757,
-   "grid": 5,
-   "target_tile": 256,
+   "grid": 4,
+   "target_tile": 128,
    "blockers": 0,
    "move_limit": 0,
+   "par": 59,
    "stars": [
     10000,
-    307,
-    204
+    85,
+    72
    ]
   },
   {
    "id": 5,
    "seed": 32676,
    "grid": 4,
-   "target_tile": 256,
-   "blockers": 0,
+   "target_tile": 128,
+   "blockers": 1,
    "move_limit": 0,
+   "par": 59,
    "stars": [
     10000,
-    307,
-    204
+    85,
+    72
    ]
   },
   {
    "id": 6,
    "seed": 40595,
-   "grid": 4,
-   "target_tile": 512,
+   "grid": 5,
+   "target_tile": 256,
    "blockers": 0,
    "move_limit": 0,
+   "par": 117,
    "stars": [
     10000,
-    614,
-    409
+    167,
+    142
    ]
   },
   {
    "id": 7,
    "seed": 48514,
-   "grid": 4,
-   "target_tile": 512,
-   "blockers": 0,
+   "grid": 5,
+   "target_tile": 256,
+   "blockers": 1,
    "move_limit": 0,
+   "par": 117,
    "stars": [
     10000,
-    614,
-    409
+    167,
+    141
    ]
   },
   {
    "id": 8,
    "seed": 56433,
    "grid": 4,
-   "target_tile": 512,
+   "target_tile": 256,
    "blockers": 0,
    "move_limit": 0,
+   "par": 117,
    "stars": [
     10000,
-    614,
-    409
+    166,
+    141
    ]
   },
   {
    "id": 9,
    "seed": 64352,
    "grid": 4,
-   "target_tile": 512,
+   "target_tile": 256,
    "blockers": 0,
-   "move_limit": 0,
+   "move_limit": 197,
+   "par": 117,
    "stars": [
-    10000,
-    614,
-    409
+    197,
+    165,
+    141
    ]
   },
   {
    "id": 10,
    "seed": 72271,
-   "grid": 4,
-   "target_tile": 1024,
-   "blockers": 0,
+   "grid": 5,
+   "target_tile": 256,
+   "blockers": 2,
    "move_limit": 0,
+   "par": 117,
    "stars": [
     10000,
-    1228,
-    819
+    165,
+    140
    ]
   },
   {
    "id": 11,
    "seed": 80190,
-   "grid": 4,
-   "target_tile": 1024,
+   "grid": 6,
+   "target_tile": 512,
    "blockers": 0,
    "move_limit": 0,
+   "par": 233,
    "stars": [
     10000,
-    1228,
-    819
+    326,
+    278
    ]
   },
   {
    "id": 12,
    "seed": 88109,
-   "grid": 4,
-   "target_tile": 1024,
+   "grid": 5,
+   "target_tile": 512,
    "blockers": 0,
    "move_limit": 0,
+   "par": 233,
    "stars": [
     10000,
-    1228,
-    819
+    325,
+    278
    ]
   },
   {
    "id": 13,
    "seed": 96028,
-   "grid": 4,
-   "target_tile": 1024,
-   "blockers": 2,
+   "grid": 5,
+   "target_tile": 512,
+   "blockers": 1,
    "move_limit": 0,
+   "par": 233,
    "stars": [
     10000,
-    1228,
-    819
+    324,
+    277
    ]
   },
   {
    "id": 14,
    "seed": 103947,
    "grid": 4,
-   "target_tile": 1024,
-   "blockers": 2,
+   "target_tile": 512,
+   "blockers": 0,
    "move_limit": 0,
+   "par": 233,
    "stars": [
     10000,
-    1228,
-    819
+    323,
+    276
    ]
   },
   {
    "id": 15,
    "seed": 111866,
-   "grid": 4,
-   "target_tile": 1024,
+   "grid": 5,
+   "target_tile": 512,
    "blockers": 2,
-   "move_limit": 0,
+   "move_limit": 380,
+   "par": 233,
    "stars": [
-    10000,
-    1228,
-    819
+    380,
+    321,
+    276
    ]
   },
   {
    "id": 16,
    "seed": 119785,
    "grid": 4,
-   "target_tile": 1024,
-   "blockers": 2,
+   "target_tile": 512,
+   "blockers": 1,
    "move_limit": 0,
+   "par": 233,
    "stars": [
     10000,
-    1228,
-    819
+    320,
+    275
    ]
   },
   {
    "id": 17,
    "seed": 127704,
-   "grid": 4,
+   "grid": 6,
    "target_tile": 1024,
-   "blockers": 2,
+   "blockers": 0,
    "move_limit": 0,
+   "par": 466,
    "stars": [
     10000,
-    1228,
-    819
+    638,
+    548
    ]
   },
   {
    "id": 18,
    "seed": 135623,
-   "grid": 4,
+   "grid": 5,
    "target_tile": 1024,
-   "blockers": 2,
+   "blockers": 0,
    "move_limit": 0,
+   "par": 466,
    "stars": [
     10000,
-    1228,
-    819
+    635,
+    547
    ]
   },
   {
    "id": 19,
    "seed": 143542,
-   "grid": 4,
-   "target_tile": 2048,
-   "blockers": 2,
+   "grid": 6,
+   "target_tile": 1024,
+   "blockers": 3,
    "move_limit": 0,
+   "par": 466,
    "stars": [
     10000,
-    2457,
-    1638
+    633,
+    546
    ]
   },
   {
    "id": 20,
    "seed": 151461,
-   "grid": 4,
-   "target_tile": 2048,
-   "blockers": 2,
+   "grid": 5,
+   "target_tile": 1024,
+   "blockers": 1,
    "move_limit": 0,
+   "par": 466,
    "stars": [
     10000,
-    2457,
-    1638
+    630,
+    545
    ]
   },
   {
    "id": 21,
    "seed": 159380,
-   "grid": 4,
-   "target_tile": 2048,
+   "grid": 5,
+   "target_tile": 512,
    "blockers": 2,
-   "move_limit": 0,
+   "move_limit": 368,
+   "par": 233,
    "stars": [
-    10000,
-    2457,
-    1638
+    368,
+    314,
+    272
    ]
   },
   {
    "id": 22,
    "seed": 167299,
-   "grid": 4,
-   "target_tile": 2048,
+   "grid": 5,
+   "target_tile": 1024,
    "blockers": 2,
    "move_limit": 0,
+   "par": 466,
    "stars": [
     10000,
-    2457,
-    1638
+    626,
+    542
    ]
   },
   {
    "id": 23,
    "seed": 175218,
    "grid": 4,
-   "target_tile": 2048,
-   "blockers": 3,
+   "target_tile": 1024,
+   "blockers": 0,
    "move_limit": 0,
+   "par": 466,
    "stars": [
     10000,
-    2457,
-    1638
+    623,
+    541
    ]
   },
   {
    "id": 24,
    "seed": 183137,
-   "grid": 4,
-   "target_tile": 2048,
-   "blockers": 3,
-   "move_limit": 0,
+   "grid": 5,
+   "target_tile": 1024,
+   "blockers": 2,
+   "move_limit": 724,
+   "par": 466,
    "stars": [
-    10000,
-    2457,
-    1638
+    724,
+    621,
+    539
    ]
   },
   {
    "id": 25,
    "seed": 191056,
-   "grid": 4,
-   "target_tile": 2048,
+   "grid": 5,
+   "target_tile": 1024,
    "blockers": 3,
    "move_limit": 0,
+   "par": 466,
    "stars": [
     10000,
-    2457,
-    1638
+    618,
+    538
    ]
   },
   {
    "id": 26,
    "seed": 198975,
-   "grid": 4,
-   "target_tile": 2048,
+   "grid": 6,
+   "target_tile": 1024,
    "blockers": 3,
-   "move_limit": 0,
+   "move_limit": 716,
+   "par": 466,
    "stars": [
-    10000,
-    2457,
-    1638
+    716,
+    616,
+    537
    ]
   },
   {
    "id": 27,
    "seed": 206894,
-   "grid": 4,
-   "target_tile": 4096,
+   "grid": 5,
+   "target_tile": 1024,
    "blockers": 3,
-   "move_limit": 0,
+   "move_limit": 712,
+   "par": 466,
    "stars": [
-    10000,
-    4915,
-    3276
+    712,
+    614,
+    536
    ]
   },
   {
    "id": 28,
    "seed": 214813,
-   "grid": 4,
-   "target_tile": 4096,
-   "blockers": 3,
+   "grid": 6,
+   "target_tile": 1024,
+   "blockers": 4,
    "move_limit": 0,
+   "par": 466,
    "stars": [
     10000,
-    4915,
-    3276
+    611,
+    534
    ]
   },
   {
    "id": 29,
    "seed": 222732,
    "grid": 4,
-   "target_tile": 4096,
-   "blockers": 3,
-   "move_limit": 0,
+   "target_tile": 1024,
+   "blockers": 0,
+   "move_limit": 704,
+   "par": 466,
    "stars": [
-    10000,
-    4915,
-    3276
+    704,
+    609,
+    533
    ]
   },
   {
    "id": 30,
    "seed": 230651,
-   "grid": 4,
-   "target_tile": 4096,
-   "blockers": 3,
+   "grid": 6,
+   "target_tile": 2048,
+   "blockers": 2,
    "move_limit": 0,
+   "par": 931,
    "stars": [
     10000,
-    4915,
-    3276
+    1211,
+    1062
    ]
   }
  ]
