@@ -16,10 +16,58 @@ def fruit_merge(i, t):
     return {"target_tier": target, "spawn_max_tier": 3 if i < 10 else 4,
             "jar_width": ri(520, 440, t), "stars": [ri(400, 4000, t), ri(700, 6500, t), ri(1000, 9000, t)]}
 
+def _pour(tubes, a, b, cap):
+    src, dst = tubes[a], tubes[b]
+    if not src or len(dst) >= cap or (dst and dst[-1] != src[-1]):
+        return None
+    c, n = src[-1], 0
+    while n < len(src) and src[-1 - n] == c:
+        n += 1
+    n = min(n, cap - len(dst))
+    t = [list(x) for x in tubes]
+    t[a] = src[:-n]
+    t[b] = dst + [c] * n
+    return t
+
+def _solve(tubes, cap):
+    """Best-first search; returns move count of a solution found, or None. Same pour rule as the game."""
+    import heapq
+    def key(t): return tuple(sorted(tuple(x) for x in t))
+    def h(t): return sum(sum(1 for j in range(1, len(x)) if x[j] != x[j - 1]) + (1 if x else 0) for x in t)
+    def done(t): return all(not x or (len(x) == cap and len(set(x)) == 1) for x in t)
+    seen, heap, n = {key(tubes)}, [(h(tubes), 0, 0, tubes)], 0
+    while heap and n < 200000:
+        _, g, _, t = heapq.heappop(heap)
+        if done(t): return g
+        for a in range(len(t)):
+            for b in range(len(t)):
+                if a == b: continue
+                u = _pour(t, a, b, cap)
+                if u is None: continue
+                k = key(u)
+                if k in seen: continue
+                seen.add(k); n += 1
+                heapq.heappush(heap, (h(u) + g * 0.5, g + 1, n, u))
+    return None
+
 def color_sort(i, t):
+    import random
     colors = ri(3, 12, t)
-    return {"colors": colors, "capacity": 4, "empty_tubes": 2 if i < 20 else 1 if colors <= 9 else 2,
-            "stars": [colors * 6, colors * 4, colors * 3]}
+    cap = 4
+    empty = 2 if i < 20 else 1 if colors <= 9 else 2
+    rng = random.Random(1000 + i * 7919)
+    while True:
+        balls = [c for c in range(colors) for _ in range(cap)]
+        rng.shuffle(balls)
+        tubes = [balls[k * cap:(k + 1) * cap] for k in range(colors)] + [[] for _ in range(empty)]
+        if any(len(set(x)) == 1 for x in tubes[:colors]):
+            continue  # avoid pre-solved tubes
+        par = _solve(tubes, cap)
+        if par is not None:
+            break
+    # stars: 1 = finish, 2 = within 1.5x par, 3 = within 1.15x par (par is an upper bound from the solver)
+    return {"colors": colors, "capacity": cap, "empty_tubes": empty, "tubes": tubes, "par": par,
+            "stars": [par * 2 + 4, int(par * 1.5) + 1, int(par * 1.15) + 1]}
 
 def tower_stack(i, t):
     return {"target_height": ri(10, 45, t), "speed": round(lerp(260, 620, t)), "speed_step": round(lerp(4, 12, t), 1),
