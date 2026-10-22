@@ -44,6 +44,23 @@ static func draw_face(ci: CanvasItem, r: Rect2, key: int, variant: int, font: Fo
 		_season(ci, c, w, variant)
 
 
+## Main colour of a face, for particle bursts.
+static func key_color(key: int, variant: int) -> Color:
+	if key < 6:
+		return [BLUE, RED, GREEN][key % 3]
+	if key < 12:
+		return GREEN
+	if key < 18:
+		return RED
+	if key < 22:
+		return DEEP.lightened(0.3)
+	if key < 25:
+		return [RED, GREEN, BLUE][key - 22]
+	if key == 25:
+		return FLOWER_COLORS[variant % 4]
+	return [ORANGE, GREEN, Color("#4fc3f7"), BLUE][variant % 4]
+
+
 static func _dots(ci: CanvasItem, c: Vector2, w: float, h: float, n: int) -> void:
 	var cols := [BLUE, RED, GREEN]
 	var rad := w * (0.3 if n == 1 else 0.17 if n <= 3 else 0.15)
@@ -53,9 +70,12 @@ static func _dots(ci: CanvasItem, c: Vector2, w: float, h: float, n: int) -> voi
 		var p: Array = PIPS[n - 1][i]
 		var pc := c + Vector2(p[0] * w * 1.05, p[1] * h * 1.0)
 		var col: Color = cols[(i + (n if n > 3 else 0)) % 3] if n != 1 else RED
+		ci.draw_circle(pc + Vector2(0, rad * 0.12), rad, Color(0, 0, 0, 0.18))
+		ci.draw_circle(pc, rad * 1.06, col.darkened(0.45))
 		ci.draw_circle(pc, rad, col)
 		ci.draw_circle(pc, rad * 0.62, IVORY)
 		ci.draw_circle(pc, rad * 0.34, col)
+		ci.draw_circle(pc + Vector2(-rad * 0.3, -rad * 0.34), rad * 0.18, Color(1, 1, 1, 0.55))
 
 
 static func _sticks(ci: CanvasItem, c: Vector2, w: float, h: float, n: int) -> void:
@@ -79,8 +99,9 @@ static func _sticks(ci: CanvasItem, c: Vector2, w: float, h: float, n: int) -> v
 static func _numeral(ci: CanvasItem, c: Vector2, w: float, h: float, n: int, font: Font) -> void:
 	var fs := int(h * 0.58)
 	var tp := c + Vector2(-font.get_string_size(str(n), HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x / 2.0, -h * 0.04 + fs * 0.34)
-	ci.draw_string_outline(font, tp, str(n), HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 4, Color(1, 1, 1, 0.9))
-	ci.draw_string(font, tp, str(n), HORIZONTAL_ALIGNMENT_LEFT, -1, fs, RED)
+	ci.draw_string(font, tp + Vector2(2, 3), str(n), HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0, 0, 0, 0.2))
+	ci.draw_string_outline(font, tp, str(n), HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 5, RED.darkened(0.5))
+	ci.draw_string(font, tp, str(n), HORIZONTAL_ALIGNMENT_LEFT, -1, fs, RED.lightened(0.05))
 	var by := c.y + h * 0.33  # a little brush mark under the numeral
 	ci.draw_rect(Rect2(c.x - w * 0.3, by, w * 0.6, h * 0.045), INK)
 	ci.draw_circle(Vector2(c.x, by + h * 0.12), h * 0.05, BLUE)

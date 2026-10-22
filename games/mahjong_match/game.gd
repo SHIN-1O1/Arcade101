@@ -13,16 +13,18 @@ extends BaseGame
 const FX := preload("res://core/fx.gd")
 const Layout := preload("res://games/mahjong_match/layout.gd")
 const Faces := preload("res://games/mahjong_match/faces.gd")
+const Look := preload("res://games/mahjong_match/look.gd")
+const Icons := preload("res://games/mahjong_match/icons.gd")
 const INDIGO := Color("#2B2A6B")
 const TANGERINE := Color("#FF8A1F")
 const LEMON := Color("#FFD23F")
 const IVORY := Color("#fff6df")
 const IVORY_SEL := Color("#ffe58a")
-const SIDE := Color("#1f8a5e")
-const SIDE_DARK := Color("#14573d")
+const SIDE := Color("#2fb383")
+const SIDE_DARK := Color("#0f4f3a")
 
 const BOTTOM_BAR := 128.0
-const HUD_H := 64.0  # endless strip at the top
+const HUD_H := 70.0  # chip strip at the top
 const MAX_UX := 46.0  # largest half-tile unit in px (tile = 2 x 2.44 units)
 const ASPECT := 1.22  # tile height / width
 const THICK := 0.22  # tile thickness and per-layer lift, in units
@@ -80,32 +82,51 @@ var _mate := PackedInt32Array()
 var _spawn := PackedFloat32Array()  # <0 waiting to drop in, 0..1 dropping
 var _shake := PackedFloat32Array()
 var _sel_f := PackedFloat32Array()  # 0..1 lift of a selected tile
+var _flip := PackedFloat32Array()  # <0 waiting, 0..1 flipping (shuffle)
+var _nodes: Array = []  # TileNode per tile
+var _active := {}  # tiles whose transform is animating
 var _hint_pair: Array = []
 var _hint_t := 0.0
 var _time := 0.0
 var _banner := ""
 var _banner_t := 0.0
 var _floats: Array = []  # {text, pos, t}
+var _rings: Array = []  # {pos, t, col}
 var _last_sec := -1
 var _pulse_shuffle := false
+var _combo_pop := 0.0
+var _overlay_dirty := true
+var _board_rect := Rect2()
 
-var _hint_btn: Button
-var _shuffle_btn: Button
-var _undo_btn: Button
+var _backdrop: Look.Backdrop
+var _tiles_root: Node2D
+var _overlay: Look.Overlay
+var _hint_btn: Look.ActionButton
+var _shuffle_btn: Look.ActionButton
+var _undo_btn: Look.ActionButton
 var _sb := StyleBoxFlat.new()
 var _sb_line := StyleBoxFlat.new()
 
 
 func _ready() -> void:
 	_sb_line.draw_center = false
-	resized.connect(func(): queue_redraw())
 
 
 func _on_start() -> void:
 	for c in get_children():
 		c.queue_free()
+	_nodes.clear()
+	_active.clear()
 	endless = is_endless()
 	rng = make_rng()
+	_backdrop = Look.Backdrop.new()
+	add_child(_backdrop)
+	add_child(Look.Motes.new())
+	_tiles_root = Node2D.new()
+	add_child(_tiles_root)
+	_overlay = Look.Overlay.new()
+	_overlay.g = self
+	add_child(_overlay)
 	_build_buttons()
 	_locked = false
 	elapsed = 0.0
@@ -164,6 +185,9 @@ func _install(gen: Dictionary) -> void:
 	_shake.resize(board.n)
 	_sel_f = PackedFloat32Array()
 	_sel_f.resize(board.n)
+	_flip = PackedFloat32Array()
+	_flip.resize(board.n)
+	_flip.fill(-1.0)
 	selected = -1
 	history.clear()
 	_hint_pair = []
@@ -178,11 +202,24 @@ func _install(gen: Dictionary) -> void:
 			return board.ys[a] < board.ys[b]
 		return board.xs[a] < board.xs[b])
 	_order = PackedInt32Array(idx)
+	for c in _tiles_root.get_children():
+		c.queue_free()
+	_nodes.clear()
+	_nodes.resize(board.n)
+	_active.clear()
 	for k in _order.size():
-		_spawn[_order[k]] = -(board.ls[_order[k]] * 0.12 + float(k) / maxf(1.0, board.n) * 0.3)
+		var i := _order[k]
+		_spawn[i] = -(board.ls[i] * 0.12 + float(k) / maxf(1.0, board.n) * 0.3)
+		var n := Look.TileNode.new()
+		n.g = self
+		n.idx = i
+		n.visible = false
+		_tiles_root.add_child(n)  # painter's order: layer, row, column
+		_nodes[i] = n
+		_active[i] = true
 	_refresh_free()
 	_report()
-	queue_redraw()
+	_overlay_dirty = true
 
 
 func _build_buttons() -> void:
@@ -193,22 +230,19 @@ func _build_buttons() -> void:
 	row.anchor_bottom = 1.0
 	row.offset_left = 20
 	row.offset_right = -20
-	row.offset_top = -BOTTOM_BAR + 14
-	row.offset_bottom = -14
-	row.add_theme_constant_override("separation", 14)
+	row.offset_top = -BOTTOM_BAR + 8
+	row.offset_bottom = -12
+	row.add_theme_constant_override("separation", 16)
 	add_child(row)
-	_hint_btn = _make_button("Hint", hint)
-	_shuffle_btn = _make_button("Shuffle", shuffle)
-	_undo_btn = _make_button("Undo", undo)
+	_hint_btn = Look.ActionButton.new("hint", Color("#ff9a2e"))
+	_shuffle_btn = Look.ActionButton.new("shuffle", Color("#22b3a6"))
+	_undo_btn = Look.ActionButton.new("undo", Color("#7a63e0"))
+	_hint_btn.pressed.connect(hint)
+	_shuffle_btn.pressed.connect(shuffle)
+	_undo_btn.pressed.connect(undo)
 	for b in [_hint_btn, _shuffle_btn, _undo_btn]:
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(b)
-
-
-func _make_button(text: String, on_press: Callable) -> Button:
-	var b := UI.button(text, on_press, INDIGO, 28)
-	FX.style_button(b, INDIGO.lightened(0.12))
-	return b
 
 
 # --- state ------------------------------------------------------------------
@@ -222,7 +256,11 @@ func remaining() -> int:
 
 func _refresh_free() -> void:
 	for i in board.n:
-		free_now[i] = 1 if board.is_free(i, alive) else 0
+		var f := 1 if board.is_free(i, alive) else 0
+		if f != free_now[i]:
+			free_now[i] = f
+			if _nodes[i]:
+				_nodes[i].queue_redraw()
 
 
 func _report() -> void:
@@ -234,15 +272,18 @@ func _report() -> void:
 		status_changed.emit("Cleared in %d:%02d" % [t / 60, t % 60])
 		report_progress(elapsed + penalty, true)
 	else:
-		status_changed.emit("Tiles %d  ·  %d:%02d" % [left, t / 60, t % 60])
+		status_changed.emit("")
 		report_progress(elapsed + penalty, true)
 	if _hint_btn:
-		_hint_btn.text = "Hint  ·  %d" % hints
-		_shuffle_btn.text = "Shuffle  ·  %d" % shuffles
-		_undo_btn.text = "Undo  ·  %d" % undos
+		_hint_btn.count = hints
+		_shuffle_btn.count = shuffles
+		_undo_btn.count = undos
 		_hint_btn.disabled = hints <= 0 or _locked
 		_shuffle_btn.disabled = shuffles <= 0 or _locked
 		_undo_btn.disabled = history.is_empty() or undos <= 0 or _locked
+		for b in [_hint_btn, _shuffle_btn, _undo_btn]:
+			b.queue_redraw()
+	_overlay_dirty = true
 
 
 func _can_shuffle() -> bool:
@@ -281,7 +322,12 @@ func _board_cleared() -> void:
 	Feedback.sfx("clear")
 	Feedback.vibrate(40)
 	FX.shake(self, 8.0)
-	FX.burst(self, size / 2.0, [FX.LEMON, FX.TANGERINE, Color("#ff5d8f"), Color("#4fc3f7"), Color("#8bd448")], 60, 1.4)
+	var mid := size / 2.0
+	FX.burst(self, mid, [FX.LEMON, FX.TANGERINE, Color("#ff5d8f"), Color("#4fc3f7"), Color("#8bd448")], 60, 1.4)
+	FX.burst(self, mid + Vector2(-200, -160), [FX.LEMON, Color.WHITE], 24, 1.0)
+	FX.burst(self, mid + Vector2(200, -160), [FX.TANGERINE, Color.WHITE], 24, 1.0)
+	for k in 3:
+		_rings.append({"pos": mid, "t": -k * 0.15, "col": FX.LEMON})
 	if endless:
 		var bonus := 100 + 4 * board.n + 3 * maxi(0, int(board.n * 1.8 - board_time))
 		score += bonus
@@ -298,6 +344,7 @@ func _board_cleared() -> void:
 func _show_banner(text: String) -> void:
 	_banner = text
 	_banner_t = 1.0
+	_overlay_dirty = true
 
 
 # --- actions ----------------------------------------------------------------
@@ -311,10 +358,21 @@ func hint() -> void:
 		return
 	hints -= 1
 	penalty += HINT_PENALTY
-	_hint_pair = pair
+	_set_hint(pair)
 	_hint_t = HINT_TIME
+	if not endless:
+		_floats.append({"text": "+%ds" % int(HINT_PENALTY), "pos": Vector2(size.x / 2.0, HUD_H + 90.0), "t": 1.0, "col": Color("#ff8f8f")})
 	Feedback.sfx("tap")
 	_report()
+
+
+func _set_hint(pair: Array) -> void:
+	var old := _hint_pair
+	_hint_pair = pair
+	for i in old + pair:
+		if _nodes[i]:
+			_nodes[i].queue_redraw()
+			_active[i] = true
 
 
 ## The matching free pair that frees the most other tiles (a sensible suggestion, not a proof).
@@ -358,13 +416,14 @@ func shuffle() -> void:
 	shuffles -= 1
 	penalty += SHUFFLE_PENALTY
 	solution = order
-	selected = -1
-	_hint_pair = []
+	_set_selected(-1)
+	_set_hint([])
 	_pulse_shuffle = false
 	var k := 0
 	for i in _order:
 		if alive[i] != 0:
-			_spawn[i] = -float(k) * 0.006
+			_flip[i] = -float(k) * 0.008
+			_active[i] = true
 			k += 1
 	Feedback.sfx("place")
 	Feedback.vibrate(20)
@@ -378,8 +437,9 @@ func undo() -> void:
 	for i in [h.a, h.b]:
 		alive[i] = 1
 		_out[i] = 0.0
-		_spawn[i] = 0.0
-		_pop_in(i)
+		_spawn[i] = -0.02
+		_active[i] = true
+		_nodes[i].queue_redraw()
 	undos -= 1
 	penalty += UNDO_PENALTY
 	score -= int(h.pts)
@@ -387,14 +447,10 @@ func undo() -> void:
 	combo_t = float(h.combo_t)
 	if endless:
 		report_score(score)
-	selected = -1
-	_hint_pair = []
+	_set_selected(-1)
+	_set_hint([])
 	Feedback.sfx("back")
 	_after_change()
-
-
-func _pop_in(i: int) -> void:
-	_spawn[i] = -0.02
 
 
 # --- input ------------------------------------------------------------------
@@ -442,6 +498,7 @@ func tap_at(pos: Vector2) -> void:
 		return
 	if free_now[i] == 0:
 		_shake[i] = 1.0
+		_active[i] = true
 		Feedback.sfx("locked")
 		return
 	if selected == i:
@@ -457,7 +514,12 @@ func tap_at(pos: Vector2) -> void:
 
 
 func _set_selected(i: int) -> void:
+	var old := selected
 	selected = i
+	for t in [old, i]:
+		if t >= 0 and _nodes[t]:
+			_nodes[t].queue_redraw()
+			_active[t] = true
 
 
 func _match(a: int, b: int) -> void:
@@ -467,6 +529,7 @@ func _match(a: int, b: int) -> void:
 	if endless:
 		combo = combo + 1 if combo_t > 0.0 else 1
 		combo_t = _combo_window()
+		_combo_pop = 1.0
 		pts = 20 + 15 * (mini(combo, 10) - 1)
 		score += pts
 		report_score(score)
@@ -477,12 +540,17 @@ func _match(a: int, b: int) -> void:
 	_out[b] = 0.001
 	_mate[a] = b
 	_mate[b] = a
-	_hint_pair = []
+	_active[a] = true
+	_active[b] = true
+	_set_hint([])
 	var mid := (_centre(a) + _centre(b)) / 2.0
-	FX.burst(self, _centre(a), [FX.LEMON, FX.TANGERINE, IVORY], 8, 0.7)
-	FX.burst(self, _centre(b), [FX.LEMON, FX.TANGERINE, IVORY], 8, 0.7)
+	var ca := Faces.key_color(keys[a], variants[a])
+	var cb := Faces.key_color(keys[b], variants[b])
+	FX.burst(self, _centre(a), [FX.LEMON, ca, Color.WHITE], 9, 0.75)
+	FX.burst(self, _centre(b), [FX.LEMON, cb, Color.WHITE], 9, 0.75)
+	_rings.append({"pos": mid, "t": 0.0, "col": ca.lerp(FX.LEMON, 0.5)})
 	if endless:
-		_floats.append({"text": "+%d" % pts + ("  x%d" % combo if combo > 1 else ""), "pos": mid, "t": 1.0})
+		_floats.append({"text": "+%d" % pts + ("  x%d" % combo if combo > 1 else ""), "pos": mid, "t": 1.0, "col": FX.LEMON})
 	Feedback.sfx("merge")
 	Feedback.vibrate(15)
 	_after_change()
@@ -494,13 +562,14 @@ func _combo_window() -> float:
 
 # --- geometry ---------------------------------------------------------------
 
-func _ensure_geometry() -> void:
-	if board == null or (_geo_size == size and _geo_stamp == _stamp):
-		return
+## Recomputes the tile size and origin for the current board and control size. True if it changed.
+func _ensure_geometry() -> bool:
+	if board == null or size.x < 10.0 or (_geo_size == size and _geo_stamp == _stamp):
+		return false
 	_geo_size = size
 	_geo_stamp = _stamp
-	var top := HUD_H if endless else 8.0
-	var avail := Rect2(12.0, top + 8.0, size.x - 24.0, size.y - top - BOTTOM_BAR - 16.0)
+	var top := HUD_H
+	var avail := Rect2(30.0, top + 18.0, size.x - 60.0, size.y - top - BOTTOM_BAR - 40.0)
 	var minx := 9999
 	var miny := 9999
 	var maxx := -9999
@@ -518,6 +587,18 @@ func _ensure_geometry() -> void:
 	tt = ux * THICK
 	var total := Vector2(wu * ux + (ml + 1) * tt, hu * uy + (ml + 1) * tt)
 	_origin = avail.position + (avail.size - total) / 2.0 - Vector2(minx * ux, miny * uy) + Vector2(ml * tt, ml * tt)
+	var tl := avail.position + (avail.size - total) / 2.0
+	_board_rect = Rect2(tl, total)
+	return true
+
+
+## Moves every tile node to its slot and refreshes the mat; run when the geometry changed.
+func _relayout() -> void:
+	_backdrop.set_mat(_board_rect.grow(22.0))
+	for i in board.n:
+		_nodes[i].position = _centre(i)
+		_nodes[i].queue_redraw()
+		_active[i] = true
 
 
 func _tile_pos(i: int) -> Vector2:
@@ -534,13 +615,18 @@ func tile_centre(i: int) -> Vector2:
 	return _centre(i)
 
 
+func tile_size() -> Vector2:
+	return Vector2(2.0 * ux, 2.0 * uy)
+
+
 # --- frame ------------------------------------------------------------------
 
 func _process(delta: float) -> void:
 	if board == null:
 		return
 	_time += delta
-	var busy := _pulse_shuffle or _banner_t > 0.0 or _hint_t > 0.0 or selected >= 0 or not _floats.is_empty()
+	if _ensure_geometry():
+		_relayout()
 	if not _done and not _locked and remaining() > 0:
 		elapsed += delta
 		board_time += delta
@@ -552,132 +638,234 @@ func _process(delta: float) -> void:
 		combo_t = maxf(0.0, combo_t - delta)
 		if combo_t == 0.0:
 			combo = 0
-		busy = true
+		_overlay_dirty = true
 	if _hint_t > 0.0:
 		_hint_t -= delta
 		if _hint_t <= 0.0:
-			_hint_pair = []
+			_set_hint([])
 	if _banner_t > 0.0:
 		_banner_t = maxf(0.0, _banner_t - delta * 0.7)
+		_overlay_dirty = true
+	if _combo_pop > 0.0:
+		_combo_pop = maxf(0.0, _combo_pop - delta * 4.0)
+		_overlay_dirty = true
 	for f in _floats:
 		f.t -= delta * 1.2
 		f.pos.y -= delta * 60.0
+		_overlay_dirty = true
 	_floats = _floats.filter(func(f): return f.t > 0.0)
-	for i in board.n:
+	for r in _rings:
+		r.t += delta * 2.2
+		_overlay_dirty = true
+	_rings = _rings.filter(func(r): return r.t < 1.0)
+	_tick_tiles(delta)
+	if _pulse_shuffle and _shuffle_btn:
+		_shuffle_btn.pulse = 0.5 + 0.5 * sin(_time * 7.0)
+		_shuffle_btn.queue_redraw()
+	elif _shuffle_btn and _shuffle_btn.pulse != 0.0:
+		_shuffle_btn.pulse = 0.0
+		_shuffle_btn.queue_redraw()
+	if _overlay_dirty:
+		_overlay_dirty = false
+		_overlay.queue_redraw()
+
+
+## Advances the animation timers of the tiles in _active and applies their transforms.
+func _tick_tiles(delta: float) -> void:
+	for i in _active.keys():
+		var keep := false
 		if _out[i] > 0.0 and _out[i] < 1.0:
 			_out[i] = minf(1.0, _out[i] + delta / REMOVE_TIME)
-			busy = true
+			keep = true
 		if _spawn[i] < 1.0:
 			_spawn[i] = minf(1.0, _spawn[i] + delta / SPAWN_TIME)
-			busy = true
+			keep = true
 		if _shake[i] > 0.0:
 			_shake[i] = maxf(0.0, _shake[i] - delta * 3.0)
-			busy = true
+			_nodes[i].queue_redraw()  # red flash while shaking
+			keep = true
+		if _flip[i] > -1.0 and _flip[i] < 1.0:
+			var before := _flip[i]
+			_flip[i] = minf(1.0, _flip[i] + delta / 0.42)
+			if before < 0.5 and _flip[i] >= 0.5:
+				_nodes[i].queue_redraw()  # new face shows once the tile is edge-on
+			if _flip[i] >= 1.0:
+				_flip[i] = -1.0
+			keep = true
 		var want := 1.0 if selected == i else 0.0
 		if _sel_f[i] != want:
 			_sel_f[i] = move_toward(_sel_f[i], want, delta * 8.0)
-			busy = true
-	if _pulse_shuffle and _shuffle_btn:
-		_shuffle_btn.modulate = Color.WHITE.lerp(Color(1.4, 1.25, 0.7), 0.5 + 0.5 * sin(_time * 7.0))
-	elif _shuffle_btn and _shuffle_btn.modulate != Color.WHITE:
-		_shuffle_btn.modulate = Color.WHITE
-	if busy:
-		queue_redraw()
+			keep = true
+		if selected == i or _hint_pair.has(i):
+			keep = true
+		_apply(i)
+		if not keep:
+			_active.erase(i)
 
 
-# --- drawing ----------------------------------------------------------------
-
-func _draw() -> void:
-	FX.draw_background(self, Rect2(Vector2.ZERO, size))
-	if board == null:
-		return
-	_ensure_geometry()
-	var font := FX.font()
-	var ts := Vector2(2.0 * ux, 2.0 * uy)
-	var radius := int(ts.x * 0.14)
-	for i in _order:
-		if alive[i] == 0 and (_out[i] <= 0.0 or _out[i] >= 1.0):
-			continue
-		if _spawn[i] < 0.0 and _out[i] == 0.0:
-			continue  # still waiting to drop in
-		_draw_tile(i, ts, radius, font)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	if not _hint_pair.is_empty():
-		var pulse := 0.5 + 0.5 * sin(_time * 9.0)
-		for i in _hint_pair:
-			if alive[i] != 0:
-				_sb_line.set_border_width_all(int(maxf(3.0, tt * 0.7)))
-				_sb_line.set_corner_radius_all(radius)
-				_sb_line.border_color = TANGERINE.lerp(Color.WHITE, pulse * 0.6)
-				draw_style_box(_sb_line, Rect2(_tile_pos(i) - Vector2(2, 2), ts + Vector2(4, 4)))
-	if endless:
-		_draw_hud(font)
-	for f in _floats:
-		var a := clampf(f.t, 0.0, 1.0)
-		FX.draw_text_centered(self, f.pos, f.text, 40, Color(LEMON.r, LEMON.g, LEMON.b, a), font)
-	if _banner_t > 0.0:
-		var a := clampf(_banner_t * 2.5, 0.0, 1.0)
-		var c := Vector2(size.x / 2.0, size.y * 0.5)
-		var w := maxf(300.0, font.get_string_size(_banner, HORIZONTAL_ALIGNMENT_LEFT, -1, 48).x + 70.0)
-		var pr := Rect2(c - Vector2(w, 90.0) / 2.0, Vector2(w, 90.0))
-		draw_style_box(UI.box(Color(0.04, 0.03, 0.16, 0.82 * a), 40), pr)
-		FX.draw_text_centered(self, c, _banner, 48, Color(1, 1, 1, a), font)
-
-
-func _draw_tile(i: int, ts: Vector2, radius: int, font: Font) -> void:
-	var p := _tile_pos(i) + ts / 2.0
+func _apply(i: int) -> void:
+	var node: Node2D = _nodes[i]
+	var p := _centre(i)
 	var s := 1.0
+	var sx := 1.0
 	var off := Vector2.ZERO
+	var rot := 0.0
+	var vis := true
+	var mod := Color.WHITE
+	var z := 0
 	if _out[i] > 0.0:
-		var t := FX.ease_smooth(_out[i])
-		s = 1.0 + 0.1 * sin(minf(t * 2.0, 1.0) * PI) - t * 0.95
-		var mate_p := _tile_pos(_mate[i]) + ts / 2.0
-		off = (mate_p - p) * t * 0.5
+		z = 2
+		if _out[i] >= 1.0:
+			vis = false
+		else:
+			var t := FX.ease_smooth(_out[i])
+			s = 1.0 + 0.12 * sin(minf(t * 2.0, 1.0) * PI) - t * 0.95
+			var mp := _centre(_mate[i])
+			off = (mp - p) * t * 0.5
+			rot = signf(mp.x - p.x + 0.01) * 0.2 * t
+			mod = Color(1.0 + 0.5 * (1.0 - t), 1.0 + 0.5 * (1.0 - t), 1.0 + 0.2 * (1.0 - t), 1.0 - 0.6 * t)
+	elif alive[i] == 0 or _spawn[i] < 0.0:
+		vis = false
 	else:
 		if _spawn[i] < 1.0:
 			var t := clampf(_spawn[i], 0.0, 1.0)
 			s = 0.55 + 0.45 * (1.0 + 1.6 * pow(t - 1.0, 3.0) + 0.6 * pow(t - 1.0, 2.0)) if t > 0.0 else 0.55
-			off.y = -(1.0 - t) * ts.y * 0.5
+			off.y = -(1.0 - t) * tile_size().y * 0.5
 		if _shake[i] > 0.0:
-			off.x = sin(_shake[i] * 30.0) * ts.x * 0.06 * _shake[i]
-		s *= 1.0 + 0.05 * _sel_f[i]
-		off.y -= tt * 0.6 * _sel_f[i]
-	draw_set_transform(p + off, 0.0, Vector2(s, s))
+			off.x = sin(_shake[i] * 30.0) * tile_size().x * 0.06 * _shake[i]
+		if _flip[i] >= 0.0:
+			sx = maxf(0.04, absf(cos(PI * _flip[i])))
+			s *= 1.0 + 0.08 * sin(PI * _flip[i])
+		s *= 1.0 + 0.06 * _sel_f[i]
+		off.y -= tt * 0.9 * _sel_f[i]
+		if selected == i:
+			s *= 1.0 + 0.012 * sin(_time * 7.0)
+			z = 1
+		if _hint_pair.has(i):
+			mod = Color.WHITE.lerp(Color(1.35, 1.2, 0.8), 0.5 + 0.5 * sin(_time * 9.0))
+			s *= 1.0 + 0.025 * sin(_time * 9.0)
+			z = 1
+	node.visible = vis
+	node.position = p + off
+	node.scale = Vector2(s * sx, s)
+	node.rotation = rot
+	node.modulate = mod
+	node.z_index = z
+
+
+# --- drawing ----------------------------------------------------------------
+
+## One tile in its own local space (centred on the origin). Called by Look.TileNode.
+func draw_tile_node(ci: CanvasItem, i: int) -> void:
+	var ts := tile_size()
+	if ts.x < 4.0:
+		return
+	var radius := int(ts.x * 0.15)
 	var r := Rect2(-ts / 2.0, ts)
-	var layer_lift := board.ls[i]
-	FX.draw_shadow(self, Rect2(r.position + Vector2(tt * 0.3, tt * 1.0), ts * Vector2(1.08, 1.04)), 0.55 if layer_lift == 0 else 0.4)
+	var sel := selected == i
+	var free := free_now[i] != 0
+	var lay := board.ls[i]
+	if sel:
+		FX.draw_glow(ci, r.grow(ts.x * 0.4), Color(LEMON, 0.6))
+	elif _hint_pair.has(i):
+		FX.draw_glow(ci, r.grow(ts.x * 0.4), Color(TANGERINE, 0.7))
+	FX.draw_shadow(ci, Rect2(r.position + Vector2(tt * 0.5, tt * (1.0 + 0.25 * lay)), ts * Vector2(1.1, 1.08)),
+		0.55 if lay == 0 else 0.45)
+	_sb.draw_center = true
 	_sb.set_corner_radius_all(radius)
-	_sb.bg_color = SIDE_DARK
-	draw_style_box(_sb, Rect2(r.position + Vector2(tt, tt), ts))
-	_sb.bg_color = SIDE
-	draw_style_box(_sb, Rect2(r.position + Vector2(tt, tt) * 0.5, ts))
-	var face := IVORY.lerp(IVORY_SEL, _sel_f[i])
-	_sb.bg_color = face.darkened(0.08)
-	draw_style_box(_sb, r)
-	_sb.bg_color = face
-	draw_style_box(_sb, Rect2(r.position, ts * Vector2(1.0, 0.94)))
-	_sb.bg_color = Color(1, 1, 1, 0.5)
-	_sb.set_corner_radius_all(maxi(2, radius - 3))
-	draw_style_box(_sb, Rect2(r.position + ts * Vector2(0.09, 0.05), ts * Vector2(0.82, 0.16)))
-	Faces.draw_face(self, Rect2(r.position + ts * Vector2(0.1, 0.1), ts * Vector2(0.8, 0.78)), keys[i], variants[i], font)
-	if free_now[i] == 0 and _out[i] == 0.0:
+	for k in range(4, 0, -1):  # the jade slab under the ivory face, in four steps
+		var d := tt * k / 4.0
+		_sb.bg_color = SIDE.lerp(SIDE_DARK, float(k) / 4.0)
+		ci.draw_style_box(_sb, Rect2(r.position + Vector2(d, d), ts))
+	var top_c := Color("#fffaf0")
+	var bot_c := Color("#f1dfb4")
+	if sel:
+		top_c = Color("#fff3a8")
+		bot_c = Color("#ffd35a")
+	elif not free:
+		top_c = Color("#e6dfd0")
+		bot_c = Color("#c9bb98")
+	FX.draw_round_gradient(ci, r, float(radius), top_c, bot_c)
+	_sb_line.set_border_width_all(2)
+	_sb_line.set_corner_radius_all(maxi(2, radius - 3))
+	_sb_line.border_color = Color(0.62, 0.46, 0.2, 0.32)
+	ci.draw_style_box(_sb_line, r.grow(-ts.x * 0.055))
+	FX.draw_glow(ci, Rect2(r.position + ts * Vector2(-0.05, -0.05), ts * Vector2(0.95, 0.55)), Color(1, 1, 1, 0.45 if free else 0.22))
+	ci.draw_line(r.position + Vector2(radius, 1.5), Vector2(r.end.x - radius, r.position.y + 1.5), Color(1, 1, 1, 0.85), 2.0, true)
+	ci.draw_line(Vector2(r.position.x + radius, r.end.y - 2.5), Vector2(r.end.x - radius, r.end.y - 2.5), Color(0.5, 0.35, 0.1, 0.18), 2.0, true)
+	Faces.draw_face(ci, Rect2(r.position + ts * Vector2(0.1, 0.1), ts * Vector2(0.8, 0.78)), keys[i], variants[i], FX.font())
+	if not free:
 		_sb.set_corner_radius_all(radius)
-		_sb.bg_color = Color(0.16, 0.18, 0.42, 0.36)
-		draw_style_box(_sb, r)
-	if selected == i:
+		_sb.bg_color = Color(0.2, 0.18, 0.46, 0.3)
+		ci.draw_style_box(_sb, r)
+	if _shake[i] > 0.0:
+		_sb.set_corner_radius_all(radius)
+		_sb.bg_color = Color(1.0, 0.25, 0.25, 0.4 * _shake[i])
+		ci.draw_style_box(_sb, r)
+	if sel:
 		_sb_line.set_border_width_all(int(maxf(3.0, tt * 0.8)))
 		_sb_line.set_corner_radius_all(radius)
 		_sb_line.border_color = LEMON
-		draw_style_box(_sb_line, r.grow(1.0))
+		ci.draw_style_box(_sb_line, r.grow(1.0))
+	elif _hint_pair.has(i):
+		_sb_line.set_border_width_all(int(maxf(3.0, tt * 0.7)))
+		_sb_line.set_corner_radius_all(radius)
+		_sb_line.border_color = TANGERINE
+		ci.draw_style_box(_sb_line, r.grow(1.0))
 
 
-func _draw_hud(font: Font) -> void:
+## HUD chips, shock rings, score pops and the banner; drawn above the tiles by Look.Overlay.
+func draw_overlay(ci: CanvasItem) -> void:
+	if board == null:
+		return
+	var font := FX.font()
 	var left := remaining()
-	FX.draw_text_centered(self, Vector2(90, 30), "BOARD %d" % board_no, 26, Color(1, 1, 1, 0.8), font)
-	FX.draw_text_centered(self, Vector2(size.x - 90, 30), "%d LEFT" % left, 26, Color(1, 1, 1, 0.8), font)
-	if combo > 1 and combo_t > 0.0:
-		var c := Vector2(size.x / 2.0, 28)
-		FX.draw_text_centered(self, c, "COMBO x%d" % combo, 30, LEMON, font)
-		var w := 200.0 * combo_t / _combo_window()
-		draw_style_box(UI.box(Color(1, 1, 1, 0.18), 5), Rect2(c.x - 100, 50, 200, 8))
-		draw_style_box(UI.box(TANGERINE, 5), Rect2(c.x - 100, 50, maxf(w, 6.0), 8))
+	var h := 50.0
+	var y := 10.0
+	var t := int(elapsed + penalty)
+	if endless:
+		Icons.draw_chip(ci, Rect2(16, y, 190, h), "board", "Board %d" % board_no, font, Color("#3aa76d"))
+		Icons.draw_chip(ci, Rect2(size.x - 206, y, 190, h), "tiles", "%d left" % left, font, Color("#6a5fd1"))
+		if combo > 1 and combo_t > 0.0:
+			var pop := 1.0 + 0.2 * _combo_pop
+			var c := Vector2(size.x / 2.0, y + h / 2.0 - 2)
+			FX.draw_text_centered(ci, c, "x%d" % combo, int(36 * pop), FX.LEMON, font)
+			var w := 80.0 * combo_t / _combo_window()
+			ci.draw_style_box(UI.box(Color(1, 1, 1, 0.2), 4), Rect2(c.x - 40, y + h - 4, 80, 7))
+			ci.draw_style_box(UI.box(TANGERINE, 4), Rect2(c.x - 40, y + h - 4, maxf(w, 6.0), 7))
+	else:
+		Icons.draw_chip(ci, Rect2(16, y, 190, h), "tiles", "%d tiles" % left, font, Color("#3aa76d"))
+		Icons.draw_chip(ci, Rect2(size.x - 206, y, 190, h), "clock", "%d:%02d" % [t / 60, t % 60], font, Color("#6a5fd1"))
+		if penalty > 0.0:
+			Icons.draw_chip(ci, Rect2(size.x / 2.0 - 55, y, 110, h), "plus", "%ds" % int(penalty), font, Color("#e5484d"))
+	for r in _rings:
+		if r.t < 0.0:
+			continue
+		var k: float = r.t
+		var col: Color = r.col
+		ci.draw_arc(r.pos, lerpf(14.0, 130.0, FX.ease_smooth(k)), 0.0, TAU, 48, Color(col.r, col.g, col.b, 1.0 - k),
+			lerpf(9.0, 1.5, k), true)
+	for f in _floats:
+		if String(f.text) == "":
+			continue
+		var a := clampf(f.t, 0.0, 1.0)
+		var fc: Color = f.get("col", FX.LEMON)
+		FX.draw_text_centered(ci, f.pos, f.text, 40, Color(fc.r, fc.g, fc.b, a), font)
+	if _banner_t > 0.0:
+		var age := 1.0 - _banner_t
+		var a := clampf(_banner_t * 2.5, 0.0, 1.0)
+		var pop := 1.0 + 0.25 * pow(1.0 - clampf(age * 6.0, 0.0, 1.0), 2.0)
+		var c := Vector2(size.x / 2.0, size.y * 0.5)
+		var w := (maxf(320.0, font.get_string_size(_banner, HORIZONTAL_ALIGNMENT_LEFT, -1, 50).x + 110.0)) * pop
+		var pr := Rect2(c - Vector2(w, 104.0 * pop) / 2.0, Vector2(w, 104.0 * pop))
+		FX.draw_shadow(ci, pr.grow(26.0), 0.7 * a)
+		FX.draw_round_gradient(ci, pr, 48.0, Color(0.2, 0.18, 0.5, 0.95 * a), Color(0.07, 0.06, 0.25, 0.95 * a))
+		var sb := StyleBoxFlat.new()
+		sb.draw_center = false
+		sb.set_corner_radius_all(48)
+		sb.set_border_width_all(4)
+		sb.border_color = Color(LEMON.r, LEMON.g, LEMON.b, a)
+		ci.draw_style_box(sb, pr)
+		FX.draw_star(ci, pr.position + Vector2(36, pr.size.y / 2.0), 15.0 * pop, Color(LEMON.r, LEMON.g, LEMON.b, a))
+		FX.draw_star(ci, pr.end - Vector2(36, pr.size.y / 2.0), 15.0 * pop, Color(LEMON.r, LEMON.g, LEMON.b, a))
+		FX.draw_text_centered(ci, c, _banner, int(50 * pop), Color(1, 1, 1, a), font)

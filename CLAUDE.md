@@ -130,7 +130,8 @@ Tube Sort, Block Fit, Bubble Burst, Mahjong Match and Merge Tiles (endless only)
 
 ## Mahjong Match (games/mahjong_match/)
 `layout.gd` is the logic with no drawing (shapes, stacking, free rule, solvable pair order, shuffle); `faces.gd` draws the
-27 tile faces; `game.gd` is the scene. Boards are built by removing random free pairs until empty, then giving each pair one
+27 tile faces; `look.gd` + `icons.gd` hold the table backdrop, per-tile nodes, icon buttons and HUD chips; `game.gd` is the scene
+(each tile is a Node2D so only changed tiles redraw). Boards are built by removing random free pairs until empty, then giving each pair one
 match key, so every board is solvable. Levels store params only (the board is regenerated from `seed`); `tools/gen_levels.py`
 mirrors the shape/size maths so `tiles` is what the board really holds. Campaign stars use time plus penalties (hint 8 s,
 shuffle 12 s, undo 4 s); endless scores pairs with a combo and refills a shuffle and hint per cleared board.
