@@ -4,10 +4,29 @@
   {
    "id": 1,
    "seed": 1000,
-   "target_height": 10,
-   "speed": 260,
-   "speed_step": 4.0,
+   "target_height": 8,
+   "speed": 240,
+   "speed_step": 3.0,
    "block_width": 360,
+   "tolerance": 14,
+   "wind": 0,
+   "sway": 0,
+   "stars": [
+    0,
+    3,
+    5
+   ]
+  },
+  {
+   "id": 2,
+   "seed": 8919,
+   "target_height": 9,
+   "speed": 251,
+   "speed_step": 3.2,
+   "block_width": 356,
+   "tolerance": 14,
+   "wind": 0,
+   "sway": 0,
    "stars": [
     0,
     3,
@@ -15,51 +34,47 @@
    ]
   },
   {
-   "id": 2,
-   "seed": 8919,
-   "target_height": 11,
-   "speed": 272,
-   "speed_step": 4.3,
-   "block_width": 357,
-   "stars": [
-    0,
-    3,
-    7
-   ]
-  },
-  {
    "id": 3,
    "seed": 16838,
-   "target_height": 12,
-   "speed": 285,
-   "speed_step": 4.6,
-   "block_width": 353,
+   "target_height": 10,
+   "speed": 262,
+   "speed_step": 3.4,
+   "block_width": 352,
+   "tolerance": 14,
+   "wind": 0,
+   "sway": 0,
    "stars": [
     0,
     4,
-    7
+    6
    ]
   },
   {
    "id": 4,
    "seed": 24757,
-   "target_height": 14,
-   "speed": 297,
-   "speed_step": 4.8,
-   "block_width": 350,
+   "target_height": 11,
+   "speed": 273,
+   "speed_step": 3.6,
+   "block_width": 348,
+   "tolerance": 13,
+   "wind": 0,
+   "sway": 0,
    "stars": [
     0,
     4,
-    8
+    7
    ]
   },
   {
    "id": 5,
    "seed": 32676,
-   "target_height": 15,
-   "speed": 310,
-   "speed_step": 5.1,
-   "block_width": 346,
+   "target_height": 12,
+   "speed": 284,
+   "speed_step": 3.8,
+   "block_width": 343,
+   "tolerance": 13,
+   "wind": 0,
+   "sway": 0,
    "stars": [
     0,
     4,
@@ -69,10 +84,13 @@
   {
    "id": 6,
    "seed": 40595,
-   "target_height": 16,
-   "speed": 322,
-   "speed_step": 5.4,
-   "block_width": 343,
+   "target_height": 14,
+   "speed": 295,
+   "speed_step": 4.0,
+   "block_width": 339,
+   "tolerance": 13,
+   "wind": 0,
+   "sway": 0,
    "stars": [
     0,
     5,
@@ -82,49 +100,45 @@
   {
    "id": 7,
    "seed": 48514,
-   "target_height": 17,
-   "speed": 334,
-   "speed_step": 5.7,
-   "block_width": 339,
+   "target_height": 15,
+   "speed": 306,
+   "speed_step": 4.2,
+   "block_width": 335,
+   "tolerance": 13,
+   "wind": 0,
+   "sway": 0,
    "stars": [
     0,
     5,
-    9
+    10
    ]
   },
   {
    "id": 8,
    "seed": 56433,
-   "target_height": 18,
-   "speed": 347,
-   "speed_step": 5.9,
-   "block_width": 336,
+   "target_height": 16,
+   "speed": 317,
+   "speed_step": 4.4,
+   "block_width": 331,
+   "tolerance": 13,
+   "wind": 0.33,
+   "sway": 0,
    "stars": [
     0,
-    5,
+    6,
     10
    ]
   },
   {
    "id": 9,
    "seed": 64352,
-   "target_height": 20,
-   "speed": 359,
-   "speed_step": 6.2,
-   "block_width": 332,
-   "stars": [
-    0,
-    5,
-    10
-   ]
-  },
-  {
-   "id": 10,
-   "seed": 72271,
-   "target_height": 21,
-   "speed": 372,
-   "speed_step": 6.5,
-   "block_width": 329,
+   "target_height": 17,
+   "speed": 328,
+   "speed_step": 4.7,
+   "block_width": 327,
+   "tolerance": 13,
+   "wind": 0,
+   "sway": 0,
    "stars": [
     0,
     6,
@@ -132,142 +146,127 @@
    ]
   },
   {
-   "id": 11,
-   "seed": 80190,
-   "target_height": 22,
-   "speed": 384,
-   "speed_step": 6.8,
-   "block_width": 326,
+   "id": 10,
+   "seed": 72271,
+   "target_height": 18,
+   "speed": 339,
+   "speed_step": 4.9,
+   "block_width": 323,
+   "tolerance": 12,
+   "wind": 0,
+   "sway": 0,
    "stars": [
     0,
     6,
+    12
+   ]
+  },
+  {
+   "id": 11,
+   "seed": 80190,
+   "target_height": 19,
+   "speed": 350,
+   "speed_step": 5.1,
+   "block_width": 319,
+   "tolerance": 12,
+   "wind": 0.37,
+   "sway": 0,
+   "stars": [
+    0,
+    7,
     12
    ]
   },
   {
    "id": 12,
    "seed": 88109,
-   "target_height": 23,
-   "speed": 397,
-   "speed_step": 7.0,
-   "block_width": 322,
+   "target_height": 20,
+   "speed": 361,
+   "speed_step": 5.3,
+   "block_width": 314,
+   "tolerance": 12,
+   "wind": 0,
+   "sway": 63,
    "stars": [
     0,
-    6,
-    12
+    7,
+    13
    ]
   },
   {
    "id": 13,
    "seed": 96028,
-   "target_height": 24,
-   "speed": 409,
-   "speed_step": 7.3,
-   "block_width": 319,
+   "target_height": 21,
+   "speed": 372,
+   "speed_step": 5.5,
+   "block_width": 310,
+   "tolerance": 12,
+   "wind": 0,
+   "sway": 0,
    "stars": [
     0,
     7,
-    13
+    14
    ]
   },
   {
    "id": 14,
    "seed": 103947,
-   "target_height": 26,
-   "speed": 421,
-   "speed_step": 7.6,
-   "block_width": 315,
+   "target_height": 22,
+   "speed": 383,
+   "speed_step": 5.7,
+   "block_width": 306,
+   "tolerance": 12,
+   "wind": 0.41,
+   "sway": 0,
    "stars": [
     0,
-    7,
-    13
+    8,
+    14
    ]
   },
   {
    "id": 15,
    "seed": 111866,
-   "target_height": 27,
-   "speed": 434,
-   "speed_step": 7.9,
-   "block_width": 312,
+   "target_height": 23,
+   "speed": 394,
+   "speed_step": 5.9,
+   "block_width": 302,
+   "tolerance": 12,
+   "wind": 0,
+   "sway": 0,
    "stars": [
     0,
-    7,
-    14
+    8,
+    15
    ]
   },
   {
    "id": 16,
    "seed": 119785,
-   "target_height": 28,
-   "speed": 446,
-   "speed_step": 8.1,
-   "block_width": 308,
+   "target_height": 25,
+   "speed": 406,
+   "speed_step": 6.1,
+   "block_width": 298,
+   "tolerance": 11,
+   "wind": 0,
+   "sway": 71,
    "stars": [
     0,
-    8,
-    14
+    9,
+    16
    ]
   },
   {
    "id": 17,
    "seed": 127704,
-   "target_height": 29,
-   "speed": 459,
-   "speed_step": 8.4,
-   "block_width": 305,
-   "stars": [
-    0,
-    8,
-    15
-   ]
-  },
-  {
-   "id": 18,
-   "seed": 135623,
-   "target_height": 31,
-   "speed": 471,
-   "speed_step": 8.7,
-   "block_width": 301,
-   "stars": [
-    0,
-    8,
-    15
-   ]
-  },
-  {
-   "id": 19,
-   "seed": 143542,
-   "target_height": 32,
-   "speed": 483,
-   "speed_step": 9.0,
-   "block_width": 298,
-   "stars": [
-    0,
-    9,
-    16
-   ]
-  },
-  {
-   "id": 20,
-   "seed": 151461,
-   "target_height": 33,
-   "speed": 496,
-   "speed_step": 9.2,
+   "target_height": 26,
+   "speed": 417,
+   "speed_step": 6.3,
    "block_width": 294,
-   "stars": [
-    0,
-    9,
-    16
-   ]
-  },
-  {
-   "id": 21,
-   "seed": 159380,
-   "target_height": 34,
-   "speed": 508,
-   "speed_step": 9.5,
-   "block_width": 291,
+   "tolerance": 11,
+   "wind": 0.44,
+   "sway": 0,
    "stars": [
     0,
     9,
@@ -275,120 +274,211 @@
    ]
   },
   {
-   "id": 22,
-   "seed": 167299,
-   "target_height": 35,
-   "speed": 521,
-   "speed_step": 9.8,
-   "block_width": 288,
+   "id": 18,
+   "seed": 135623,
+   "target_height": 27,
+   "speed": 428,
+   "speed_step": 6.5,
+   "block_width": 290,
+   "tolerance": 11,
+   "wind": 0,
+   "sway": 0,
+   "stars": [
+    0,
+    9,
+    18
+   ]
+  },
+  {
+   "id": 19,
+   "seed": 143542,
+   "target_height": 28,
+   "speed": 439,
+   "speed_step": 6.7,
+   "block_width": 286,
+   "tolerance": 11,
+   "wind": 0,
+   "sway": 0,
    "stars": [
     0,
     10,
     18
+   ]
+  },
+  {
+   "id": 20,
+   "seed": 151461,
+   "target_height": 29,
+   "speed": 450,
+   "speed_step": 6.9,
+   "block_width": 281,
+   "tolerance": 11,
+   "wind": 0.48,
+   "sway": 79,
+   "stars": [
+    0,
+    10,
+    19
+   ]
+  },
+  {
+   "id": 21,
+   "seed": 159380,
+   "target_height": 30,
+   "speed": 461,
+   "speed_step": 7.1,
+   "block_width": 277,
+   "tolerance": 11,
+   "wind": 0,
+   "sway": 0,
+   "stars": [
+    0,
+    10,
+    20
+   ]
+  },
+  {
+   "id": 22,
+   "seed": 167299,
+   "target_height": 31,
+   "speed": 472,
+   "speed_step": 7.3,
+   "block_width": 273,
+   "tolerance": 10,
+   "wind": 0,
+   "sway": 0,
+   "stars": [
+    0,
+    11,
+    20
    ]
   },
   {
    "id": 23,
    "seed": 175218,
-   "target_height": 37,
-   "speed": 533,
-   "speed_step": 10.1,
-   "block_width": 284,
+   "target_height": 32,
+   "speed": 483,
+   "speed_step": 7.6,
+   "block_width": 269,
+   "tolerance": 10,
+   "wind": 0.52,
+   "sway": 0,
    "stars": [
     0,
-    10,
-    18
+    11,
+    21
    ]
   },
   {
    "id": 24,
    "seed": 183137,
-   "target_height": 38,
-   "speed": 546,
-   "speed_step": 10.3,
-   "block_width": 281,
+   "target_height": 33,
+   "speed": 494,
+   "speed_step": 7.8,
+   "block_width": 265,
+   "tolerance": 10,
+   "wind": 0,
+   "sway": 88,
    "stars": [
     0,
-    10,
-    19
+    12,
+    21
    ]
   },
   {
    "id": 25,
    "seed": 191056,
-   "target_height": 39,
-   "speed": 558,
-   "speed_step": 10.6,
-   "block_width": 277,
+   "target_height": 34,
+   "speed": 505,
+   "speed_step": 8.0,
+   "block_width": 261,
+   "tolerance": 10,
+   "wind": 0,
+   "sway": 0,
    "stars": [
     0,
-    10,
-    19
+    12,
+    22
    ]
   },
   {
    "id": 26,
    "seed": 198975,
-   "target_height": 40,
-   "speed": 570,
-   "speed_step": 10.9,
-   "block_width": 274,
+   "target_height": 36,
+   "speed": 516,
+   "speed_step": 8.2,
+   "block_width": 257,
+   "tolerance": 10,
+   "wind": 0.55,
+   "sway": 0,
    "stars": [
     0,
-    11,
-    20
+    13,
+    23
    ]
   },
   {
    "id": 27,
    "seed": 206894,
-   "target_height": 41,
-   "speed": 583,
-   "speed_step": 11.2,
-   "block_width": 270,
+   "target_height": 37,
+   "speed": 527,
+   "speed_step": 8.4,
+   "block_width": 252,
+   "tolerance": 10,
+   "wind": 0,
+   "sway": 0,
    "stars": [
     0,
-    11,
-    20
+    13,
+    24
    ]
   },
   {
    "id": 28,
    "seed": 214813,
-   "target_height": 43,
-   "speed": 595,
-   "speed_step": 11.4,
-   "block_width": 267,
+   "target_height": 38,
+   "speed": 538,
+   "speed_step": 8.6,
+   "block_width": 248,
+   "tolerance": 9,
+   "wind": 0,
+   "sway": 96,
    "stars": [
     0,
-    11,
-    21
+    13,
+    25
    ]
   },
   {
    "id": 29,
    "seed": 222732,
-   "target_height": 44,
-   "speed": 608,
-   "speed_step": 11.7,
-   "block_width": 263,
+   "target_height": 39,
+   "speed": 549,
+   "speed_step": 8.8,
+   "block_width": 244,
+   "tolerance": 9,
+   "wind": 0.59,
+   "sway": 0,
    "stars": [
     0,
-    12,
-    21
+    14,
+    25
    ]
   },
   {
    "id": 30,
    "seed": 230651,
-   "target_height": 45,
-   "speed": 620,
-   "speed_step": 12.0,
-   "block_width": 260,
+   "target_height": 40,
+   "speed": 560,
+   "speed_step": 9.0,
+   "block_width": 240,
+   "tolerance": 9,
+   "wind": 0,
+   "sway": 0,
    "stars": [
     0,
-    12,
-    22
+    14,
+    26
    ]
   }
  ]
