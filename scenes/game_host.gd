@@ -78,7 +78,7 @@ func _on_finished(won: bool, stars: int) -> void:
 	else:
 		Feedback.sfx("fail")
 		Feedback.vibrate(120)
-	Ads.on_level_finished()
+	Ads.on_level_finished(won, Nav.level_index)
 	_show_result(won, stars, best)
 
 
@@ -90,8 +90,8 @@ func _show_result(won: bool, stars: int, best: bool) -> void:
 	o.new_best = best
 	o.accent = Color(_game_def.get("color", "#FF8A1F"))
 	if Nav.level_index + 1 < _levels.size():
-		o.on_next = func(): Nav.play(Nav.game_id, Nav.level_index + 1)
+		o.on_next = func(): Ads.run_after_interstitial(func(): Nav.play(Nav.game_id, Nav.level_index + 1))
 	o.on_retry = _start
-	o.on_levels = func(): Nav.to_level_select(Nav.game_id)
+	o.on_levels = func(): Ads.run_after_interstitial(func(): Nav.to_level_select(Nav.game_id))
 	_overlay = o
 	add_child(o)

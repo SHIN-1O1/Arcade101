@@ -1,7 +1,7 @@
 # Arcade 101
 
 Offline mini-games collection for Android (iOS later), built with Godot 4.3.
-Six games x 30 levels, a hub, level select with stars, settings, and stubbed ads/purchases.
+Six games x 30 levels, a hub, level select with stars, settings, and ads + a one-time "No Ads" purchase (mock on desktop; real AdMob/Play Billing setup in docs/MONETIZATION.md).
 Architecture and conventions: see CLAUDE.md.
 
 ## Run on Windows

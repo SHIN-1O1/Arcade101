@@ -12,8 +12,8 @@ autoload/              singletons (names as used in code)
   game_registry.gd Games     reads data/games.json + games/<id>/levels.json
   nav.gd           Nav       scene changes (slide transitions, input blocked meanwhile),
                              current game_id/level_index, Android back
-  ad_service.gd    Ads       STUB: interstitial every 3 levels, rewarded, banner
-  iap_service.gd   IAP       STUB: purchase("remove_ads") auto-succeeds
+  ad_service.gd    Ads       policy + provider glue, see "Ads and purchases"
+  iap_service.gd   IAP       remove_ads purchase/restore, see "Ads and purchases"
   feedback.gd      Feedback  sfx(name), play_music(track), vibrate(ms); see "Sound"
 core/
   base_game.gd     class BaseGame: the contract every game implements
@@ -22,6 +22,8 @@ core/
                    star_pill(), card_box(), stagger_pop(), widgets Backdrop/IconButton/Switch
   fonts/           LilitaOne-Regular.ttf (OFL, licence in OFL.txt), via FX.font()/FX.theme()
   fx.gd            shared visual kit, preload as FX (see "Look and feel")
+  toast.gd         Toast.show_text(root, msg) floating one-liner (preload it)
+  monetization/    ad_config.gd (test IDs, pacing, flags), ad_provider*.gd, iap_provider*.gd
 scenes/            hub, level_select, game_host, settings (.tscn + .gd);
                    result_overlay.gd = level complete/failed card (preloaded by game_host)
 data/games.json    game registry (order = hub order)
@@ -80,6 +82,18 @@ Music: `Feedback.play_music("menu"|"game")` loops with a crossfade and follows t
 Nav switches it (menu on hub/levels/settings, game in game_host), games never call it.
 New sound: add a recipe in gen_audio.py `SFX`, an entry in `Feedback.SFX`, and list it here.
 
+## Ads and purchases (autoload/ad_service.gd, iap_service.gd, core/monetization/, docs/MONETIZATION.md)
+Games never touch ads: the host does. `Ads.on_level_finished(won, level_index)` records a finished level;
+the interstitial plays only via `Ads.run_after_interstitial(next)` wrapped around the result card's
+Next/Levels buttons (every 3rd win, 60 s cooldown, not after levels 1-2, never on fail, off with No Ads).
+Endless modes: call `on_level_finished(won)` with level_index -1 and wrap their "play again/home" the same way.
+Rewarded hook for hints/undo: `Ads.rewarded_available()`, `Ads.show_rewarded()`, signal `rewarded_finished(granted)`.
+Backends are chosen at startup: AdMob / Play Billing plugins on Android when `addons/admob` /
+`addons/GodotGooglePlayBilling` exist, else a mock (desktop, CI). The real provider scripts name plugin
+classes, so they are loaded by path only when the addon exists; never preload them.
+`core/monetization/ad_config.gd` holds Google TEST ad IDs and a marked place for real ones; keep it test-only in git
+until release. `IAP.purchase()`, `IAP.restore_purchases()`, signals `purchase_finished`, `restore_finished`.
+
 ## Level data
 `games/<id>/levels.json` = `{"star_metric": "...", "levels": [ {id, seed, stars, ...game params} x30 ]}`.
 Per-game params (defined in tools/gen_levels.py):
@@ -108,7 +122,7 @@ Block Fit is playable; the other five are placeholders (stub_game.gd). `status` 
 ## Rules
 - Original names/art only; copy mechanics, never trademarks or assets.
 - Keep games self-contained in their folder; shared helpers go in core/.
-- Real ad/IAP SDKs replace only the `_provider_*` functions in the stubs.
+- Ad/IAP SDK code lives only in `core/monetization/*_provider_*.gd`; policy stays in `Ads`/`IAP`.
 - Bump `Save.SAVE_VERSION` and migrate in `load_game()` if the save shape changes.
 
 ## Git workflow (full rules: CONTRIBUTING.md)
