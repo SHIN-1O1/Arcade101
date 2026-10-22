@@ -14,7 +14,7 @@ autoload/              singletons (names as used in code)
                              current game_id/level_index, Android back
   ad_service.gd    Ads       STUB: interstitial every 3 levels, rewarded, banner
   iap_service.gd   IAP       STUB: purchase("remove_ads") auto-succeeds
-  feedback.gd      Feedback  sfx(name) from res://audio/<name>.ogg|wav, vibrate(ms)
+  feedback.gd      Feedback  sfx(name), play_music(track), vibrate(ms); see "Sound"
 core/
   base_game.gd     class BaseGame: the contract every game implements
   stub_game.gd     placeholder game (debug Win/Fail buttons)
@@ -67,6 +67,18 @@ a fresh pull into an open editor does not know new global classes yet).
 - Menus: `UI.screen(root, accent)` sets `FX.theme()` (Lilita One, outlined text) and the
   gradient Backdrop; `FX.draw_star`, `draw_lock`, `draw_icon` draw icons (the font has no ★).
   Screens: scenes/hub.gd (game cards with drawn emblems), level_select.gd (LevelTile states).
+
+## Sound (autoload/feedback.gd, audio/)
+All audio is synthesised by `python tools/gen_audio.py` (numpy + ffmpeg) into `audio/sfx/*.ogg` and
+`audio/music/*.ogg`; original, CC0, listed in `audio/CREDITS.md`. Edit a recipe and rerun to retune.
+`Feedback.sfx(name)` honours the sound toggle, uses an 8-voice pool and jitters pitch slightly.
+Names: `tap` (generic tap), `select` (pick a piece/tube/tile/level), `place` (drop a piece), `pour`,
+`pop`, `merge`, `clear` (line/set cleared), `star` (star earned), `win`, `fail`, `button` (menu
+button), `back`, `locked`, `unlock`. Unknown names warn once. `UI.wire`/`icon_button` already play
+`button`/`back`; the host plays `win`/`fail`/`star`, so games add only their own move sounds.
+Music: `Feedback.play_music("menu"|"game")` loops with a crossfade and follows the music toggle;
+Nav switches it (menu on hub/levels/settings, game in game_host), games never call it.
+New sound: add a recipe in gen_audio.py `SFX`, an entry in `Feedback.SFX`, and list it here.
 
 ## Level data
 `games/<id>/levels.json` = `{"star_metric": "...", "levels": [ {id, seed, stars, ...game params} x30 ]}`.

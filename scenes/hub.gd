@@ -7,6 +7,7 @@ var _ads_button: Button
 
 
 func _ready() -> void:
+	Feedback.play_music("menu")
 	var col := UI.screen(self)
 
 	var top := HBoxContainer.new()
