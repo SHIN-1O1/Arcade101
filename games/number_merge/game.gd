@@ -164,6 +164,7 @@ func _tick_stones() -> void:
 		if stones[c] <= 0:
 			stones.erase(c)
 			grid[c] = 0
+			Feedback.sfx("pop")
 			FX.burst(self, _cell_center(_layout(), c), [STONE, STONE.lightened(0.4)], 10, 0.5)
 
 
@@ -239,7 +240,7 @@ func undo() -> void:
 	_pops.clear()
 	_spawns.clear()
 	_floats.clear()
-	Feedback.sfx("tap")
+	Feedback.sfx("back")
 	_report()
 	queue_redraw()
 
@@ -271,7 +272,7 @@ func move(dir: int) -> void:
 	_tick_stones()
 	_pending_spawn = _spawn()
 	_maybe_stone()
-	Feedback.sfx("merge" if biggest > 0 else "tap")
+	Feedback.sfx("clear" if biggest >= BIG_MERGE else "merge" if biggest > 0 else "tap")
 	if biggest >= BIG_MERGE:
 		Feedback.vibrate(25)
 		FX.shake(self, 5.0, 0.2)

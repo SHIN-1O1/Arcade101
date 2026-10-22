@@ -106,7 +106,7 @@ func _on_finished(won: bool, stars: int) -> void:
 ## Endless run over: keep the best score, then show the game-over card.
 func _on_run_ended(score: int) -> void:
 	var best := Save.record_score(Nav.game_id, score) and score > 0
-	Feedback.sfx("win" if best else "lose")
+	Feedback.sfx("win" if best else "fail")
 	Feedback.vibrate(60 if best else 120)
 	Ads.on_level_finished()
 	var o := ResultOverlay.new()

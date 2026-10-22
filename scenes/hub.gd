@@ -166,10 +166,10 @@ class GameCard extends Button:
 				draw_style_box(UI.box(Color(0.05, 0.04, 0.16, 0.8), 17), tag)
 				FX.draw_text_centered(self, tag.get_center(), "BEST %d" % best, 20, FX.LEMON, font)
 			else:  # endless only: best score replaces the star bar
-				var pill := Rect2(r.position.x + 24, r.position.y + r.size.y * 0.82, r.size.x - 48, 40)
-				draw_style_box(UI.box(Color(0, 0, 0, 0.32), 20), pill)
+				var pill := Rect2(r.position.x + 24, r.position.y + r.size.y * 0.815, r.size.x - 48, 40)
+				draw_style_box(UI.box(Color(0.05, 0.04, 0.16, 0.6), 20), pill)
 				FX.draw_text_centered(self, pill.get_center(), "BEST  %d" % best if best > 0 else "ENDLESS", 26,
-					FX.LEMON, font)
+					Color.WHITE, font)
 		if game.get("status", "") == "placeholder":
 			var tag := Rect2(r.end.x - 96, r.position.y + 8, 84, 34)
 			draw_style_box(UI.box(Color(0.05, 0.04, 0.16, 0.8), 17), tag)
