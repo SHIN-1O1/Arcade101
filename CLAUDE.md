@@ -123,8 +123,9 @@ Next/Levels buttons (every 2nd win (`INTERSTITIAL_EVERY` in ad_config.gd), 60 s 
 Endless modes: call `on_level_finished(won)` with level_index -1 and wrap their "play again/home" the same way.
 Rewarded hook for hints/undo: `Ads.rewarded_available()`, `Ads.show_rewarded()`, signal `rewarded_finished(granted)`.
 Backends are chosen at startup: AdMob / Play Billing plugins on Android when `addons/admob` /
-`addons/GodotGooglePlayBilling` exist, else a mock (desktop, CI). The real provider scripts name plugin
-classes, so they are loaded by path only when the addon exists; never preload them.
+`addons/GodotGooglePlayBilling` exist, else a mock (desktop, CI). The real provider scripts look plugin
+classes up by name at runtime (`_c("MobileAds")`, untyped) so the editor shows no errors without the plugins;
+never write a plugin class name or type directly in them, and never preload them.
 `core/monetization/ad_config.gd` holds Google TEST ad IDs and a marked place for real ones; keep it test-only in git
 until release. `IAP.purchase()`, `IAP.restore_purchases()`, signals `purchase_finished`, `restore_finished`.
 
@@ -157,9 +158,9 @@ Per-game params (defined in tools/gen_levels.py):
 | tower_stack | Sky Stacker (one-tap stacker) | target_height, speed, speed_step, block_width | perfect drops |
 | block_puzzle | Block Fit (8x8 drag pieces, clear lines) | grid, goal (lines/clear), target_lines, prefilled, piece_set | score |
 | number_merge | Merge Tiles (2048-like swipe) | none: endless only (games.json `endless` block: ramp_score) | high score |
-| bubble_shooter | Bubble Burst | rows, colors, shots | shots left |
+| bubble_shooter | Bubble Burst (aim-and-pop) | goal (clear/color/gems), layout, rows, colors, shots, drop_every, target_color, target_n, gems; also has an endless mode | shots left (endless: score) |
 | klondike | Klondike Solitaire | deck (52 card codes, verified winnable), draw 1/3, undos (-1 = unlimited), time_k | effort = max(moves, seconds * time_k), lower better |
-Tube Sort, Block Fit, Sky Stacker, Klondike and Merge Tiles (endless only) are playable; Fruit Fusion and Bubble Burst are placeholders (stub_game.gd). `status` in games.json tracks this.
+Tube Sort, Block Fit, Sky Stacker, Klondike, Bubble Burst and Merge Tiles (endless only) are playable; Fruit Fusion is a placeholder (stub_game.gd). `status` in games.json tracks this.
 
 ## Add or implement a game
 1. Create `games/<id>/` with `game.gd` (`extends BaseGame`) and `game.tscn` whose
