@@ -6,7 +6,7 @@ signal settings_changed(key: String, value: Variant)
 signal no_ads_changed(enabled: bool)
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 1
+const SAVE_VERSION := 2  # 2: added "highscores" (additive, old saves load unchanged)
 
 var data: Dictionary = {}
 
@@ -21,6 +21,7 @@ func _default_data() -> Dictionary:
 		"settings": {"sound": true, "music": true, "vibration": true},
 		"no_ads": false,
 		"progress": {},  # game_id -> {"stars": [int per level]}
+		"highscores": {},  # game_id -> best endless score
 	}
 
 
@@ -38,6 +39,9 @@ func load_game() -> void:
 			data.settings.merge(parsed[key], true)
 		else:
 			data[key] = parsed[key]
+	data.version = SAVE_VERSION
+	if typeof(data.get("highscores")) != TYPE_DICTIONARY:
+		data.highscores = {}
 
 
 func save_game() -> void:
@@ -84,6 +88,21 @@ func record_result(game_id: String, level: int, stars: int) -> bool:
 	if stars <= int(arr[level]):
 		return false
 	arr[level] = clampi(stars, 0, 3)
+	save_game()
+	return true
+
+
+# --- Endless high scores ----------------------------------------------------
+
+func get_high_score(game_id: String) -> int:
+	return int(data.highscores.get(game_id, 0))
+
+
+## Records an endless run's final score. Returns true if it beat the previous best.
+func record_score(game_id: String, score: int) -> bool:
+	if score <= get_high_score(game_id):
+		return false
+	data.highscores[game_id] = score
 	save_game()
 	return true
 

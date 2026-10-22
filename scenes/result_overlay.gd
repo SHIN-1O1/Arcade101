@@ -11,6 +11,9 @@ var won := false
 var stars := 0
 var stat := ""  # e.g. "Score 120", shown in a pill under the stars
 var new_best := false
+var endless := false  # endless run: game-over card with score and best instead of stars
+var score := 0
+var high_score := 0
 var accent := FX.TANGERINE
 var on_next := Callable()  # invalid when there is no next level
 var on_retry := Callable()
@@ -42,18 +45,27 @@ func _ready() -> void:
 	box.add_theme_constant_override("separation", 18)
 	_card.add_child(box)
 
-	var head := UI.title("Level Complete!" if won else "Level Failed", 60,
-		FX.LEMON if won else Color("#ffd9cf"))
+	var head_text := "Level Complete!" if won else "Level Failed"
+	if endless:
+		head_text = "New best!" if new_best else "Game over"
+	var head := UI.title(head_text, 60, FX.LEMON if (won or endless) else Color("#ffd9cf"))
 	head.name = "Head"
 	box.add_child(head)
-	if not won:
+	if not won and not endless:
 		box.add_child(UI.label("So close! Give it another go.", 30, Color(1, 1, 1, 0.8)))
-	_row = StarRow.new()
-	_row.earned = stars if won else 0
-	box.add_child(_row)
-
 	var info: Array[Control] = []
-	if stat != "":
+	if endless:
+		var big := UI.title(str(score), 110, FX.LEMON if new_best else Color.WHITE, Color(0, 0, 0, 0.5))
+		box.add_child(big)
+		info.append(big)
+		var pill := _pill("Best  %d" % high_score)
+		box.add_child(pill)
+		info.append(pill)
+	else:
+		_row = StarRow.new()
+		_row.earned = stars if won else 0
+		box.add_child(_row)
+	if stat != "" and not endless:
 		var pill := _pill(stat + ("   ·   New best!" if new_best else ""))
 		box.add_child(pill)
 		info.append(pill)
@@ -61,7 +73,10 @@ func _ready() -> void:
 	var buttons: Array = []
 	var primary: Button
 	var secondary: Array = []
-	if not won:
+	if endless:
+		primary = UI.button("Play again", _press.bind(on_retry), UI.GOOD.darkened(0.08) if new_best else FX.TANGERINE, 46)
+		secondary = [["Home", on_levels]]
+	elif not won:
 		primary = UI.button("Retry", _press.bind(on_retry), FX.TANGERINE, 46)
 		secondary = [["Levels", on_levels]]
 	elif on_next.is_valid():
@@ -122,7 +137,7 @@ func _intro(head: Control, info: Array[Control], buttons: Array) -> void:
 
 	if won:
 		FX.burst(self, _card.position + Vector2(_card.size.x / 2.0, 40), [FX.LEMON, FX.TANGERINE, accent, UI.GOOD], 40, 1.1)
-		for i in stars:
+		for i in (0 if endless else stars):
 			_row.pop_star(i)
 			var c := _row.global_position - global_position + _row.star_pos(i)
 			FX.burst(self, c, [FX.LEMON, Color.WHITE], 18, 0.6)
@@ -184,7 +199,7 @@ func _draw_card() -> void:
 	# Coloured header band behind the title, in the game's own colour.
 	var head: Control = _card.find_child("Head", true, false)
 	var band_h := head.position.y + head.size.y + 46.0 if head else 120.0
-	var band := accent if won else Color("#c8553d")
+	var band := accent if (won or endless) else Color("#c8553d")
 	FX.draw_round_gradient(_card, Rect2(0, 0, r.size.x, band_h), 44, band.lightened(0.15), band.darkened(0.2), false)
 	_card.draw_rect(Rect2(0, band_h - 4, r.size.x, 4), Color(0, 0, 0, 0.25))
 	FX.draw_glow(_card, Rect2(r.size.x * 0.1, -band_h * 0.3, r.size.x * 0.8, band_h), Color(1, 1, 1, 0.22))

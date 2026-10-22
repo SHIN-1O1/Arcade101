@@ -1,9 +1,9 @@
-"""Regenerates games/<id>/levels.json with a smooth difficulty curve.
+"""Regenerates games/<id>/levels.json (endless-only games such as number_merge have none) with a smooth difficulty curve.
 Run from the project root:  python tools/gen_levels.py
 Hand-edit the JSON afterwards if a level needs tuning; re-running overwrites it.
 Every level has "seed" (deterministic layout) and "stars": [1-star, 2-star, 3-star]
 thresholds for that game's star metric (see "star_metric")."""
-import json, math, os
+import json, os
 
 N = 30
 
@@ -85,28 +85,6 @@ def block_puzzle(i, t):
     return {"grid": 8, "goal": "lines", "target_lines": lines, "prefilled": ri(0, 14, t),
             "piece_set": piece_set, "stars": [0, lines * 22, lines * 34]}
 
-# (target_tile, grid, blockers, limited) per level: rising targets, tighter boards, then blockers.
-NUMBER_MERGE = [
-    (64, 5, 0, 0), (64, 4, 0, 0), (128, 5, 0, 0), (128, 4, 0, 0), (128, 4, 1, 0),
-    (256, 5, 0, 0), (256, 5, 1, 0), (256, 4, 0, 0), (256, 4, 0, 1), (256, 5, 2, 0),
-    (512, 6, 0, 0), (512, 5, 0, 0), (512, 5, 1, 0), (512, 4, 0, 0), (512, 5, 2, 1),
-    (512, 4, 1, 0), (1024, 6, 0, 0), (1024, 5, 0, 0), (1024, 6, 3, 0), (1024, 5, 1, 0),
-    (512, 5, 2, 1), (1024, 5, 2, 0), (1024, 4, 0, 0), (1024, 5, 2, 1), (1024, 5, 3, 0),
-    (1024, 6, 3, 1), (1024, 5, 3, 1), (1024, 6, 4, 0), (1024, 4, 0, 1), (2048, 6, 2, 0),
-]
-
-def number_merge(i, t):
-    # Every move spawns a 2 (90%) or 4 (10%) = 2.2 on average, so reaching `target` needs at least
-    # target / 2.2 moves ("par"); leftover tiles on the board cost extra. Stars count moves used:
-    # 1 = reach the target (the first threshold only scales the HUD star meter: the move limit when
-    # there is one, else 2x par), 2 / 3 = within K2 / K3 times par.
-    target, grid, blockers, limited = NUMBER_MERGE[i]
-    par = math.ceil(target / 2.2)
-    k3, k2 = lerp(1.22, 1.14, t), lerp(1.45, 1.3, t)
-    one = math.ceil(par * lerp(1.75, 1.5, t)) if limited else par * 2
-    return {"grid": grid, "target_tile": target, "blockers": blockers, "move_limit": one if limited else 0,
-            "par": par, "stars": [one, math.ceil(par * k2), math.ceil(par * k3)]}
-
 def bubble_shooter(i, t):
     return {"rows": ri(4, 11, t), "colors": ri(3, 6, t), "shots": ri(30, 40, t),
             "stars": [0, ri(8, 6, t), ri(14, 10, t)]}
@@ -116,7 +94,6 @@ GAMES = {
     "color_sort":     (color_sort,     "moves_used (lower is better)"),
     "tower_stack":    (tower_stack,    "perfect_drops"),
     "block_puzzle":   (block_puzzle,   "score"),
-    "number_merge":   (number_merge,   "moves_used (lower is better)"),
     "bubble_shooter": (bubble_shooter, "shots_left"),
 }
 

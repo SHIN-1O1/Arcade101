@@ -71,12 +71,57 @@ func _card(game: Dictionary) -> GameCard:
 	c.game = game
 	c.stars = Save.total_stars(id)
 	c.max_stars = Games.level_count(id) * 3
+	c.levels = Games.has_levels(id)
+	c.best = Save.get_high_score(id) if Games.has_endless(id) else -1
 	c.custom_minimum_size = Vector2(0, 272)
 	c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	UI.flat(c)
 	UI.squash(c, 0.95)
-	UI.wire(c, func(): Nav.to_level_select(id))
+	UI.wire(c, func(): _open(id))
 	return c
+
+
+## Level-only and endless-only games open directly; a game with both modes asks first.
+func _open(id: String) -> void:
+	if Games.has_levels(id) and Games.has_endless(id):
+		_pick_mode(id)
+	else:
+		Nav.open_game(id)
+
+
+func _pick_mode(id: String) -> void:
+	var game := Games.get_game(id)
+	var layer := Control.new()
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var dim := ColorRect.new()
+	dim.color = Color(0.03, 0.02, 0.1, 0.7)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.gui_input.connect(func(e: InputEvent):
+		if e is InputEventMouseButton and e.pressed and e.device != InputEvent.DEVICE_ID_EMULATION:
+			layer.queue_free())
+	layer.add_child(dim)
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", UI.card_box())
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 18)
+	card.add_child(box)
+	box.add_child(UI.title(game.get("name", id), 52, FX.LEMON))
+	var camp := UI.button("Campaign", func(): Nav.to_level_select(id), FX.TANGERINE, 40)
+	camp.custom_minimum_size = Vector2(440, 100)
+	box.add_child(camp)
+	box.add_child(UI.label("%d / %d stars" % [Save.total_stars(id), Games.level_count(id) * 3], 24, Color(1, 1, 1, 0.75)))
+	var endless := UI.button("Endless", func(): Nav.play_endless(id), UI.GOOD.darkened(0.08), 40)
+	endless.custom_minimum_size = Vector2(440, 100)
+	box.add_child(endless)
+	box.add_child(UI.label("Best %d" % Save.get_high_score(id), 24, Color(1, 1, 1, 0.75)))
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.add_child(card)
+	layer.add_child(center)
+	add_child(layer)
+	card.pivot_offset = card.size / 2.0
+	FX.pop(card, 0.8, 0.25)
 
 
 func _refresh_ads_button() -> void:
@@ -88,6 +133,8 @@ class GameCard extends Button:
 	var game: Dictionary
 	var stars := 0
 	var max_stars := 90
+	var levels := true  # has a campaign (star bar)
+	var best := -1  # endless best score, -1 = no endless mode
 
 	func _draw() -> void:
 		var col := Color(game.get("color", "#8e7dbe"))
@@ -104,14 +151,24 @@ class GameCard extends Button:
 			Color.WHITE, font)
 		FX.draw_text_centered(self, Vector2(cx, r.position.y + r.size.y * 0.76), game.get("tagline", ""), 21,
 			Color(1, 1, 1, 0.82), font)
-		# Star progress bar.
 		var bar := Rect2(r.position.x + 56, r.position.y + r.size.y * 0.85, r.size.x - 80, 20)
-		var track := UI.box(Color(0, 0, 0, 0.32), 10)
-		draw_style_box(track, bar)
-		var k := clampf(float(stars) / maxf(1.0, max_stars), 0.0, 1.0)
-		if k > 0.0:
-			draw_style_box(UI.box(FX.LEMON, 10), Rect2(bar.position, Vector2(maxf(20.0, bar.size.x * k), bar.size.y)))
-		FX.draw_star(self, Vector2(r.position.x + 34, bar.get_center().y), 17.0)
+		if levels:  # star progress bar
+			var track := UI.box(Color(0, 0, 0, 0.32), 10)
+			draw_style_box(track, bar)
+			var k := clampf(float(stars) / maxf(1.0, max_stars), 0.0, 1.0)
+			if k > 0.0:
+				draw_style_box(UI.box(FX.LEMON, 10), Rect2(bar.position, Vector2(maxf(20.0, bar.size.x * k), bar.size.y)))
+			FX.draw_star(self, Vector2(r.position.x + 34, bar.get_center().y), 17.0)
+		if best >= 0:
+			if levels:  # both modes: best score as a small tag in the corner
+				var tag := Rect2(r.position.x + 10, r.position.y + 8, 112, 34)
+				draw_style_box(UI.box(Color(0.05, 0.04, 0.16, 0.8), 17), tag)
+				FX.draw_text_centered(self, tag.get_center(), "BEST %d" % best, 20, FX.LEMON, font)
+			else:  # endless only: best score replaces the star bar
+				var pill := Rect2(r.position.x + 24, r.position.y + r.size.y * 0.82, r.size.x - 48, 40)
+				draw_style_box(UI.box(Color(0, 0, 0, 0.32), 20), pill)
+				FX.draw_text_centered(self, pill.get_center(), "BEST  %d" % best if best > 0 else "ENDLESS", 26,
+					FX.LEMON, font)
 		if game.get("status", "") == "placeholder":
 			var tag := Rect2(r.end.x - 96, r.position.y + 8, 84, 34)
 			draw_style_box(UI.box(Color(0.05, 0.04, 0.16, 0.8), 17), tag)

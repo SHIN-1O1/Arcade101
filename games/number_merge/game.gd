@@ -1,9 +1,10 @@
 extends BaseGame
-## Merge Tiles: swipe (or arrow keys / WASD) to slide every tile; equal tiles merge into their sum.
-## Reach the target tile to win. Fewer moves = more stars. Some levels have immovable blockers
-## and/or a move limit; the level fails when the limit runs out or no move is left.
-## Level data: "grid", "target_tile", "blockers", "move_limit" (0 = none), "stars" (moves, lower better; the first is the move limit, or 2x par when there is none).
-## Grid cells: 0 empty, -1 blocker, otherwise the tile value. Drawn in code with the FX kit.
+## Merge Tiles (endless): swipe (or arrow keys / WASD) to slide every tile; equal tiles merge into
+## their sum and add that sum to the score. There are no levels: the run ends when no move is left
+## and only the high score counts. The board is fixed 4x4. As the score rises (difficulty() from
+## BaseGame, ramping to "ramp_score" in games.json) more 4s spawn and now and then a stone appears
+## that crumbles after a few moves. Undo is a limited resource (UNDOS per run).
+## Grid cells: 0 empty, -1 stone, otherwise the tile value. Drawn in code with the FX kit.
 
 const FX := preload("res://core/fx.gd")
 const INDIGO := Color("#2B2A6B")
@@ -13,14 +14,16 @@ const BOARD_BG := Color("#1c1b4a")
 const CELL_BG := Color("#2d2c78")
 const STONE := Color("#5b59b0")
 const BLOCKER := -1
-const HEADER := 130.0
+const HEADER := 8.0  # the host's Score / Best bar sits above the game area
 const BOTTOM_BAR := 128.0
 const SLIDE_TIME := 0.12
 const POP_TIME := 0.22
 const SPAWN_TIME := 0.18
 const SWIPE_MIN := 36.0  # pixels of drag before a swipe counts
-const WIN_DELAY := 0.8
 const FAIL_DELAY := 0.7
+const UNDOS := 3
+const GRID := 4
+const STONE_LIFE := 24  # moves before a stone crumbles
 const BIG_MERGE := 64  # merges at least this big get a particle burst
 const TILE_COLORS := {
 	2: Color("#8E9CFF"), 4: Color("#5CC8FF"), 8: Color("#2EC4B6"), 16: Color("#7ED957"),
@@ -31,17 +34,17 @@ const TILE_COLORS := {
 const DX := [0, 1, 0, -1]
 const DY := [-1, 0, 1, 0]
 
-var n := 4
-var target := 256
-var move_limit := 0
+var n := GRID
 var grid: Array[int] = []
 var moves := 0
-var best := 0
+var score := 0
+var undos := UNDOS
+var stones: Dictionary = {}  # cell -> moves left before it crumbles
 var rng: RandomNumberGenerator
-var history: Array = []  # each entry: {grid, moves, rng_state}
+var history: Array = []  # each entry: {grid, moves, score, stones, rng_state}
 var _undo_btn: Button
-var _reset_btn: Button
 var _finished := false
+var _floats: Array = []  # {cell, text, t}: rising "+n" labels
 
 # Visual-only animation state; `grid` is always already up to date.
 var _slides: Array = []  # {from, to, v} for every tile that existed before the move
@@ -50,7 +53,6 @@ var _pending_pops: Array = []  # merged cells (revealed when the slide ends)
 var _pending_spawn := -1
 var _pops: Dictionary = {}  # cell -> 0..1 progress of the merge pop
 var _spawns: Dictionary = {}  # cell -> 0..1 progress of the spawn grow-in
-var _glow := 0.0
 var _time := 0.0
 var _press := Vector2.ZERO
 var _pressing := false
@@ -60,29 +62,25 @@ var _swiped := false
 func _on_start() -> void:
 	for c in get_children():
 		c.queue_free()
-	n = int(level.get("grid", 4))
-	target = int(level.get("target_tile", 256))
-	move_limit = int(level.get("move_limit", 0))
+	n = GRID
 	rng = make_rng()
 	grid.clear()
 	grid.resize(n * n)
 	grid.fill(0)
-	for i in int(level.get("blockers", 0)):
-		var cell := _random_empty()
-		if cell != -1:
-			grid[cell] = BLOCKER
+	stones.clear()
 	_spawn()
 	_spawn()
 	moves = 0
-	best = _max_tile()
+	score = 0
+	undos = UNDOS
 	history = []
 	_slides.clear()
 	_pops.clear()
 	_spawns.clear()
+	_floats.clear()
 	_pending_pops.clear()
 	_pending_spawn = -1
 	_slide_t = 1.0
-	_glow = 0.0
 	_finished = false
 	_pressing = false
 	_build_buttons()
@@ -103,10 +101,8 @@ func _build_buttons() -> void:
 	row.add_theme_constant_override("separation", 20)
 	add_child(row)
 	_undo_btn = _make_button("Undo", undo)
-	_reset_btn = _make_button("Reset", reset)
-	for b in [_undo_btn, _reset_btn]:
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(b)
+	_undo_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(_undo_btn)
 	_undo_btn.disabled = true
 
 
@@ -117,20 +113,13 @@ func _make_button(text: String, on_press: Callable) -> Button:
 
 
 func _report() -> void:
-	status_changed.emit("Goal %d  ·  Best %d" % [target, best])
-	report_progress(moves, true)
+	report_score(score)
 	if _undo_btn:
-		_undo_btn.disabled = history.is_empty() or _done or _finished
+		_undo_btn.text = "Undo  ·  %d left" % undos
+		_undo_btn.disabled = history.is_empty() or undos <= 0 or _done or _finished
 
 
 # --- game logic -------------------------------------------------------------
-
-func _max_tile() -> int:
-	var m := 0
-	for v in grid:
-		m = maxi(m, v)
-	return m
-
 
 func _random_empty() -> int:
 	var empty: Array[int] = []
@@ -142,13 +131,40 @@ func _random_empty() -> int:
 	return empty[rng.randi() % empty.size()]
 
 
-## Adds a 2 (90%) or 4 (10%) to a random empty cell; returns its index or -1.
+## Adds a 2 or a 4 to a random empty cell; the share of 4s grows from 10% to 35% with difficulty.
 func _spawn() -> int:
 	var cell := _random_empty()
 	if cell == -1:
 		return -1
-	grid[cell] = 2 if rng.randf() < 0.9 else 4
+	grid[cell] = 4 if rng.randf() < 0.10 + 0.25 * difficulty(score) else 2
 	return cell
+
+
+## Occasionally drops a stone on an empty cell once the score is up (never when the board is tight).
+func _maybe_stone() -> void:
+	var d := difficulty(score)
+	if d < 0.2 or stones.size() >= (1 if d < 0.6 else 2):
+		return
+	var empty := 0
+	for v in grid:
+		if v == 0:
+			empty += 1
+	if empty < 5 or rng.randf() > 0.03 + 0.07 * d:
+		return
+	var cell := _random_empty()
+	grid[cell] = BLOCKER
+	stones[cell] = STONE_LIFE
+	_spawns[cell] = 0.0
+
+
+## Counts stones down after every move; the one that hits zero crumbles away.
+func _tick_stones() -> void:
+	for c in stones.keys():
+		stones[c] -= 1
+		if stones[c] <= 0:
+			stones.erase(c)
+			grid[c] = 0
+			FX.burst(self, _cell_center(_layout(), c), [STONE, STONE.lightened(0.4)], 10, 0.5)
 
 
 ## Slides grid `g` (n x n) one step in direction dir (0 up, 1 right, 2 down, 3 left), in place.
@@ -209,37 +225,38 @@ static func can_move(g: Array, size_n: int) -> bool:
 
 
 func undo() -> void:
-	if history.is_empty() or _done or _finished:
+	if history.is_empty() or undos <= 0 or _done or _finished:
 		return
 	_settle()
 	var h: Dictionary = history.pop_back()
 	grid = h.grid
 	moves = h.moves
+	score = h.score
+	stones = h.stones
 	rng.state = h.rng_state
+	undos -= 1
 	_slides.clear()
 	_pops.clear()
 	_spawns.clear()
+	_floats.clear()
 	Feedback.sfx("tap")
 	_report()
 	queue_redraw()
-
-
-func reset() -> void:
-	if _done or _finished:
-		return
-	_on_start()
 
 
 func move(dir: int) -> void:
 	if _done or _finished:
 		return
 	_settle()
-	var snapshot := {"grid": grid.duplicate(), "moves": moves, "rng_state": rng.state}
+	var snapshot := {"grid": grid.duplicate(), "moves": moves, "score": score,
+		"stones": stones.duplicate(), "rng_state": rng.state}
 	var rec: Array = []
 	if not step(grid, n, dir, rec):
 		Feedback.vibrate(10)  # nothing moved: no move spent, no spawn
 		return
 	history.append(snapshot)
+	if history.size() > UNDOS:
+		history.pop_front()
 	moves += 1
 	_slides = rec
 	_slide_t = 0.0
@@ -249,21 +266,17 @@ func move(dir: int) -> void:
 		if r.merged and not _pending_pops.has(r.to):
 			_pending_pops.append(r.to)
 			biggest = maxi(biggest, grid[r.to])
+			score += grid[r.to]
+			_floats.append({"cell": r.to, "text": "+%d" % grid[r.to], "t": 0.0})
+	_tick_stones()
 	_pending_spawn = _spawn()
-	best = maxi(best, _max_tile())
+	_maybe_stone()
 	Feedback.sfx("merge" if biggest > 0 else "tap")
 	if biggest >= BIG_MERGE:
 		Feedback.vibrate(25)
+		FX.shake(self, 5.0, 0.2)
 	_report()
-	if _max_tile() >= target:
-		_finished = true
-		var tw := create_tween()
-		tw.tween_interval(SLIDE_TIME + WIN_DELAY)
-		tw.tween_callback(_finish_win)
-		get_tree().create_timer(SLIDE_TIME + 0.05).timeout.connect(_celebrate)
-	elif move_limit > 0 and moves >= move_limit:
-		_lose()
-	elif not can_move(grid, n):
+	if not can_move(grid, n):
 		_lose()
 	queue_redraw()
 
@@ -272,20 +285,8 @@ func _lose() -> void:
 	_finished = true
 	var tw := create_tween()
 	tw.tween_interval(SLIDE_TIME + FAIL_DELAY)
-	tw.tween_callback(fail)
+	tw.tween_callback(func(): end_run(score))
 	_report()
-
-
-func _finish_win() -> void:
-	win(stars_for(moves, true))
-
-
-func _celebrate() -> void:
-	_glow = 1.0
-	FX.shake(self, 12.0, 0.35)
-	var cols: Array = [LEMON, TANGERINE, Color.WHITE]
-	FX.burst(self, Vector2(size.x * 0.3, size.y * 0.35), cols, 40, 1.3)
-	FX.burst(self, Vector2(size.x * 0.7, size.y * 0.35), cols, 40, 1.3)
 
 
 ## Snap an in-progress slide to its end (before the next move or undo).
@@ -395,11 +396,12 @@ func _process(delta: float) -> void:
 		busy = true
 		if _spawns[c] >= 1.0:
 			_spawns.erase(c)
-	if _glow > 0.0:
-		_glow = maxf(0.0, _glow - delta * 0.5)
+	for f in _floats:
+		f.t += delta / 0.7
+	while not _floats.is_empty() and _floats[0].t >= 1.0:
+		_floats.pop_front()
+	if not _floats.is_empty():
 		busy = true
-	if _finished:
-		busy = true  # keep the winning tile pulsing
 	if busy:
 		queue_redraw()
 
@@ -442,7 +444,6 @@ func _draw() -> void:
 	var lay := _layout()
 	if lay.cell < 4.0:  # not laid out yet (size is zero on the first frame)
 		return
-	_draw_header(lay)
 	var o: Vector2 = lay.origin
 	var side: float = lay.side
 	FX.draw_shadow(self, Rect2(o.x - 10.0, o.y + side - 26.0, side + 20.0, 56.0))
@@ -461,30 +462,28 @@ func _draw() -> void:
 			var b := Vector2(s.to % n, s.to / n)
 			var p := a.lerp(b, k)
 			_draw_tile_at(lay, _cell_rect(lay, p.x, p.y), s.v, 1.0)
+		for i in grid.size():  # stones never move, so they show during slides too
+			if grid[i] == BLOCKER:
+				_draw_stone(_cell_rect(lay, i % n, i / n), stones.get(i, 0), 1.0)
 	else:
 		for i in grid.size():
 			var v := grid[i]
 			if v == 0:
 				continue
 			var r := _cell_rect(lay, i % n, i / n)
-			if v == BLOCKER:
-				_draw_blocker(r)
-				continue
 			var sc := 1.0
 			if _pops.has(i):
 				sc = 1.0 + 0.2 * sin(PI * float(_pops[i]))
 			elif _spawns.has(i):
 				sc = FX.ease_smooth(float(_spawns[i]))
-			var winning := _finished and v >= target
-			if winning:
-				FX.draw_glow(self, r.grow(r.size.x * 0.4), Color(LEMON, 0.5 + 0.3 * sin(_time * 8.0)))
-			_draw_tile_at(lay, r, v, sc)
-	# blockers never move, so they are drawn during slides too
-	if _slide_t < 1.0:
-		for i in grid.size():
-			if grid[i] == BLOCKER:
-				_draw_blocker(_cell_rect(lay, i % n, i / n))
-	if level_index == 0 and moves < 4 and not _finished:
+			if v == BLOCKER:
+				_draw_stone(r, stones.get(i, 0), sc)
+			else:
+				_draw_tile_at(lay, r, v, sc)
+	for f in _floats:
+		var c := _cell_center(lay, f.cell) + Vector2(0, -lay.cell * (0.3 + 0.6 * float(f.t)))
+		FX.draw_text_centered(self, c, f.text, int(lay.cell * 0.3), Color(LEMON, 1.0 - float(f.t) * float(f.t)), FX.font())
+	if moves < 4 and not _finished:
 		FX.draw_text_centered(self, Vector2(size.x / 2.0, o.y + side + 34.0),
 			"Swipe to slide. Equal tiles merge!", 30, Color(1, 1, 1, 0.8), FX.font())
 
@@ -500,24 +499,9 @@ func _draw_tile_at(lay: Dictionary, r: Rect2, v: int, sc: float) -> void:
 	FX.draw_text_centered(self, c + Vector2(0, -rr.size.y * 0.02), str(v), int(fs * sc), Color(1, 1, 1, 0.97), FX.font())
 
 
-func _draw_blocker(r: Rect2) -> void:
-	FX.draw_tile(self, r.grow(-r.size.x * 0.04), STONE, int(r.size.x * 0.14))
-	FX.draw_lock(self, r.get_center(), r.size.x * 0.34, Color(1, 1, 1, 0.55))
-
-
-func _draw_header(lay: Dictionary) -> void:
-	var font := FX.font()
-	# goal tile (left)
-	var goal := Rect2(28.0, 44.0, 84.0, 84.0)
-	FX.draw_text_centered(self, Vector2(goal.get_center().x, 26.0), "GOAL", 24, Color(1, 1, 1, 0.7), font)
-	var gl := Rect2(goal.position + Vector2(8, 8), goal.size - Vector2(16, 16))
-	FX.draw_tile(self, gl, _tile_color(target), 14)
-	var gd := str(target).length()
-	FX.draw_text_centered(self, gl.get_center(), str(target), 40 if gd <= 2 else 32 if gd == 3 else 26, Color(1, 1, 1, 0.97), font)
-	# moves (centre)
-	var cx := size.x * 0.5
-	FX.draw_text_centered(self, Vector2(cx, 26.0), "MOVES", 24, Color(1, 1, 1, 0.7), font)
-	var txt := str(moves) if move_limit == 0 else "%d / %d" % [moves, move_limit]
-	var warn := move_limit > 0 and move_limit - moves <= 5
-	FX.draw_text_centered(self, Vector2(cx, 84.0), txt, 56 if move_limit == 0 else 46,
-		TANGERINE if warn else Color.WHITE, font)
+func _draw_stone(r: Rect2, life: int, sc: float) -> void:
+	if sc <= 0.01:
+		return
+	var rr := Rect2(r.get_center() - r.size * sc / 2.0, r.size * sc).grow(-r.size.x * 0.04)
+	FX.draw_tile(self, rr, STONE, int(r.size.x * 0.14))
+	FX.draw_text_centered(self, rr.get_center(), str(life), int(r.size.x * 0.34 * sc), Color(1, 1, 1, 0.6), FX.font())
