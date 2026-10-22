@@ -3,6 +3,12 @@ extends BaseGame
 ## A pour is legal onto an empty tube or a tube whose top is the same colour (and has room).
 ## Level data: "tubes" (bottom -> top colour indices), "capacity", "stars" (moves, lower better).
 ## Drawn in code with the shared FX kit (core/fx.gd): shadows, glossy balls, bursts, shake.
+##
+## Endless mode (is_endless()): a survival run of generated puzzles. Each puzzle comes from
+## generate(), which scrambles a solved board with exactly invertible reverse pours, so it is always
+## solvable (and `solution` holds a known way out). Colours, shuffle depth and the move budget grow
+## with difficulty(score). Solving scores points (more for spare moves and streaks); running out of
+## moves costs a life. Three lives, a few undos per run; the run ends at zero lives.
 
 const PALETTE: Array[Color] = [
 	Color("#e63946"), Color("#2a9df4"), Color("#3ddc84"), Color("#ffd23f"),
@@ -20,6 +26,12 @@ const LIFT_TIME := 0.12  # seconds to raise/lower the top ball
 const FLY_TIME := 0.36  # seconds for one ball to travel between tubes
 const FLY_STAGGER := 0.07
 const WIN_DELAY := 0.5  # celebrate a moment before the result overlay
+const LIVES := 3
+const UNDOS := 3  # undos per endless run
+const HUD_H := 64.0  # endless strip above the tubes: puzzle, lives, moves
+const EXTRA_LIFE_EVERY := 5  # a streak this long wins back a lost life
+const NEXT_DELAY := 0.9  # pause after losing a life before the next puzzle
+const BANNER_TIME := 1.4
 
 var tubes: Array = []
 var capacity := 4
@@ -28,6 +40,22 @@ var selected := -1
 var history: Array = []  # each entry: [from, to, count]
 var _undo_btn: Button
 var _reset_btn: Button
+
+# Endless run state
+var endless := false
+var rng: RandomNumberGenerator
+var score := 0
+var lives := LIVES
+var undos := UNDOS
+var puzzle_no := 0
+var streak := 0
+var budget := 0  # moves allowed on this puzzle
+var par := 0  # moves in the known solution (an upper bound on the optimum)
+var solution: Array = []  # [from, to] pours that solve the current puzzle from its start
+var _start_tubes: Array = []
+var _locked := false  # between puzzles: ignore taps
+var _banner := 0.0  # 1 -> 0 "Puzzle N" banner fade
+var _floats: Array = []  # {text, t, big}: rising score labels
 
 # Visual-only animation state; the game logic above is always already up to date.
 var _lift: Array[float] = []  # 0..1 per tube: how far its top ball is raised
@@ -46,19 +74,41 @@ var _sb_streak := StyleBoxFlat.new()
 func _on_start() -> void:
 	for c in get_children():
 		c.queue_free()
+	endless = is_endless()
+	_build_buttons()
+	if endless:
+		rng = make_rng()
+		score = 0
+		lives = LIVES
+		undos = UNDOS
+		puzzle_no = 0
+		streak = 0
+		_floats.clear()
+		report_score(0)
+		_next_puzzle()
+		return
 	capacity = int(level.get("capacity", 4))
-	tubes = []
+	var src: Array = []
 	for t in level.get("tubes", []):
 		var tube: Array = []
 		for c in t:
 			tube.append(int(c))  # JSON numbers load as floats
-		tubes.append(tube)
+		src.append(tube)
+	_load_puzzle(src)
+
+
+## Install a board (array of tubes) and clear per-puzzle state.
+func _load_puzzle(src: Array) -> void:
+	tubes = []
+	for t in src:
+		tubes.append(t.duplicate())
+	_start_tubes = src.duplicate(true)
 	moves = 0
 	selected = -1
 	history = []
 	_solved = false
+	_locked = false
 	_reset_anim()
-	_build_buttons()
 	_report()
 	queue_redraw()
 
@@ -100,15 +150,23 @@ func _make_button(text: String, on_press: Callable) -> Button:
 
 
 func _report() -> void:
-	status_changed.emit("Moves %d" % moves)
-	report_progress(moves, true)
+	if endless:
+		status_changed.emit("Moves %d / %d" % [moves, budget])
+		_undo_btn.text = "Undo  ·  %d" % undos
+	else:
+		status_changed.emit("Moves %d" % moves)
+		report_progress(moves, true)
 	if _undo_btn:
-		_undo_btn.disabled = history.is_empty() or _done or _solved
+		_undo_btn.disabled = history.is_empty() or _blocked() or (endless and undos <= 0)
+
+
+func _blocked() -> bool:
+	return _done or _solved or _locked
 
 
 # --- game logic -------------------------------------------------------------
 
-func top_run(t: Array) -> int:
+static func top_run(t: Array) -> int:
 	if t.is_empty():
 		return 0
 	var n := 0
@@ -144,13 +202,15 @@ func _is_complete(i: int) -> bool:
 
 
 func undo() -> void:
-	if history.is_empty() or _done or _solved:
+	if history.is_empty() or _blocked() or (endless and undos <= 0):
 		return
 	_land_all()
 	var h: Array = history.pop_back()
 	for i in h[2]:
 		tubes[h[0]].append(tubes[h[1]].pop_back())
 	moves -= 1
+	if endless:
+		undos -= 1
 	selected = -1
 	_lift.fill(0.0)
 	Feedback.sfx("tap")
@@ -159,13 +219,26 @@ func undo() -> void:
 
 
 func reset() -> void:
-	if _done or _solved:
+	if _blocked():
+		return
+	if endless:
+		# back to the starting board; the moves already spent stay spent
+		_land_all()
+		tubes = []
+		for t in _start_tubes:
+			tubes.append(t.duplicate())
+		history = []
+		selected = -1
+		_lift.fill(0.0)
+		Feedback.sfx("tap")
+		_report()
+		queue_redraw()
 		return
 	_on_start()
 
 
 func _tap(i: int) -> void:
-	if _done or _solved:
+	if _blocked():
 		return
 	if selected == -1:
 		if not tubes[i].is_empty():
@@ -212,12 +285,154 @@ func _do_pour(a: int, b: int) -> void:
 		var tw := create_tween()
 		tw.tween_interval(FLY_TIME + n * FLY_STAGGER + WIN_DELAY)
 		tw.tween_callback(_finish_win)
+	elif endless and moves >= budget:
+		_locked = true
+		var tw := create_tween()
+		tw.tween_interval(FLY_TIME + n * FLY_STAGGER + 0.3)
+		tw.tween_callback(_out_of_moves)
 	_report()
 
 
 func _finish_win() -> void:
+	if endless:
+		_puzzle_cleared()
+		return
 	win(stars_for(moves, true))
 	_report()
+
+
+# --- endless mode -----------------------------------------------------------
+
+## Colours (3 -> 9), shuffle depth and move budget for the current score.
+func _puzzle_params() -> Dictionary:
+	var d := difficulty(score)
+	var colors := 3 + roundi(d * 6.0)
+	var steps := roundi(colors * (6.0 + 6.0 * d))
+	return {"colors": colors, "steps": steps}
+
+
+func _next_puzzle() -> void:
+	var p := _puzzle_params()
+	var g := generate(rng, p.colors, 4, 2, p.steps)
+	capacity = 4
+	puzzle_no += 1
+	par = g.par
+	solution = g.solution
+	budget = ceili(par * 1.5) + 4
+	_load_puzzle(g.tubes)
+	_banner = 1.0
+	Feedback.sfx("select")
+
+
+func _puzzle_cleared() -> void:
+	streak += 1
+	var colors := 0
+	for t in tubes:
+		if not t.is_empty():
+			colors += 1
+	var base := 100 + 25 * (colors - 3)
+	var spare := 5 * maxi(0, budget - moves)
+	var combo := 20 * mini(streak - 1, 10)
+	var gained := base + spare + combo
+	score += gained
+	report_score(score)
+	_add_float("+%d" % gained, true)
+	if streak > 1:
+		_add_float("Streak x%d" % streak, false)
+	if streak % EXTRA_LIFE_EVERY == 0 and lives < LIVES:
+		lives += 1
+		_add_float("Extra life!", false)
+		Feedback.sfx("unlock")
+	else:
+		Feedback.sfx("clear")
+	_next_puzzle()
+
+
+func _out_of_moves() -> void:
+	if _done:
+		return
+	lives -= 1
+	streak = 0
+	Feedback.sfx("fail")
+	Feedback.vibrate(120)
+	FX.shake(self, 14.0, 0.4)
+	_add_float("Out of moves", false)
+	queue_redraw()
+	var tw := create_tween()
+	tw.tween_interval(NEXT_DELAY)
+	if lives <= 0:
+		tw.tween_callback(func(): end_run(score))
+	else:
+		tw.tween_callback(_next_puzzle)
+
+
+func _add_float(text: String, big: bool) -> void:
+	_floats.append({"text": text, "t": -0.25 * _floats.size(), "big": big})
+
+
+## Scramble a solved board with reverse pours. A reverse step lifts n balls of one colour off the
+## top of tube y and sets them on tube x; it is chosen so the forward pour x -> y moves exactly
+## those n balls (y keeps that colour on top or ends up empty, and x's top is a different colour,
+## x is empty, or y was full so the pour is capped at n). Replaying the steps backwards therefore
+## always solves the board, in `par` pours.
+## Deterministic for a given rng state. Returns {tubes, par, solution: [[from, to], ...]}.
+static func generate(rng: RandomNumberGenerator, colors: int, cap: int, empty: int, steps: int) -> Dictionary:
+	var count := colors + empty
+	var best_t: Array = []
+	var best_rev: Array = []
+	for attempt in 8:
+		var t: Array = []
+		var rev: Array = []
+		for c in colors:
+			var tube: Array = []
+			for k in cap:
+				tube.append(c)
+			t.append(tube)
+		for e in empty:
+			t.append([])
+		var last_x := -1
+		var last_y := -1
+		var tries := 0
+		while tries < steps * 60 and (rev.size() < steps or _board_solved(t, cap)):
+			tries += 1
+			var y := rng.randi_range(0, count - 1)
+			var x := rng.randi_range(0, count - 1)
+			if x == y or t[y].is_empty() or (x == last_y and y == last_x):
+				continue
+			var run := top_run(t[y])
+			var sz: int = t[y].size()
+			var lo := 1
+			var hi := run if run == sz else run - 1  # leave the same colour on top, or empty it
+			hi = mini(hi, cap - t[x].size())
+			if hi < lo:
+				continue
+			var c: int = t[y][-1]
+			if not t[x].is_empty() and t[x][-1] == c and sz != cap:
+				continue
+			var n := rng.randi_range(lo, hi)
+			for k in n:
+				t[x].append(t[y].pop_back())
+			rev.append([y, x])  # the forward pour that undoes this step
+			last_x = x
+			last_y = y
+		if _board_solved(t, cap):
+			continue
+		if rev.size() > best_rev.size():
+			best_t = t
+			best_rev = rev
+		if rev.size() >= steps:
+			break  # a walk that dead-ends early is dropped for a fresh one
+	var sol: Array = []
+	for i in range(best_rev.size() - 1, -1, -1):
+		sol.append([best_rev[i][1], best_rev[i][0]])
+	return {"tubes": best_t, "par": sol.size(), "solution": sol}
+
+
+static func _board_solved(t: Array, cap: int) -> bool:
+	for tube in t:
+		if not tube.is_empty() and (tube.size() != cap or top_run(tube) != cap):
+			return false
+	return true
 
 
 func _celebrate() -> void:
@@ -295,6 +510,14 @@ func _process(delta: float) -> void:
 		if _pulse[i] > 0.0:
 			_pulse[i] = maxf(0.0, _pulse[i] - delta * 1.5)
 			busy = true
+	if _banner > 0.0:
+		_banner = maxf(0.0, _banner - delta / BANNER_TIME)
+		busy = true
+	for f in _floats:
+		f["t"] = float(f["t"]) + delta / 1.3
+		busy = true
+	while not _floats.is_empty() and float(_floats[0]["t"]) >= 1.0:
+		_floats.pop_front()
 	for f in _flyers:
 		f["t"] = float(f["t"]) + delta / FLY_TIME
 	# flyers land in the order they were launched
@@ -329,7 +552,8 @@ func _layout() -> Dictionary:
 	var rows := maxi(1, ceili(n / float(MAX_COLS)))
 	var cols := maxi(1, ceili(n / float(rows)))
 	var area_w := size.x - 48.0
-	var area_h := size.y - BOTTOM_BAR - 16.0
+	var top := HUD_H if endless else 0.0
+	var area_h := size.y - BOTTOM_BAR - 16.0 - top
 	var row_h := area_h / rows
 	var tube_w := minf(104.0, (area_w - GAP * (cols - 1)) / cols)
 	# per row: headroom for the raised ball (1.3 balls) + the tube (capacity + 0.44 balls)
@@ -344,7 +568,7 @@ func _layout() -> Dictionary:
 		var in_row := mini(cols, n - r * cols)
 		var row_w := in_row * tube_w + (in_row - 1) * GAP
 		var x := (size.x - row_w) / 2.0 + c * (tube_w + GAP)
-		var y := 8.0 + r * row_h + (row_h - head - tube_h) / 2.0 + head
+		var y := top + 8.0 + r * row_h + (row_h - head - tube_h) / 2.0 + head
 		rects.append(Rect2(x, y, tube_w, tube_h))
 	return {"rects": rects, "ball": ball}
 
@@ -376,6 +600,8 @@ func _draw() -> void:
 		_draw_tube(i, rects[i], ball)
 	for f in _flyers:
 		_draw_ball(_flyer_pos(f), ball * 0.46, f["c"], true)
+	if endless:
+		_draw_hud()
 
 
 func _draw_tube(i: int, r: Rect2, ball: float) -> void:
@@ -444,3 +670,40 @@ func _set_tube_corners(sb: StyleBoxFlat, bottom_radius: int) -> void:
 
 func _draw_ball(c: Vector2, rad: float, idx: int, airborne: bool) -> void:
 	FX.draw_ball(self, c, rad, PALETTE[posmod(idx, PALETTE.size())], str(idx + 1), airborne)
+
+
+# --- endless HUD ------------------------------------------------------------
+
+func _draw_hud() -> void:
+	var y := HUD_H / 2.0 + 4.0
+	var font := FX.font()
+	draw_string(font, Vector2(24, y + 9), "Puzzle %d" % puzzle_no, HORIZONTAL_ALIGNMENT_LEFT, -1, 28, Color.WHITE)
+	for i in LIVES:
+		_draw_heart(Vector2(size.x / 2.0 + (i - 1) * 46.0, y), 17.0, i < lives)
+	var left := budget - moves
+	var col := Color.WHITE if left > 5 else (TANGERINE if left > 2 else Color("#ff5c5c"))
+	draw_string(font, Vector2(24, y + 9), "Moves %d/%d" % [moves, budget], HORIZONTAL_ALIGNMENT_RIGHT,
+		size.x - 48.0, 28, col)
+	if _banner > 0.0:
+		var a := minf(1.0, _banner * 2.5)
+		var c := Vector2(size.x / 2.0, size.y * 0.45)
+		var txt := "Puzzle %d" % puzzle_no
+		FX.draw_text_centered(self, c + Vector2(0, -(1.0 - _banner) * 30.0), txt, 64, Color(1, 1, 1, a), font)
+	for f in _floats:
+		var k := clampf(float(f["t"]), 0.0, 1.0)
+		if float(f["t"]) < 0.0:
+			continue
+		var big: bool = f["big"]
+		var p := Vector2(size.x / 2.0, size.y * (0.38 if big else 0.5)) + Vector2(0, -k * 90.0)
+		var fc := LEMON if big else Color.WHITE
+		FX.draw_text_centered(self, p, f["text"], 56 if big else 36, Color(fc, 1.0 - k * k), font)
+
+
+func _draw_heart(c: Vector2, r: float, full: bool) -> void:
+	var col := Color("#ff4d6d") if full else Color(1, 1, 1, 0.18)
+	draw_circle(c + Vector2(-r * 0.5, -r * 0.3), r * 0.55, col)
+	draw_circle(c + Vector2(r * 0.5, -r * 0.3), r * 0.55, col)
+	draw_colored_polygon(PackedVector2Array([c + Vector2(-r * 1.02, -r * 0.05),
+		c + Vector2(r * 1.02, -r * 0.05), c + Vector2(0, r * 1.0)]), col)
+	if full:
+		draw_circle(c + Vector2(-r * 0.55, -r * 0.45), r * 0.17, Color(1, 1, 1, 0.55))

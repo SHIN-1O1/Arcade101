@@ -2,6 +2,7 @@ extends Control
 ## Sound / music / vibration toggles, restore purchases, reset progress.
 
 const FX := preload("res://core/fx.gd")
+const Toast := preload("res://core/toast.gd")
 
 
 func _ready() -> void:
@@ -18,7 +19,15 @@ func _ready() -> void:
 	for key in ["sound", "music", "vibration"]:
 		rows.add_child(_toggle(key))
 
-	col.add_child(UI.button("Restore purchases", IAP.restore_purchases))
+	var restore := UI.button("Restore purchases", IAP.restore_purchases)
+	col.add_child(restore)
+	IAP.restore_finished.connect(func(found: bool, message: String):
+		restore.disabled = false
+		Toast.show_text(self, message if message != "" else
+			("Purchases restored" if found else "Nothing to restore"), FX.LEMON if found else Color.WHITE))
+	IAP.busy_changed.connect(func(busy: bool): restore.disabled = busy)
+	if Ads.privacy_options_required():  # EU/UK: players must be able to change their ad consent
+		col.add_child(UI.button("Privacy settings", Ads.show_privacy_options))
 	var reset := UI.button("Reset progress", func(): pass, UI.BAD)
 	reset.pressed.connect(func():
 		# Two taps to confirm.
@@ -31,7 +40,7 @@ func _ready() -> void:
 	col.add_child(reset)
 
 	await get_tree().process_frame
-	UI.stagger_pop([card, col.get_child(2), reset], 0.07, 0.05)
+	UI.stagger_pop([card, restore, reset], 0.07, 0.05)
 
 
 func _toggle(key: String) -> HBoxContainer:
