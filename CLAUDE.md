@@ -89,8 +89,9 @@ Next/Levels buttons (every 2nd win (`INTERSTITIAL_EVERY` in ad_config.gd), 60 s 
 Endless modes: call `on_level_finished(won)` with level_index -1 and wrap their "play again/home" the same way.
 Rewarded hook for hints/undo: `Ads.rewarded_available()`, `Ads.show_rewarded()`, signal `rewarded_finished(granted)`.
 Backends are chosen at startup: AdMob / Play Billing plugins on Android when `addons/admob` /
-`addons/GodotGooglePlayBilling` exist, else a mock (desktop, CI). The real provider scripts name plugin
-classes, so they are loaded by path only when the addon exists; never preload them.
+`addons/GodotGooglePlayBilling` exist, else a mock (desktop, CI). The real provider scripts look plugin
+classes up by name at runtime (`_c("MobileAds")`, untyped) so the editor shows no errors without the plugins;
+never write a plugin class name or type directly in them, and never preload them.
 `core/monetization/ad_config.gd` holds Google TEST ad IDs and a marked place for real ones; keep it test-only in git
 until release. `IAP.purchase()`, `IAP.restore_purchases()`, signals `purchase_finished`, `restore_finished`.
 
