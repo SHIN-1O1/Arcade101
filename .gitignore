@@ -19,3 +19,7 @@ build/
 __pycache__/
 .DS_Store
 Thumbs.db
+
+# Native ad/billing libraries are downloaded by the plugins (see docs/MONETIZATION.md)
+addons/admob/android/bin/
+addons/admob/ios/bin/
