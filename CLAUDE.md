@@ -51,10 +51,10 @@ Per-game params (defined in tools/gen_levels.py):
 | fruit_merge | Fruit Fusion (Suika-like drop & merge) | target_tier, spawn_max_tier, jar_width | score |
 | color_sort | Tube Sort (water/ball sort) | colors, capacity, empty_tubes | moves used, lower better |
 | tower_stack | Sky Stacker (one-tap stacker) | target_height, speed, speed_step, block_width | perfect drops |
-| block_puzzle | Block Fit (8x8 place pieces, clear lines) | grid, target_lines, prefilled, piece_set | score |
+| block_puzzle | Block Fit (8x8 drag pieces, clear lines) | grid, goal (lines/clear), target_lines, prefilled, piece_set | score |
 | number_merge | Merge Tiles (2048-like) | grid, target_tile, blockers, move_limit | moves used, lower better |
 | bubble_shooter | Bubble Burst | rows, colors, shots | shots left |
-All six are placeholders (stub_game.gd). `status` in games.json tracks this.
+Block Fit is playable; the other five are placeholders (stub_game.gd). `status` in games.json tracks this.
 
 ## Add or implement a game
 1. Create `games/<id>/` with `game.gd` (`extends BaseGame`) and `game.tscn` whose

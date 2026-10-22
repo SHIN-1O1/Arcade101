@@ -5,390 +5,420 @@
    "id": 1,
    "seed": 1000,
    "grid": 8,
-   "target_lines": 4,
+   "goal": "lines",
+   "target_lines": 3,
    "prefilled": 0,
    "piece_set": "basic",
    "stars": [
     0,
-    300,
-    600
+    66,
+    102
    ]
   },
   {
    "id": 2,
    "seed": 8919,
    "grid": 8,
-   "target_lines": 5,
-   "prefilled": 1,
+   "goal": "lines",
+   "target_lines": 4,
+   "prefilled": 0,
    "piece_set": "basic",
    "stars": [
     0,
-    393,
-    769
+    88,
+    136
    ]
   },
   {
    "id": 3,
    "seed": 16838,
    "grid": 8,
-   "target_lines": 6,
-   "prefilled": 1,
+   "goal": "clear",
+   "target_lines": 0,
+   "prefilled": 7,
    "piece_set": "basic",
    "stars": [
     0,
-    486,
-    938
+    88,
+    136
    ]
   },
   {
    "id": 4,
    "seed": 24757,
    "grid": 8,
-   "target_lines": 8,
-   "prefilled": 2,
+   "goal": "lines",
+   "target_lines": 5,
+   "prefilled": 1,
    "piece_set": "basic",
    "stars": [
     0,
-    579,
-    1107
+    110,
+    170
    ]
   },
   {
    "id": 5,
    "seed": 32676,
    "grid": 8,
-   "target_lines": 9,
+   "goal": "lines",
+   "target_lines": 5,
    "prefilled": 2,
    "piece_set": "basic",
    "stars": [
     0,
-    672,
-    1276
+    110,
+    170
    ]
   },
   {
    "id": 6,
    "seed": 40595,
    "grid": 8,
-   "target_lines": 10,
-   "prefilled": 3,
+   "goal": "clear",
+   "target_lines": 0,
+   "prefilled": 9,
    "piece_set": "basic",
    "stars": [
     0,
-    766,
-    1445
+    88,
+    136
    ]
   },
   {
    "id": 7,
    "seed": 48514,
    "grid": 8,
-   "target_lines": 11,
-   "prefilled": 4,
+   "goal": "lines",
+   "target_lines": 7,
+   "prefilled": 3,
    "piece_set": "basic",
    "stars": [
     0,
-    859,
-    1614
+    154,
+    238
    ]
   },
   {
    "id": 8,
    "seed": 56433,
    "grid": 8,
-   "target_lines": 13,
-   "prefilled": 4,
+   "goal": "lines",
+   "target_lines": 7,
+   "prefilled": 3,
    "piece_set": "basic",
    "stars": [
     0,
-    952,
-    1783
+    154,
+    238
    ]
   },
   {
    "id": 9,
    "seed": 64352,
    "grid": 8,
-   "target_lines": 14,
-   "prefilled": 5,
+   "goal": "clear",
+   "target_lines": 0,
+   "prefilled": 12,
    "piece_set": "basic",
    "stars": [
     0,
-    1045,
-    1952
+    132,
+    204
    ]
   },
   {
    "id": 10,
    "seed": 72271,
    "grid": 8,
-   "target_lines": 15,
-   "prefilled": 6,
+   "goal": "lines",
+   "target_lines": 8,
+   "prefilled": 4,
    "piece_set": "basic",
    "stars": [
     0,
-    1138,
-    2121
+    176,
+    272
    ]
   },
   {
    "id": 11,
    "seed": 80190,
    "grid": 8,
-   "target_lines": 16,
-   "prefilled": 6,
+   "goal": "lines",
+   "target_lines": 9,
+   "prefilled": 5,
    "piece_set": "extended",
    "stars": [
     0,
-    1231,
-    2290
+    198,
+    306
    ]
   },
   {
    "id": 12,
    "seed": 88109,
    "grid": 8,
-   "target_lines": 18,
-   "prefilled": 7,
+   "goal": "clear",
+   "target_lines": 0,
+   "prefilled": 14,
    "piece_set": "extended",
    "stars": [
     0,
-    1324,
-    2459
+    154,
+    238
    ]
   },
   {
    "id": 13,
    "seed": 96028,
    "grid": 8,
-   "target_lines": 19,
-   "prefilled": 7,
+   "goal": "lines",
+   "target_lines": 10,
+   "prefilled": 6,
    "piece_set": "extended",
    "stars": [
     0,
-    1417,
-    2628
+    220,
+    340
    ]
   },
   {
    "id": 14,
    "seed": 103947,
    "grid": 8,
-   "target_lines": 20,
-   "prefilled": 8,
+   "goal": "lines",
+   "target_lines": 11,
+   "prefilled": 6,
    "piece_set": "extended",
    "stars": [
     0,
-    1510,
-    2797
+    242,
+    374
    ]
   },
   {
    "id": 15,
    "seed": 111866,
    "grid": 8,
-   "target_lines": 21,
-   "prefilled": 9,
+   "goal": "clear",
+   "target_lines": 0,
+   "prefilled": 16,
    "piece_set": "extended",
    "stars": [
     0,
-    1603,
-    2966
+    176,
+    272
    ]
   },
   {
    "id": 16,
    "seed": 119785,
    "grid": 8,
-   "target_lines": 23,
-   "prefilled": 9,
+   "goal": "lines",
+   "target_lines": 12,
+   "prefilled": 7,
    "piece_set": "extended",
    "stars": [
     0,
-    1697,
-    3134
+    264,
+    408
    ]
   },
   {
    "id": 17,
    "seed": 127704,
    "grid": 8,
-   "target_lines": 24,
-   "prefilled": 10,
+   "goal": "lines",
+   "target_lines": 12,
+   "prefilled": 8,
    "piece_set": "extended",
    "stars": [
     0,
-    1790,
-    3303
+    264,
+    408
    ]
   },
   {
    "id": 18,
    "seed": 135623,
    "grid": 8,
-   "target_lines": 25,
-   "prefilled": 11,
+   "goal": "clear",
+   "target_lines": 0,
+   "prefilled": 18,
    "piece_set": "extended",
    "stars": [
     0,
-    1883,
-    3472
+    198,
+    306
    ]
   },
   {
    "id": 19,
    "seed": 143542,
    "grid": 8,
-   "target_lines": 26,
-   "prefilled": 11,
+   "goal": "lines",
+   "target_lines": 14,
+   "prefilled": 9,
    "piece_set": "extended",
    "stars": [
     0,
-    1976,
-    3641
+    308,
+    476
    ]
   },
   {
    "id": 20,
    "seed": 151461,
    "grid": 8,
-   "target_lines": 28,
-   "prefilled": 12,
+   "goal": "lines",
+   "target_lines": 14,
+   "prefilled": 9,
    "piece_set": "extended",
    "stars": [
     0,
-    2069,
-    3810
+    308,
+    476
    ]
   },
   {
    "id": 21,
    "seed": 159380,
    "grid": 8,
-   "target_lines": 29,
-   "prefilled": 12,
+   "goal": "clear",
+   "target_lines": 0,
+   "prefilled": 20,
    "piece_set": "extended",
    "stars": [
     0,
-    2162,
-    3979
+    220,
+    340
    ]
   },
   {
    "id": 22,
    "seed": 167299,
    "grid": 8,
-   "target_lines": 30,
-   "prefilled": 13,
+   "goal": "lines",
+   "target_lines": 15,
+   "prefilled": 10,
    "piece_set": "extended",
    "stars": [
     0,
-    2255,
-    4148
+    330,
+    510
    ]
   },
   {
    "id": 23,
    "seed": 175218,
    "grid": 8,
-   "target_lines": 31,
-   "prefilled": 14,
+   "goal": "lines",
+   "target_lines": 16,
+   "prefilled": 11,
    "piece_set": "extended",
    "stars": [
     0,
-    2348,
-    4317
+    352,
+    544
    ]
   },
   {
    "id": 24,
    "seed": 183137,
    "grid": 8,
-   "target_lines": 33,
-   "prefilled": 14,
+   "goal": "clear",
+   "target_lines": 0,
+   "prefilled": 22,
    "piece_set": "extended",
    "stars": [
     0,
-    2441,
-    4486
+    242,
+    374
    ]
   },
   {
    "id": 25,
    "seed": 191056,
    "grid": 8,
-   "target_lines": 34,
-   "prefilled": 15,
+   "goal": "lines",
+   "target_lines": 17,
+   "prefilled": 12,
    "piece_set": "extended",
    "stars": [
     0,
-    2534,
-    4655
+    374,
+    578
    ]
   },
   {
    "id": 26,
    "seed": 198975,
    "grid": 8,
-   "target_lines": 35,
-   "prefilled": 16,
+   "goal": "lines",
+   "target_lines": 18,
+   "prefilled": 12,
    "piece_set": "extended",
    "stars": [
     0,
-    2628,
-    4824
+    396,
+    612
    ]
   },
   {
    "id": 27,
    "seed": 206894,
    "grid": 8,
-   "target_lines": 36,
-   "prefilled": 16,
+   "goal": "clear",
+   "target_lines": 0,
+   "prefilled": 24,
    "piece_set": "extended",
    "stars": [
     0,
-    2721,
-    4993
+    264,
+    408
    ]
   },
   {
    "id": 28,
    "seed": 214813,
    "grid": 8,
-   "target_lines": 38,
-   "prefilled": 17,
+   "goal": "lines",
+   "target_lines": 19,
+   "prefilled": 13,
    "piece_set": "extended",
    "stars": [
     0,
-    2814,
-    5162
+    418,
+    646
    ]
   },
   {
    "id": 29,
    "seed": 222732,
    "grid": 8,
-   "target_lines": 39,
-   "prefilled": 17,
+   "goal": "lines",
+   "target_lines": 19,
+   "prefilled": 14,
    "piece_set": "extended",
    "stars": [
     0,
-    2907,
-    5331
+    418,
+    646
    ]
   },
   {
    "id": 30,
    "seed": 230651,
    "grid": 8,
-   "target_lines": 40,
-   "prefilled": 18,
+   "goal": "clear",
+   "target_lines": 0,
+   "prefilled": 26,
    "piece_set": "extended",
    "stars": [
     0,
-    3000,
-    5500
+    286,
+    442
    ]
   }
  ]
