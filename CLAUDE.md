@@ -1,4 +1,4 @@
-# Pocket Arcade: guide for AI assistants (read this before exploring code)
+# Arcade 101: guide for AI assistants (read this before exploring code)
 
 Godot 4.3, GDScript, 2D portrait (720x1280 base, `canvas_items` stretch, expand aspect),
 Compatibility renderer, Android first. Offline. Free with ads + one-time "remove_ads".
@@ -17,7 +17,9 @@ autoload/              singletons (names as used in code)
 core/
   base_game.gd     class BaseGame: the contract every game implements
   stub_game.gd     placeholder game (debug Win/Fail buttons)
-  ui.gd            class UI: colors, button(), label(), screen(), stars_text()
+  ui.gd            class UI: menu kit: screen(), button(), icon_button(), title(), top_bar(),
+                   star_pill(), card_box(), stagger_pop(), widgets Backdrop/IconButton/Switch
+  fonts/           LilitaOne-Regular.ttf (OFL, licence in OFL.txt), via FX.font()/FX.theme()
   fx.gd            shared visual kit, preload as FX (see "Look and feel")
 scenes/            hub, level_select, game_host, settings (.tscn + .gd)
 data/games.json    game registry (order = hub order)
@@ -56,6 +58,9 @@ a fresh pull into an open editor does not know new global classes yet).
 - Input: handle taps in `_gui_input` and skip `event.device == InputEvent.DEVICE_ID_EMULATION`;
   mouse/touch emulation is on, so every tap also arrives as an emulated twin.
 - Example: games/color_sort/game.gd.
+- Menus: `UI.screen(root, accent)` sets `FX.theme()` (Lilita One, outlined text) and the
+  gradient Backdrop; `FX.draw_star`, `draw_lock`, `draw_icon` draw icons (the font has no ★).
+  Screens: scenes/hub.gd (game cards with drawn emblems), level_select.gd (LevelTile states).
 
 ## Level data
 `games/<id>/levels.json` = `{"star_metric": "...", "levels": [ {id, seed, stars, ...game params} x30 ]}`.

@@ -16,6 +16,8 @@ static var _shadow: GradientTexture2D
 static var _light: GradientTexture2D
 static var _shade: GradientTexture2D
 static var _box := StyleBoxFlat.new()
+static var _font: Font
+static var _theme: Theme
 
 
 # --- textures ---------------------------------------------------------------
@@ -129,10 +131,11 @@ static func draw_tile(ci: CanvasItem, r: Rect2, col: Color, radius := 12, shadow
 
 ## White label with a dark outline, centred on c; readable on any colour.
 static func draw_text_centered(ci: CanvasItem, c: Vector2, text: String, font_size: int,
-		col := Color(1, 1, 1, 0.95)) -> void:
+		col := Color(1, 1, 1, 0.95), font: Font = null) -> void:
 	if font_size <= 0:
 		return
-	var font := ThemeDB.fallback_font
+	if font == null:
+		font = ThemeDB.fallback_font
 	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 	var p := c + Vector2(-tw / 2.0, font_size * 0.36)
 	ci.draw_string_outline(font, p, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size,
@@ -140,9 +143,107 @@ static func draw_text_centered(ci: CanvasItem, c: Vector2, text: String, font_si
 	ci.draw_string(font, p, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, col)
 
 
+## Five-point star: soft drop shadow, dark rim, lighter top half. Empty = dark socket.
+static func draw_star(ci: CanvasItem, c: Vector2, r: float, col := LEMON, filled := true) -> void:
+	var pts := star_points(c, r)
+	var rim := pts.duplicate()
+	rim.append(pts[0])
+	if not filled:
+		ci.draw_colored_polygon(pts, Color(0, 0, 0, 0.32))
+		ci.draw_polyline(rim, Color(1, 1, 1, 0.16), maxf(1.0, r * 0.1), true)
+		return
+	ci.draw_colored_polygon(star_points(c + Vector2(0, r * 0.16), r), Color(0, 0, 0, 0.3))
+	ci.draw_colored_polygon(pts, col.darkened(0.12))
+	ci.draw_colored_polygon(star_points(c - Vector2(0, r * 0.1), r * 0.62), col.lightened(0.25))
+	ci.draw_polyline(rim, col.darkened(0.5), maxf(1.2, r * 0.13), true)
+
+
+static func star_points(c: Vector2, r: float, inner := 0.48) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for i in 10:
+		var a := -PI / 2.0 + i * PI / 5.0
+		pts.append(c + Vector2(cos(a), sin(a)) * (r if i % 2 == 0 else r * inner))
+	return pts
+
+
+## Padlock icon centred on c, about s tall.
+static func draw_lock(ci: CanvasItem, c: Vector2, s: float, col: Color) -> void:
+	var top := c.y - s * 0.08
+	ci.draw_arc(Vector2(c.x, top), s * 0.24, PI, TAU, 24, col, s * 0.11, true)
+	ci.draw_line(Vector2(c.x - s * 0.24, top), Vector2(c.x - s * 0.24, top + s * 0.1), col, s * 0.11)
+	ci.draw_line(Vector2(c.x + s * 0.24, top), Vector2(c.x + s * 0.24, top + s * 0.1), col, s * 0.11)
+	var sb := _box
+	sb.shadow_size = 0
+	sb.set_border_width_all(0)
+	sb.set_corner_radius_all(int(s * 0.12))
+	sb.bg_color = col
+	ci.draw_style_box(sb, Rect2(c.x - s * 0.38, top + s * 0.02, s * 0.76, s * 0.56))
+	var hole := Vector2(c.x, top + s * 0.25)
+	ci.draw_circle(hole, s * 0.08, col.darkened(0.55))
+	ci.draw_line(hole, hole + Vector2(0, s * 0.16), col.darkened(0.55), s * 0.07)
+
+
+## Simple line icons for round buttons: "back", "restart", "settings".
+static func draw_icon(ci: CanvasItem, icon: String, c: Vector2, s: float, col := Color.WHITE) -> void:
+	var w := maxf(3.0, s * 0.14)
+	match icon:
+		"back":
+			ci.draw_polyline(PackedVector2Array([c + Vector2(s * 0.14, -s * 0.3), c + Vector2(-s * 0.18, 0),
+				c + Vector2(s * 0.14, s * 0.3)]), col, w, true)
+			ci.draw_circle(c + Vector2(s * 0.14, -s * 0.3), w / 2.0, col)
+			ci.draw_circle(c + Vector2(-s * 0.18, 0), w / 2.0, col)
+			ci.draw_circle(c + Vector2(s * 0.14, s * 0.3), w / 2.0, col)
+		"restart":
+			ci.draw_arc(c, s * 0.3, -PI * 0.35, PI * 1.45, 32, col, w, true)
+			var tip := c + Vector2(cos(-PI * 0.35), sin(-PI * 0.35)) * s * 0.3
+			ci.draw_colored_polygon(PackedVector2Array([tip + Vector2(-s * 0.2, -s * 0.06),
+				tip + Vector2(s * 0.1, -s * 0.18), tip + Vector2(s * 0.06, s * 0.14)]), col)
+		"settings":
+			var pts := PackedVector2Array()
+			for i in 48:
+				var a := i * TAU / 48.0
+				var tooth := 1.0 if int(i / 3.0) % 2 == 0 else 0.78
+				pts.append(c + Vector2(cos(a + PI / 16.0), sin(a + PI / 16.0)) * s * 0.4 * tooth)
+			ci.draw_colored_polygon(pts, col)
+			ci.draw_circle(c, s * 0.13, Color(0, 0, 0, 0.45))
+
+
 static func ease_smooth(x: float) -> float:
 	x = clampf(x, 0.0, 1.0)
 	return x * x * (3.0 - 2.0 * x)
+
+
+# --- fonts and theme --------------------------------------------------------
+
+## Rounded display font for menus (Lilita One, OFL; see core/fonts/OFL.txt).
+## Falls back to the default font for glyphs it lacks (★, arrows).
+static func font() -> Font:
+	if _font == null:
+		var f: FontFile = load("res://core/fonts/LilitaOne-Regular.ttf")
+		f.fallbacks = [ThemeDB.fallback_font]
+		_font = f
+	return _font
+
+
+## Theme for whole screens: display font, outlined text with a drop shadow.
+static func theme() -> Theme:
+	if _theme == null:
+		var t := Theme.new()
+		t.default_font = font()
+		t.default_font_size = 34
+		for type in ["Label", "Button"]:
+			t.set_constant("outline_size", type, 8)
+			t.set_color("font_outline_color", type, Color(0.06, 0.05, 0.18, 0.75))
+		t.set_color("font_shadow_color", "Label", Color(0, 0, 0, 0.35))
+		t.set_constant("shadow_offset_x", "Label", 0)
+		t.set_constant("shadow_offset_y", "Label", 4)
+		t.set_constant("shadow_outline_size", "Label", 8)
+		for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color",
+				"font_hover_pressed_color"]:
+			t.set_color(c, "Button", Color.WHITE)
+		t.set_stylebox("focus", "Button", StyleBoxEmpty.new())
+		_theme = t
+	return _theme
 
 
 # --- node helpers -----------------------------------------------------------

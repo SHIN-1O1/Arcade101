@@ -12,20 +12,16 @@ var _overlay: Control
 func _ready() -> void:
 	_game_def = Games.get_game(Nav.game_id)
 	_levels = Games.get_levels(Nav.game_id)
-	var col := UI.screen(self)
+	var col := UI.screen(self, UI.ACCENT, false)
 
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 16)
 	col.add_child(top)
-	var back := UI.button("<", func(): Nav.to_level_select(Nav.game_id))
-	back.custom_minimum_size = Vector2(96, 96)
-	top.add_child(back)
-	var title := UI.label("%s  ·  Level %d" % [_game_def.get("name", ""), Nav.level_index + 1], 32)
+	top.add_child(UI.icon_button("back", func(): Nav.to_level_select(Nav.game_id)))
+	var title := UI.title("%s  ·  Level %d" % [_game_def.get("name", ""), Nav.level_index + 1], 36, Color.WHITE)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(title)
-	var restart := UI.button("↻", _start)
-	restart.custom_minimum_size = Vector2(96, 96)
-	top.add_child(restart)
+	top.add_child(UI.icon_button("restart", _start))
 
 	_status = UI.label("", 28, UI.ACCENT)
 	col.add_child(_status)
