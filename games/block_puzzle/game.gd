@@ -35,6 +35,7 @@ var lines_done := 0
 var goal := "lines"
 var target_lines := 5
 var blockers_left := 0
+var blockers_total := 0
 var pieces: Array = []  # each: {"cells": Array[Vector2i], "w": int, "h": int, "color": int} or null
 var shapes: Array = []
 var rng: RandomNumberGenerator
@@ -102,6 +103,7 @@ func _prefill(count: int) -> void:
 		pre[i] = true
 		placed += 1
 	blockers_left = placed
+	blockers_total = placed
 
 
 func _line_full(n: int, column: bool) -> bool:
@@ -219,7 +221,7 @@ func _finish(won: bool) -> void:
 
 func _report() -> void:
 	if goal == "clear":
-		status_changed.emit("Blocks left %d  ·  Score %d" % [blockers_left, score])
+		status_changed.emit("%d / %d left  ·  Score %d" % [blockers_left, blockers_total, score])
 	else:
 		status_changed.emit("Lines %d/%d  ·  Score %d" % [lines_done, target_lines, score])
 
@@ -301,7 +303,7 @@ func _draw() -> void:
 	if cells.is_empty():
 		return
 	_layout()
-	var goal_text := "Clear all %d marked blocks" % blockers_left if goal == "clear" else "Clear %d lines" % target_lines
+	var goal_text := "Clear all %d marked blocks" % blockers_total if goal == "clear" else "Clear %d lines" % target_lines
 	_text(goal_text, Vector2(0, 40), size.x, 34, LEMON)
 	var board := Rect2(origin, Vector2(cs * g, cs * g))
 	draw_rect(board.grow(10), TANGERINE)
