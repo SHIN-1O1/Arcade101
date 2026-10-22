@@ -7,19 +7,23 @@ extends BaseGame
 ##
 ## Physics: one RigidBody2D circle per fruit, kept under a plain Node so the bodies live in this
 ## Control's local coordinates but ignore its transform (the host scales/fades the game; shakes move
-## it). Bodies use shape-cast CCD, thick static walls and sleep when still. Nothing is drawn by the
-## bodies: _draw() paints every fruit from its body's position/rotation with the FX kit.
+## it). Bodies use shape-cast CCD, thick static walls and sleep when still; low friction and angular
+## damping let fruit roll, and a spring "jelly" squash on impacts keeps them soft. Nothing is drawn by
+## the bodies: _draw() paints each fruit from its body: the skin texture turns with the body, the light
+## layers on top do not. Art in art/ is painted by art/gen_art.py (re-run it to retune a fruit).
 
 const FX := preload("res://core/fx.gd")
 const INDIGO := Color("#2B2A6B")
 const TANGERINE := Color("#FF8A1F")
 const LEMON := Color("#FFD23F")
 
-## Radius of each tier in design units (jar is 600 units wide), colour, and a feature drawn on top.
-## Original set: berry, strawbell, grapelet, lime, orange, apple, pear, peach, pineapple, honeydew, melon.
+## Radius of each tier in design units (jar is 600 units wide) and its particle colour.
+## Original set: berry, strawberry, grape, lime, orange, apple, pear, peach, pineapple, cantaloupe, melon.
 const RADII := [19.0, 26.0, 34.0, 41.0, 51.0, 61.0, 71.0, 83.0, 97.0, 113.0, 131.0]
-const COLORS := [Color("#FF3D6E"), Color("#FF5A3C"), Color("#9B5DE5"), Color("#7ED957"), Color("#FF8A1F"),
-	Color("#E8364F"), Color("#C9DB4A"), Color("#FFA98F"), Color("#FFC93C"), Color("#9EE6A0"), Color("#2EA44F")]
+const COLORS := [Color("#D7213C"), Color("#E8323A"), Color("#7B3FA8"), Color("#6CC04A"), Color("#FF8A1F"),
+	Color("#C8232E"), Color("#C9D35A"), Color("#F7A35A"), Color("#FFC93C"), Color("#D9C98A"), Color("#3C9A3A")]
+const ART := "res://games/fruit_merge/art/"
+const ART_HALF := 1.6  # fruit_<n>.png: canvas half-size in fruit radii (the disc is 120 of 192 px)
 const SCORE := [1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66]
 const MELON_BONUS := 100  # two of the last tier burst
 const LAST := 10
@@ -28,12 +32,12 @@ const MAX_FRUITS := 72  # body cap for low-end phones
 const DANGER_TIME := 2.0  # seconds a settled fruit may stay above the line
 const GRACE := 1.0  # a fresh fruit may cross the line while it falls in
 const COOLDOWN := [0.55, 0.38]  # seconds between drops at difficulty 0 and 1
-const GRAVITY_SCALE := 1.7
+const GRAVITY_SCALE := 1.35
 const MAX_SPEED := 820.0  # px/s: under one berry radius per physics step, so nothing sinks into a fruit
 const JAR_WIDTH := 600.0
 const WALL := 18.0  # drawn wall thickness; the physics walls are much thicker
 const TOP := 235.0  # y of the jar rim / danger line
-const BOTTOM := 78.0  # space under the jar for the fruit chain strip
+const BOTTOM := 112.0  # space under the jar for the stand and the fruit chain strip
 const BIG_MERGE := 6  # tiers >= this shake the screen
 
 
@@ -46,9 +50,10 @@ class Fruit:
 	var age := 0.0
 	var over := 0.0  # seconds spent settled above the line
 	var pop := 1.0  # 0 -> 1: visual pop after a fusion
-	var squash := 0.0  # landing squash, decays to 0
-	var happy := 0.0  # seconds of closed happy eyes
-	var vy := 0.0  # last vertical speed, to spot landings
+	var jelly := 0.0  # squash along jelly_dir (spring, + = squashed, - = stretched)
+	var jelly_v := 0.0
+	var jelly_dir := PI / 2.0
+	var vel := Vector2.ZERO  # last velocity, to spot impacts
 	var dead := false
 
 
@@ -73,11 +78,22 @@ var _floats: Array = []  # {pos, text, t}
 var _drops := 0
 var _held_pop := 1.0
 var _shake_tw: Tween
+var _skins: Array[Texture2D] = []
+var _shade: Texture2D
+var _spec: Texture2D
+var _backdrop: Texture2D
 
 
 func _on_start() -> void:
 	for c in get_children():
 		c.queue_free()
+	if _skins.is_empty():
+		for i in RADII.size():
+			_skins.append(load(ART + "fruit_%d.png" % i))
+		_shade = load(ART + "light_shade.png")
+		_spec = load(ART + "light_spec.png")
+		_backdrop = load(ART + "backdrop.png")
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS  # small fruit from big textures
 	rng = make_rng()
 	score = 0
 	fruits.clear()
@@ -108,8 +124,8 @@ func _try_build() -> void:
 	aim_x = size.x / 2.0
 	var walls := StaticBody2D.new()
 	var mat := PhysicsMaterial.new()
-	mat.friction = 0.5
-	mat.bounce = 0.0
+	mat.friction = 0.35
+	mat.bounce = 0.05
 	walls.physics_material_override = mat
 	var t := 400.0  # thick walls: nothing can pass through in one step
 	for r in [Rect2(jar.position.x - t, -2000.0, t, jar.end.y + 2000.0 + t),
@@ -198,11 +214,11 @@ func _add_fruit(tier: int, pos: Vector2, vel: Vector2, grown := true) -> Fruit:
 	b.gravity_scale = GRAVITY_SCALE
 	b.continuous_cd = RigidBody2D.CCD_MODE_CAST_SHAPE
 	b.can_sleep = true
-	b.linear_damp = 0.15
-	b.angular_damp = 1.6
+	b.linear_damp = 0.05
+	b.angular_damp = 0.3
 	var mat := PhysicsMaterial.new()
-	mat.friction = 0.45
-	mat.bounce = 0.06
+	mat.friction = 0.3
+	mat.bounce = 0.14
 	b.physics_material_override = mat
 	var cs := CollisionShape2D.new()
 	f.shape = CircleShape2D.new()
@@ -231,6 +247,10 @@ func _physics_process(delta: float) -> void:
 		if f.grow < 1.0:
 			f.grow = minf(1.0, f.grow + delta / 0.12)
 			f.shape.radius = f.r * lerpf(0.6, 1.0, f.grow)
+		var sp2 := f.body.linear_velocity.length_squared()
+		if sp2 < 900.0 and not f.body.sleeping:  # rolling resistance: free rolling, gentle settling
+			f.body.linear_velocity *= 0.97
+			f.body.angular_velocity *= 0.94
 		if f.body.linear_velocity.length_squared() > MAX_SPEED * MAX_SPEED * u * u:
 			f.body.linear_velocity = f.body.linear_velocity.limit_length(MAX_SPEED * u)
 		var p := f.body.position
@@ -287,7 +307,7 @@ func _fuse(a: Fruit, b: Fruit) -> void:
 	pos.x = clampf(pos.x, jar.position.x + nr, jar.end.x - nr)
 	pos.y = minf(pos.y, jar.end.y - nr)
 	var f := _add_fruit(nt, pos, vel * 0.5, false)
-	f.happy = 0.6
+	f.jelly = -0.1  # pops out a little stretched, then wobbles
 	best_tier = maxi(best_tier, nt)
 	_add_score(SCORE[nt], pos)
 	var nc: Color = COLORS[nt]
@@ -441,13 +461,19 @@ func _process(delta: float) -> void:
 		cooldown -= delta
 	_held_pop = minf(1.0, _held_pop + delta / 0.25)
 	for f in fruits:
-		var vy := f.body.linear_velocity.y
-		if f.vy > 260.0 and vy < f.vy * 0.4:  # sudden stop: landed on something
-			f.squash = clampf((f.vy - vy) / 2600.0, 0.04, 0.16)
-		f.vy = vy
-		f.squash = move_toward(f.squash, 0.0, delta * 0.7)
-		f.pop = minf(1.0, f.pop + delta / 0.35)
-		f.happy = maxf(0.0, f.happy - delta)
+		var v := f.body.linear_velocity
+		var hit := f.vel - v  # a sudden change of velocity is an impact
+		if hit.length() > 170.0 and f.vel.length() > 160.0:
+			f.jelly = maxf(f.jelly, clampf(hit.length() / 2600.0, 0.03, 0.13))
+			f.jelly_dir = hit.angle()
+		f.vel = v
+		# damped spring: squash, overshoot into a small stretch, settle
+		f.jelly_v += (-900.0 * f.jelly - 15.0 * f.jelly_v) * delta
+		f.jelly += f.jelly_v * delta
+		if absf(f.jelly) < 0.002 and absf(f.jelly_v) < 0.05:
+			f.jelly = 0.0
+			f.jelly_v = 0.0
+		f.pop = minf(1.0, f.pop + delta / 0.3)
 	for fl in _floats:
 		fl.t += delta / 0.8
 	while not _floats.is_empty() and _floats[0].t >= 1.0:
@@ -458,7 +484,7 @@ func _process(delta: float) -> void:
 # --- drawing ----------------------------------------------------------------
 
 func _draw() -> void:
-	FX.draw_background(self, Rect2(Vector2.ZERO, size))
+	_draw_backdrop()
 	if not _built:
 		return
 	_draw_jar_back()
@@ -467,188 +493,149 @@ func _draw() -> void:
 	for f in fruits:
 		var s := 1.0
 		if f.pop < 1.0:  # grow in with a springy overshoot
-			s = 0.6 + 0.4 * f.pop + 0.22 * sin(f.pop * PI) * (1.0 - f.pop * 0.3)
-		var k := f.squash
-		draw_fruit(f.body.position, f.r * s, f.tier, f.body.rotation, Vector2(1.0 + k, 1.0 - k), f.happy > 0.0)
+			s = 0.6 + 0.4 * f.pop + 0.18 * sin(f.pop * PI)
+		draw_fruit(f.body.position, f.r * s, f.tier, f.body.rotation, f.jelly, f.jelly_dir)
 	_draw_jar_front()
 	if not _finished:
 		var hs := 0.5 + 0.5 * FX.ease_smooth(_held_pop)
-		draw_fruit(Vector2(aim_x, drop_y), radius(current) * hs, current, 0.0, Vector2.ONE, false,
-			1.0 if cooldown <= 0.0 else 0.75)
-	_draw_next()
-	_draw_chain()
+		var pos := Vector2(aim_x, drop_y + sin(_time * 3.0) * 3.0)
+		FX.draw_glow(self, Rect2(pos - Vector2.ONE * radius(current) * 1.6, Vector2.ONE * radius(current) * 3.2),
+			Color(LEMON, 0.18 if cooldown <= 0.0 else 0.06))
+		draw_fruit(pos, radius(current) * hs, current, 0.0, 0.0, 0.0, 1.0 if cooldown <= 0.0 else 0.6)
+	_draw_hud()
 	for fl in _floats:
 		var t: float = fl.t
-		FX.draw_text_centered(self, fl.pos + Vector2(0, -30.0 - 70.0 * t), fl.text, int(30 * u + 8),
+		FX.draw_text_centered(self, fl.pos + Vector2(0, -30.0 - 70.0 * t), fl.text, int(30 * u + 10),
 			Color(LEMON, 1.0 - t * t), FX.font())
 	if _drops == 0 and not _finished:
+		var a := 0.65 + 0.25 * sin(_time * 3.0)
 		FX.draw_text_centered(self, Vector2(size.x / 2.0, jar.get_center().y), "Tap or drag to aim,", 32,
-			Color(1, 1, 1, 0.8), FX.font())
+			Color(1, 1, 1, a), FX.font())
 		FX.draw_text_centered(self, Vector2(size.x / 2.0, jar.get_center().y + 42.0), "release to drop!", 32,
-			Color(1, 1, 1, 0.8), FX.font())
+			Color(1, 1, 1, a), FX.font())
+
+
+## Painted orchard (cover-fit, anchored to the bottom) with slow drifting light motes.
+func _draw_backdrop() -> void:
+	if _backdrop == null:
+		FX.draw_background(self, Rect2(Vector2.ZERO, size))
+		return
+	var ts := _backdrop.get_size()
+	var k := maxf(size.x / ts.x, size.y / ts.y)
+	var dsz := ts * k
+	draw_texture_rect(_backdrop, Rect2(Vector2((size.x - dsz.x) / 2.0, size.y - dsz.y), dsz), false)
+	for i in 14:
+		var h := float((i * 7919) % 997) / 997.0
+		var sp := 14.0 + 22.0 * h
+		var y := fposmod(size.y * (1.0 - h) - _time * sp, size.y + 80.0) - 40.0
+		var x := fposmod(size.x * float((i * 4271) % 991) / 991.0 + sin(_time * 0.6 + i) * 18.0, size.x)
+		var r := 10.0 + 26.0 * fposmod(h * 3.7, 1.0)
+		var col := LEMON if i % 3 == 0 else TANGERINE if i % 3 == 1 else Color(0.75, 0.7, 1.0)
+		FX.draw_glow(self, Rect2(x - r, y - r, r * 2.0, r * 2.0), Color(col, 0.10 + 0.06 * sin(_time + i)))
+
+
+func _jar_outline() -> Rect2:
+	return Rect2(jar.position.x - WALL, jar.position.y - 12.0, jar.size.x + WALL * 2.0, jar.size.y + 12.0 + WALL)
 
 
 func _draw_jar_back() -> void:
-	FX.draw_shadow(self, Rect2(jar.position.x - 30.0, jar.end.y - 10.0, jar.size.x + 60.0, 60.0), 0.6)
-	FX.draw_round_gradient(self, Rect2(jar.position.x - WALL, jar.position.y - 10.0, jar.size.x + WALL * 2.0,
-		jar.size.y + 10.0 + WALL), 30.0, Color(1, 1, 1, 0.04), Color(0.55, 0.5, 1.0, 0.16))
+	var o := _jar_outline()
+	FX.draw_shadow(self, Rect2(o.position.x - 30.0, o.end.y - 6.0, o.size.x + 60.0, 70.0), 0.75)
+	# wooden stand under the jar
+	var stand := Rect2(o.position.x - 14.0, o.end.y - 6.0, o.size.x + 28.0, 34.0)
+	FX.draw_tile(self, stand, Color("#B8612A"), 14)
+	for i in 4:
+		var gx := stand.position.x + stand.size.x * (0.18 + 0.22 * i)
+		draw_line(Vector2(gx, stand.position.y + 9.0), Vector2(gx + 26.0, stand.position.y + 9.0), Color(0.35, 0.15, 0.05, 0.35), 2.0)
+	# glass body: dark tint, a soft inner glow and fine vertical reflections
+	FX.draw_round_gradient(self, o, 34.0, Color(0.09, 0.07, 0.24, 0.78), Color(0.14, 0.10, 0.32, 0.9))
+	FX.draw_glow(self, Rect2(jar.position.x, jar.position.y + jar.size.y * 0.3, jar.size.x, jar.size.y * 0.8),
+		Color(0.6, 0.5, 1.0, 0.10))
 
 
 func _draw_jar_front() -> void:
-	var wc := INDIGO.lightened(0.32)
-	var y0 := jar.position.y - 10.0
-	FX.draw_tile(self, Rect2(jar.position.x - WALL, y0, WALL, jar.end.y - y0 + WALL), wc, 9, false)
-	FX.draw_tile(self, Rect2(jar.end.x, y0, WALL, jar.end.y - y0 + WALL), wc, 9, false)
-	FX.draw_tile(self, Rect2(jar.position.x - WALL, jar.end.y, jar.size.x + WALL * 2.0, WALL), wc, 9, false)
-	# glass sheen on the left wall
-	draw_rect(Rect2(jar.position.x + 6.0, jar.position.y + 20.0, 6.0, jar.size.y * 0.5), Color(1, 1, 1, 0.07))
+	var o := _jar_outline()
+	var pts := FX.round_rect_points(o, 34.0)
+	pts.append(pts[0])
+	draw_polyline(pts, Color(0.85, 0.85, 1.0, 0.55), 5.0, true)  # glass edge
+	draw_polyline(pts, Color(1, 1, 1, 0.12), 14.0, true)  # glass thickness
+	# reflections: a tall streak on the left, a short one on the right
+	draw_rect(Rect2(jar.position.x + 10.0, jar.position.y + 24.0, 10.0, jar.size.y * 0.55), Color(1, 1, 1, 0.10))
+	draw_rect(Rect2(jar.position.x + 26.0, jar.position.y + 40.0, 4.0, jar.size.y * 0.35), Color(1, 1, 1, 0.06))
+	draw_rect(Rect2(jar.end.x - 22.0, jar.position.y + jar.size.y * 0.55, 8.0, jar.size.y * 0.3), Color(1, 1, 1, 0.04))
+	# rim: two glossy caps on the wall tops
+	for x in [o.position.x - 6.0, jar.end.x - 6.0 + 0.0]:
+		FX.draw_tile(self, Rect2(x, o.position.y - 10.0, WALL + 12.0, 20.0), TANGERINE, 10, false)
 	# danger line: dashed, turns red and pulses while a fruit is stuck above it
 	var warn := clampf(_danger * 1.6, 0.0, 1.0)
 	var pulse := 0.5 + 0.5 * sin(_time * 14.0)
-	var lc := Color(1, 1, 1, 0.28).lerp(Color(1.0, 0.25, 0.3, 0.6 + 0.4 * pulse), warn)
-	var x := jar.position.x + 4.0
-	while x < jar.end.x - 4.0:
-		draw_line(Vector2(x, jar.position.y), Vector2(minf(x + 16.0, jar.end.x - 4.0), jar.position.y), lc, 4.0)
+	var lc := Color(1, 1, 1, 0.3).lerp(Color(1.0, 0.25, 0.3, 0.6 + 0.4 * pulse), warn)
+	var x := jar.position.x + 8.0
+	while x < jar.end.x - 8.0:
+		draw_line(Vector2(x, jar.position.y + 2.0), Vector2(minf(x + 16.0, jar.end.x - 8.0), jar.position.y + 2.0), lc, 4.0)
 		x += 28.0
 	if warn > 0.0:
-		draw_rect(Rect2(jar.position.x, jar.position.y - 4.0, jar.size.x, 8.0), Color(1, 0.2, 0.3, 0.15 * warn * pulse))
+		draw_rect(Rect2(jar.position.x, jar.position.y - 4.0, jar.size.x, 12.0), Color(1, 0.2, 0.3, 0.18 * warn * pulse))
 
 
 func _draw_guide() -> void:
-	var c := Color(1, 1, 1, 0.16 if cooldown > 0.0 else 0.32)
-	var y := drop_y + radius(current) + 6.0
-	while y < jar.end.y - 6.0:
-		draw_line(Vector2(aim_x, y), Vector2(aim_x, minf(y + 14.0, jar.end.y - 6.0)), c, 3.0)
-		y += 26.0
+	var a := 0.16 if cooldown > 0.0 else 0.36
+	var y := drop_y + radius(current) + 10.0
+	while y < jar.end.y - 8.0:
+		draw_circle(Vector2(aim_x, y), 3.0, Color(1, 1, 1, a * (1.0 - 0.5 * (y - drop_y) / (jar.end.y - drop_y))))
+		y += 22.0
+	# marker on the rim where the fruit will enter
+	var m := Vector2(aim_x, jar.position.y - 2.0)
+	draw_colored_polygon(PackedVector2Array([m + Vector2(-9, -12), m + Vector2(9, -12), m]), Color(LEMON, a + 0.3))
 
 
-func _draw_next() -> void:
-	var c := Vector2(size.x - 64.0, 66.0)
-	draw_circle(c + Vector2(0, 4), 44.0, Color(0, 0, 0, 0.25))
-	draw_circle(c, 44.0, Color(0.03, 0.02, 0.12, 0.55))
-	draw_arc(c, 44.0, 0.0, TAU, 48, Color(1, 1, 1, 0.18), 3.0, true)
-	FX.draw_text_centered(self, c + Vector2(-92.0, 0.0), "NEXT", 26, Color(1, 1, 1, 0.7), FX.font())
-	draw_fruit(c, minf(radius(next), 32.0), next, 0.0, Vector2.ONE, false)
-
-
-## The 11-fruit chain under the jar; fruits not yet made this run are dimmed.
-func _draw_chain() -> void:
-	var y := size.y - BOTTOM / 2.0 + 8.0
-	var w := jar.size.x + WALL * 2.0
-	var step := w / 11.0
+## Top cards (best fruit made, next fruit) and the 11-fruit chain under the stand.
+func _draw_hud() -> void:
+	var font := FX.font()
+	var card_w := 170.0
+	for side in 2:
+		var r := Rect2(24.0 if side == 0 else size.x - 24.0 - card_w, 18.0, card_w, 86.0)
+		FX.draw_round_gradient(self, Rect2(r.position + Vector2(0, 5), r.size), 26.0, Color(0, 0, 0, 0.25), Color(0, 0, 0, 0.25))
+		FX.draw_round_gradient(self, r, 26.0, Color(0.16, 0.12, 0.40, 0.88), Color(0.07, 0.05, 0.20, 0.88))
+		var edge := FX.round_rect_points(r, 26.0)
+		edge.append(edge[0])
+		draw_polyline(edge, Color(1, 1, 1, 0.14), 2.0, true)
+		var fc := Vector2(r.end.x - 44.0, r.get_center().y)
+		draw_circle(fc, 32.0, Color(0, 0, 0, 0.25))
+		draw_arc(fc, 32.0, 0.0, TAU, 40, Color(LEMON, 0.6), 3.0, true)
+		var tier := next if side == 1 else best_tier
+		draw_fruit(fc, minf(radius(tier), 24.0), tier, 0.0, 0.0, 0.0)
+		FX.draw_text_centered(self, Vector2(r.position.x + 58.0, fc.y - 12.0), "NEXT" if side == 1 else "BEST", 24,
+			Color(1, 1, 1, 0.92), font)
+		FX.draw_text_centered(self, Vector2(r.position.x + 58.0, fc.y + 18.0), "fruit", 20, Color(1, 1, 1, 0.5), font)
+	# chain strip
+	var strip := Rect2(jar.position.x - WALL, size.y - 50.0, jar.size.x + WALL * 2.0, 44.0)
+	FX.draw_round_gradient(self, strip, 22.0, Color(0.07, 0.05, 0.2, 0.78), Color(0.04, 0.03, 0.14, 0.78))
+	var step := strip.size.x / 11.0
 	for i in 11:
-		var c := Vector2(jar.position.x - WALL + step * (i + 0.5), y)
-		var rr := lerpf(9.0, 20.0, float(i) / 10.0) * minf(1.0, step / 54.0)
-		draw_fruit(c, rr, i, 0.0, Vector2.ONE, false, 1.0 if i <= maxi(best_tier, 4) else 0.3)
+		var c := Vector2(strip.position.x + step * (i + 0.5), strip.get_center().y)
+		var rr := lerpf(9.0, 17.0, float(i) / 10.0) * minf(1.0, step / 52.0)
+		if i == best_tier:
+			FX.draw_glow(self, Rect2(c - Vector2.ONE * rr * 2.2, Vector2.ONE * rr * 4.4), Color(LEMON, 0.45))
+		draw_fruit(c, rr, i, 0.0, 0.0, 0.0, 1.0 if i <= maxi(best_tier, 4) else 0.35)
 
 
-## A glossy fruit with a face. rot turns the face and stem with the body; sq squashes the whole
-## fruit in screen space (x, y). alpha < 1 dims it (preview while cooling down, chain strip).
-func draw_fruit(c: Vector2, r: float, tier: int, rot: float, sq: Vector2, happy: bool, alpha := 1.0) -> void:
+## A fruit at c with radius r: painted skin turned by rot, fixed light on top. jelly squashes it along
+## angle jdir (stretches across it). alpha < 1 dims it (held fruit while cooling down, chain strip).
+func draw_fruit(c: Vector2, r: float, tier: int, rot: float, jelly: float, jdir: float, alpha := 1.0) -> void:
 	if r < 1.0:
 		return
-	var col: Color = COLORS[tier]
-	if alpha < 1.0:
-		col = col.lerp(INDIGO, 1.0 - alpha)
-	draw_set_transform(Vector2.ZERO)
-	FX.draw_shadow(self, Rect2(c.x - r * 0.85, c.y + r * 0.62, r * 1.7, r * 0.55), 0.35 * alpha)
-	draw_set_transform(c, 0.0, sq)
-	FX.draw_ball(self, Vector2.ZERO, r, col)
-	draw_set_transform_matrix(Transform2D(0.0, sq, 0.0, c) * Transform2D(rot, Vector2.ZERO))
-	_draw_skin(tier, r, col)
-	if r >= 8.0:
-		_draw_face(r, happy, alpha)
-	draw_set_transform(Vector2.ZERO)
-
-
-## Per-fruit details in local space (up = -y).
-func _draw_skin(tier: int, r: float, col: Color) -> void:
-	var leaf := Color("#3FBF5A")
-	var stem := Color("#6B4226")
-	match tier:
-		0:  # berry: long curly stem
-			draw_line(Vector2(0, -r * 0.85), Vector2(r * 0.35, -r * 1.55), stem, maxf(2.0, r * 0.14), true)
-			_leaf(Vector2(r * 0.35, -r * 1.5), r * 0.5, 0.5, leaf)
-		1:  # strawbell: seeds and a leafy cap
-			for p in [Vector2(-0.45, 0.1), Vector2(0.45, 0.1), Vector2(-0.2, 0.55), Vector2(0.25, 0.5), Vector2(0, 0.25)]:
-				draw_circle(p * r, maxf(1.2, r * 0.06), Color(LEMON, 0.85))
-			for a in [-0.9, -0.3, 0.3, 0.9]:
-				_leaf(Vector2(0, -r * 0.82), r * 0.48, a, leaf)
-		2:  # grapelet: tiny stem
-			draw_line(Vector2(0, -r * 0.9), Vector2(0, -r * 1.25), stem, maxf(2.0, r * 0.1), true)
-			_leaf(Vector2(0, -r * 1.15), r * 0.42, 0.9, leaf)
-		3:  # lime: light rind ring
-			draw_arc(Vector2.ZERO, r * 0.82, 0.0, TAU, 32, Color(1, 1, 1, 0.14), maxf(1.5, r * 0.06), true)
-		4:  # orange: pores and a navel leaf
-			for p in [Vector2(-0.5, 0.35), Vector2(0.55, 0.3), Vector2(-0.15, 0.62), Vector2(0.3, 0.6), Vector2(-0.6, -0.2)]:
-				draw_circle(p * r, maxf(1.0, r * 0.035), col.darkened(0.2))
-			_leaf(Vector2(0, -r * 0.9), r * 0.4, 0.6, leaf)
-		5:  # apple
-			draw_line(Vector2(0, -r * 0.8), Vector2(-r * 0.08, -r * 1.18), stem, maxf(2.0, r * 0.08), true)
-			_leaf(Vector2(-r * 0.05, -r * 1.05), r * 0.4, 0.7, leaf)
-		6:  # pear: speckles and stem
-			for p in [Vector2(-0.4, 0.3), Vector2(0.45, 0.35), Vector2(0.1, 0.62), Vector2(-0.55, -0.25), Vector2(0.6, -0.15)]:
-				draw_circle(p * r, maxf(1.0, r * 0.035), col.darkened(0.3))
-			draw_line(Vector2(0, -r * 0.85), Vector2(r * 0.1, -r * 1.15), stem, maxf(2.0, r * 0.07), true)
-		7:  # peach: soft crease and leaf
-			draw_arc(Vector2(r * 0.55, 0), r * 0.75, PI * 0.72, PI * 1.25, 16, col.darkened(0.15), maxf(1.5, r * 0.04), true)
-			_leaf(Vector2(0, -r * 0.92), r * 0.38, 0.8, leaf)
-		8:  # pineapple: diamond pattern and a crown
-			var lc := Color(col.darkened(0.28), 0.5)
-			for k in range(-2, 3):
-				_chord(r * 0.9, Vector2(k * r * 0.4, 0), Vector2(1, 1).normalized(), lc, maxf(1.0, r * 0.03))
-				_chord(r * 0.9, Vector2(k * r * 0.4, 0), Vector2(-1, 1).normalized(), lc, maxf(1.0, r * 0.03))
-			for a in [-0.7, -0.25, 0.25, 0.7]:
-				_leaf(Vector2(a * r * 0.3, -r * 0.88), r * 0.42, a, leaf.darkened(0.1))
-		9:  # honeydew: pale net
-			for k in range(-2, 3):
-				_meridian(r, k * 0.38, Color(1, 1, 1, 0.22), maxf(1.0, r * 0.025))
-		10:  # melon: dark stripes
-			for k in range(-3, 4):
-				_meridian(r, k * 0.27, col.darkened(0.45), maxf(2.0, r * 0.07))
-
-
-## The part of the line through p (direction d) that lies inside the circle of radius rr.
-func _chord(rr: float, p: Vector2, d: Vector2, col: Color, w: float) -> void:
-	var b := p.dot(d)
-	var disc := b * b - (p.length_squared() - rr * rr)
-	if disc <= 0.0:
-		return
-	var q := sqrt(disc)
-	draw_line(p + d * (-b - q), p + d * (-b + q), col, w, true)
-
-
-func _leaf(base: Vector2, s: float, tilt: float, col: Color) -> void:
-	var dir := Vector2(sin(tilt), -cos(tilt))
-	var side := Vector2(-dir.y, dir.x)
-	var tip := base + dir * s
-	var mid := base + dir * s * 0.5
-	draw_colored_polygon(PackedVector2Array([base, mid + side * s * 0.28, tip, mid - side * s * 0.28]), col)
-	draw_line(base, tip, col.darkened(0.25), maxf(1.0, s * 0.06), true)
-
-
-## A curved stripe from pole to pole; offset is -1..1 across the fruit.
-func _meridian(r: float, offset: float, col: Color, w: float) -> void:
-	var pts := PackedVector2Array()
-	for i in 13:
-		var y := -1.0 + i / 6.0
-		var x := offset * sqrt(maxf(0.0, 1.0 - y * y))
-		pts.append(Vector2(x, y) * r * 0.92)
-	draw_polyline(pts, col, w, true)
-
-
-func _draw_face(r: float, happy: bool, alpha: float) -> void:
-	var s := minf(r, 46.0)  # big fruit keep a small, centred face
-	var ink := Color(0.13, 0.08, 0.16, alpha)
-	var ex := s * 0.34
-	var ey := -s * 0.02
-	var er := maxf(1.5, s * 0.12)
-	for side in [-1.0, 1.0]:
-		var e := Vector2(side * ex, ey)
-		if happy:
-			draw_arc(e + Vector2(0, er * 0.4), er, PI * 1.1, PI * 1.9, 8, ink, maxf(1.5, er * 0.45), true)
-		else:
-			draw_circle(e, er, ink)
-			draw_circle(e + Vector2(-er * 0.3, -er * 0.35), er * 0.38, Color(1, 1, 1, 0.9 * alpha))
-		draw_circle(Vector2(side * s * 0.56, s * 0.2), s * 0.13, Color(1.0, 0.45, 0.55, 0.45 * alpha))
-	draw_arc(Vector2(0, s * 0.14), s * 0.16, PI * 0.15, PI * 0.85, 10, ink, maxf(1.5, s * 0.07), true)
+	FX.draw_shadow(self, Rect2(c.x - r * 0.8, c.y + r * 0.66, r * 1.6, r * 0.5), 0.3 * alpha)
+	var base := Transform2D(0.0, c)
+	if jelly != 0.0:
+		base = base * Transform2D(jdir, Vector2.ZERO) * Transform2D(0.0, Vector2(1.0 - jelly, 1.0 + jelly), 0.0,
+			Vector2.ZERO) * Transform2D(-jdir, Vector2.ZERO)
+	var h := r * ART_HALF
+	var rect := Rect2(-h, -h, h * 2.0, h * 2.0)
+	var tint := Color(1, 1, 1, 1) if alpha >= 1.0 else Color(alpha, alpha, alpha * 1.1, 1.0)
+	draw_set_transform_matrix(base * Transform2D(rot, Vector2.ZERO))
+	draw_texture_rect(_skins[tier], rect, false, tint)
+	draw_set_transform_matrix(base)
+	draw_texture_rect(_shade, rect, false)
+	draw_texture_rect(_spec, rect, false, Color(1, 1, 1, alpha))
+	draw_set_transform_matrix(Transform2D.IDENTITY)
