@@ -1,7 +1,9 @@
 extends BaseGame
 ## Block Fit: drag one of three shapes onto an 8x8 grid; full rows/columns clear.
-## Level goal: clear N lines ("lines") or clear every pre-placed block ("clear").
-## Fails when none of the offered shapes fits. Everything is drawn in _draw().
+## Campaign goal: clear N lines ("lines") or clear every pre-placed block ("clear").
+## Endless: no goal, score only; shapes get more awkward and garbage blocks appear as
+## difficulty(score) rises. Both end when none of the offered shapes fits.
+## Everything is drawn in _draw().
 
 const INDIGO := Color("#2B2A6B")
 const TANGERINE := Color("#FF8A1F")
@@ -38,6 +40,8 @@ var blockers_left := 0
 var blockers_total := 0
 var pieces: Array = []  # each: {"cells": Array[Vector2i], "w": int, "h": int, "color": int} or null
 var shapes: Array = []
+var shape_weights: Array[float] = []
+var endless := false
 var rng: RandomNumberGenerator
 var drag_slot := -1
 var drag_pos := Vector2.ZERO
@@ -51,9 +55,11 @@ var tray_cs := 36.0
 
 func _on_start() -> void:
 	g = int(level.get("grid", 8))
-	goal = str(level.get("goal", "lines"))
+	endless = is_endless()
+	goal = "endless" if endless else str(level.get("goal", "lines"))
 	target_lines = int(level.get("target_lines", 5))
-	shapes = _parse_shapes(BASIC + (EXTENDED if level.get("piece_set", "basic") == "extended" else []))
+	var use_extended: bool = endless or level.get("piece_set", "basic") == "extended"
+	shapes = _parse_shapes(BASIC + (EXTENDED if use_extended else []))
 	rng = make_rng()
 	cells.clear()
 	pre.clear()
@@ -66,10 +72,14 @@ func _on_start() -> void:
 	over = false
 	drag_slot = -1
 	flashes.clear()
+	blockers_left = 0
+	blockers_total = 0
 	_prefill(int(level.get("prefilled", 0)))
 	_refill()
 	if not resized.is_connected(queue_redraw):
 		resized.connect(queue_redraw)
+	if endless:
+		report_score(0)
 	_report()
 	queue_redraw()
 
@@ -113,12 +123,57 @@ func _line_full(n: int, column: bool) -> bool:
 	return true
 
 
+## Endless ramp: small pieces fade out and awkward ones (long bars, zigzags, big Ls) take over.
+func _pick_shape() -> Dictionary:
+	if not endless:
+		return shapes[rng.randi_range(0, shapes.size() - 1)]
+	var d := difficulty(score)
+	var total := 0.0
+	var weights: Array[float] = []
+	for i in shapes.size():
+		var n: int = shapes[i].cells.size()
+		var w := 1.0
+		if i >= BASIC.size():
+			w = lerpf(0.3, 2.2, d)
+		elif n <= 2:
+			w = lerpf(3.0, 0.4, d)
+		weights.append(w)
+		total += w
+	var roll := rng.randf() * total
+	for i in shapes.size():
+		roll -= weights[i]
+		if roll <= 0.0:
+			return shapes[i]
+	return shapes[shapes.size() - 1]
+
+
+## Endless: now and then a few garbage blocks land on the board (never completing a line).
+func _drop_garbage() -> void:
+	var d := difficulty(score)
+	if d < 0.25 or rng.randf() > (d - 0.15) * 0.45:
+		return
+	var want := 2 if d < 0.6 else 3
+	var tries := 0
+	while want > 0 and tries < 60:
+		tries += 1
+		var i := rng.randi_range(g * 2, g * g - 1)
+		if cells[i] != 0:
+			continue
+		cells[i] = BLOCKER_ID
+		if _line_full(i % g, true) or _line_full(i / g, false):
+			cells[i] = 0
+			continue
+		want -= 1
+
+
 func _refill() -> void:
+	if endless:
+		_drop_garbage()
 	pieces.clear()
 	for attempt in 20:
 		pieces.clear()
 		for s in SLOTS:
-			var sh: Dictionary = shapes[rng.randi_range(0, shapes.size() - 1)]
+			var sh: Dictionary = _pick_shape()
 			pieces.append({"cells": sh.cells, "w": sh.w, "h": sh.h, "color": rng.randi_range(0, PIECE_COLORS.size() - 1)})
 		if _any_fits():
 			return
@@ -155,6 +210,8 @@ func _place(slot: int, ox: int, oy: int) -> void:
 	for c: Vector2i in p.cells:
 		cells[(oy + c.y) * g + ox + c.x] = p.color + 1
 	score += p.cells.size()
+	if endless:
+		report_score(score)
 	pieces[slot] = null
 	Feedback.sfx("place")
 	_clear_lines()
@@ -197,11 +254,15 @@ func _clear_lines() -> void:
 		flashes.append({"cell": Vector2i(i % g, i / g), "a": 1.0})
 	lines_done += n
 	score += 10 * n * n
+	if endless:
+		report_score(score)
 	Feedback.sfx("clear")
 	Feedback.vibrate(30)
 
 
 func _goal_met() -> bool:
+	if endless:
+		return false
 	if goal == "clear":
 		return blockers_left <= 0
 	return lines_done >= target_lines
@@ -213,13 +274,17 @@ func _finish(won: bool) -> void:
 	_report()
 	queue_redraw()
 	await get_tree().create_timer(0.6).timeout
-	if won:
+	if endless:
+		end_run(score)
+	elif won:
 		win(maxi(1, stars_for(score)))
 	else:
 		fail()
 
 
 func _report() -> void:
+	if endless:
+		return
 	report_progress(score)
 	if goal == "clear":
 		status_changed.emit("%d / %d left  ·  Score %d" % [blockers_left, blockers_total, score])
@@ -304,7 +369,7 @@ func _draw() -> void:
 	if cells.is_empty():
 		return
 	_layout()
-	var goal_text := "Clear all %d marked blocks" % blockers_total if goal == "clear" else "Clear %d lines" % target_lines
+	var goal_text := "Endless  ·  no limit" if endless else "Clear all %d marked blocks" % blockers_total if goal == "clear" else "Clear %d lines" % target_lines
 	_text(goal_text, Vector2(0, 40), size.x, 34, LEMON)
 	var board := Rect2(origin, Vector2(cs * g, cs * g))
 	draw_rect(board.grow(10), TANGERINE)
