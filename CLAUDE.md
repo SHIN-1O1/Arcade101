@@ -73,3 +73,13 @@ All six are placeholders (stub_game.gd). `status` in games.json tracks this.
 - Keep games self-contained in their folder; shared helpers go in core/.
 - Real ad/IAP SDKs replace only the `_provider_*` functions in the stubs.
 - Bump `Save.SAVE_VERSION` and migrate in `load_game()` if the save shape changes.
+
+## Git workflow (full rules: CONTRIBUTING.md)
+- `main` is always runnable and is never committed to directly. Releases are tags `vX.Y.Z`.
+- Cut every change from fresh main: `feature/<game-or-topic>` (e.g. `feature/color_sort`) or `fix/<topic>`.
+- One game per branch/PR; a game PR touches only `games/<id>/` plus its own lines in
+  `data/games.json` and `tools/gen_levels.py`. Shared files (autoload/, core/, scenes/,
+  project.godot, tests/) change only when the PR title/body says so.
+- Small focused commits; run the smoke test before pushing.
+- Land via PR into main with squash merge; CI (`.github/workflows/smoke-test.yml`) must pass.
+- Rollback: `git revert <squash-commit>` on a fix branch + PR, or check out a tag to inspect.
