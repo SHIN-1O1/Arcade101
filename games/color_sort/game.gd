@@ -29,7 +29,10 @@ func _on_start() -> void:
 	capacity = int(level.get("capacity", 4))
 	tubes = []
 	for t in level.get("tubes", []):
-		tubes.append(Array(t))
+		var tube: Array = []
+		for c in t:
+			tube.append(int(c))  # JSON numbers load as floats
+		tubes.append(tube)
 	moves = 0
 	selected = -1
 	history = []
@@ -83,7 +86,7 @@ func can_pour(a: int, b: int) -> bool:
 
 func pour(a: int, b: int) -> int:
 	var n := mini(top_run(tubes[a]), capacity - tubes[b].size())
-	var c = tubes[a][-1]
+	var c: int = tubes[a][-1]
 	for i in n:
 		tubes[a].pop_back()
 		tubes[b].append(c)
@@ -160,7 +163,7 @@ func _layout() -> Dictionary:
 	var tube_h := ball * capacity + ball * 0.5 + 12.0
 	var rects: Array[Rect2] = []
 	for i in n:
-		var r := i / cols
+		var r := i / cols  # int / int
 		var c := i % cols
 		var in_row := mini(cols, n - r * cols)
 		var row_w := in_row * tube_w + (in_row - 1) * gap
@@ -191,7 +194,7 @@ func _draw() -> void:
 		body.corner_radius_top_right = 8
 		draw_style_box(body, r)
 		for j in tubes[i].size():
-			var col: Color = PALETTE[tubes[i][j] % PALETTE.size()]
+			var col: Color = PALETTE[posmod(int(tubes[i][j]), PALETTE.size())]
 			var center := Vector2(r.position.x + r.size.x / 2.0, r.end.y - 8.0 - ball * (j + 0.5))
 			draw_circle(center, ball / 2.0, col)
 			draw_arc(center, ball / 2.0, 0, TAU, 24, col.darkened(0.35), 2.5)
