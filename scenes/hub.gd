@@ -2,6 +2,7 @@ extends Control
 ## Main menu: one card per game in data/games.json.
 
 const FX := preload("res://core/fx.gd")
+const Toast := preload("res://core/toast.gd")
 
 var _ads_button: Button
 
@@ -58,6 +59,12 @@ func _ready() -> void:
 
 	_refresh_ads_button()
 	Save.no_ads_changed.connect(func(_on): _refresh_ads_button())
+	IAP.busy_changed.connect(_on_iap_busy)
+	IAP.purchase_message.connect(func(m): Toast.show_text(self, m))
+	IAP.purchase_finished.connect(func(_id, ok):
+		if ok:
+			Toast.show_text(self, "Ads removed. Thank you!", FX.LEMON))
+	_on_iap_busy(IAP.busy)
 	Ads.show_banner()
 
 	await get_tree().process_frame
@@ -126,7 +133,12 @@ func _pick_mode(id: String) -> void:
 
 
 func _refresh_ads_button() -> void:
-	_ads_button.visible = not Save.has_no_ads()
+	_ads_button.visible = not Save.has_no_ads()  # bought: the button disappears for good
+
+
+func _on_iap_busy(busy: bool) -> void:
+	_ads_button.disabled = busy
+	_ads_button.modulate.a = 0.6 if busy else 1.0
 
 
 ## Game card: glossy tile in the game's colour, a little drawn emblem, name, star progress.
