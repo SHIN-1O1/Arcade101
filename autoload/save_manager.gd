@@ -32,12 +32,18 @@ func load_game() -> void:
 		return
 	var parsed = JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
 	if typeof(parsed) != TYPE_DICTIONARY:
-		push_warning("Save file unreadable, starting fresh")
+		push_warning("Save file unreadable, starting fresh (old file kept as save.json.bad)")
+		DirAccess.copy_absolute(SAVE_PATH, SAVE_PATH + ".bad")
 		return
-	# Merge so new default keys survive old saves.
+	# Merge so new default keys survive old saves. Keys of the wrong type (hand-edited or
+	# damaged file) keep their defaults instead of crashing later lookups.
+	var defaults := _default_data()
 	for key in parsed:
-		if key == "settings" and typeof(parsed[key]) == TYPE_DICTIONARY:
-			data.settings.merge(parsed[key], true)
+		if key == "settings":
+			if typeof(parsed[key]) == TYPE_DICTIONARY:
+				data.settings.merge(parsed[key], true)
+		elif key != "version" and defaults.has(key) and typeof(parsed[key]) != typeof(defaults[key]):
+			push_warning("Save key '%s' has the wrong type, using the default" % key)
 		else:
 			data[key] = parsed[key]
 	data.version = SAVE_VERSION
@@ -45,6 +51,15 @@ func load_game() -> void:
 		data.highscores = {}
 	if typeof(data.get("howto_hidden")) != TYPE_DICTIONARY:
 		data.howto_hidden = {}
+	for id in data.progress.keys():
+		var entry = data.progress[id]
+		if typeof(entry) != TYPE_DICTIONARY or typeof(entry.get("stars")) != TYPE_ARRAY:
+			data.progress.erase(id)
+			continue
+		var stars: Array = []
+		for v in entry.stars:
+			stars.append(clampi(int(v), 0, 3) if typeof(v) in [TYPE_INT, TYPE_FLOAT] else 0)
+		entry.stars = stars
 
 
 func save_game() -> void:

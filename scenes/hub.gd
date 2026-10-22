@@ -6,6 +6,7 @@ const Toast := preload("res://core/toast.gd")
 const CardArt := preload("res://core/cards/card_art.gd")
 
 var _ads_button: Button
+var _picker: Control  # mode picker overlay while it is open
 
 
 func _ready() -> void:
@@ -105,9 +106,11 @@ func _pick_mode(id: String) -> void:
 	var dim := ColorRect.new()
 	dim.color = Color(0.03, 0.02, 0.1, 0.7)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# Any press outside the card closes it. Phones send a touch (plus an emulated mouse
+	# click), desktops a click (plus an emulated touch); closing twice is harmless.
 	dim.gui_input.connect(func(e: InputEvent):
-		if e is InputEventMouseButton and e.pressed and e.device != InputEvent.DEVICE_ID_EMULATION:
-			layer.queue_free())
+		if (e is InputEventMouseButton or e is InputEventScreenTouch) and e.pressed:
+			handle_back())
 	layer.add_child(dim)
 	var card := PanelContainer.new()
 	card.add_theme_stylebox_override("panel", UI.card_box())
@@ -129,8 +132,19 @@ func _pick_mode(id: String) -> void:
 	center.add_child(card)
 	layer.add_child(center)
 	add_child(layer)
+	_picker = layer
 	card.pivot_offset = card.size / 2.0
 	FX.pop(card, 0.8, 0.25)
+
+
+## Android back / outside tap: close the mode picker if it is open. Called by Nav.back().
+func handle_back() -> bool:
+	if not is_instance_valid(_picker) or _picker.is_queued_for_deletion():
+		return false
+	_picker.queue_free()
+	_picker = null
+	Feedback.sfx("back")
+	return true
 
 
 func _refresh_ads_button() -> void:

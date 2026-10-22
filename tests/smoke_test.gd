@@ -45,6 +45,13 @@ func _run() -> void:
 	assert(not save.is_howto_hidden("color_sort"))
 	save.set_howto_hidden("color_sort", true)
 	assert(save.is_howto_hidden("color_sort") and not save.is_howto_hidden("klondike"))
+	# A damaged save must load as defaults, not crash later lookups.
+	var f := FileAccess.open(save.SAVE_PATH, FileAccess.WRITE)
+	f.store_string('{"version":1,"progress":{"color_sort":{"stars":[3,null]},"block_puzzle":7},"highscores":[1]}')
+	f.close()
+	save.load_game()
+	assert(save.total_stars("color_sort") == 3 and save.total_stars("block_puzzle") == 0)
+	assert(save.get_high_score("number_merge") == 0)
 	save.reset_all()
 	errors += await _test_monetization()
 	errors += _test_cards()

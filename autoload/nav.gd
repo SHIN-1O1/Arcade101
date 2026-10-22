@@ -47,6 +47,8 @@ func to_hub() -> void:
 
 
 func to_level_select(id: String) -> void:
+	if _busy:
+		return  # don't change the selection while a slide still shows the old one
 	game_id = id
 	_go(LEVEL_SELECT, _current() != GAME_HOST)
 
@@ -65,12 +67,16 @@ func open_game(id: String) -> void:
 
 
 func play_endless(id: String) -> void:
+	if _busy:
+		return
 	game_id = id
 	mode = "endless"
 	_go(GAME_HOST, true)
 
 
 func play(id: String, level: int) -> void:
+	if _busy:
+		return  # else the host would save this level's result under the new index
 	game_id = id
 	mode = "levels"
 	level_index = level
@@ -79,6 +85,10 @@ func play(id: String, level: int) -> void:
 
 func back() -> void:
 	if _busy:
+		return
+	# A screen with a popup open (hub mode picker) closes that first.
+	var scene := get_tree().current_scene
+	if scene and scene.has_method("handle_back") and scene.handle_back():
 		return
 	match _current():
 		GAME_HOST:
