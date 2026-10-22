@@ -39,11 +39,19 @@ func _run() -> void:
 	save.reset_all()
 	errors += await _test_monetization()
 	for path in ["res://scenes/hub.tscn", "res://scenes/level_select.tscn", "res://scenes/settings.tscn", "res://scenes/game_host.tscn"]:
-		root.get_node("Nav").game_id = "fruit_merge"
+		root.get_node("Nav").game_id = "color_sort"  # a levels game; endless-only games have no level list
 		change_scene_to_file(path)
 		await process_frame
 		await process_frame
 		print("ok ", path)
+	for id in ["fruit_merge", "number_merge"]:  # endless runs
+		root.get_node("Nav").game_id = id
+		root.get_node("Nav").mode = "endless"
+		change_scene_to_file("res://scenes/game_host.tscn")
+		for i in 10:
+			await physics_frame
+		print("ok endless ", id)
+	root.get_node("Nav").mode = "levels"
 	print("SMOKE TEST ", "PASSED" if errors == 0 else "FAILED (%d)" % errors)
 	quit(errors)
 
