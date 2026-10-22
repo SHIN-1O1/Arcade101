@@ -23,7 +23,7 @@ core/
   fonts/           LilitaOne-Regular.ttf (OFL, licence in OFL.txt), via FX.font()/FX.theme()
   fx.gd            shared visual kit, preload as FX (see "Look and feel")
   cards/           card kit for solitaire-style games (see "Card kit"): card, deck, pile, card_layout,
-                   card_art, card_view, card_table, card_rules
+                   card_art, card_view, card_hud, card_table, card_rules
   toast.gd         Toast.show_text(root, msg) floating one-liner (preload it)
   monetization/    ad_config.gd (test IDs, pacing, flags), ad_provider*.gd, iap_provider*.gd
 scenes/            hub, level_select, game_host, settings (.tscn + .gd);
@@ -84,6 +84,9 @@ Cards are data (`Card`: rank 1..13, suit 0 spades/1 hearts/2 diamonds/3 clubs, `
   derives from the size the game gives it, so 9:16 to 9:21 portrait all work (no fixed pixels).
 - `card_art.gd` / `card_view.gd`: glossy cream faces with vector pips and court cards, indigo/tangerine backs, soft shadows,
   squash flip, hint glow. `CardArt.draw_face(ci, rect, suit, rank)` / `draw_back` can be reused anywhere (hub emblem does).
+- `card_hud.gd` CardHud: `StatPill` (title + popping value) and `ActionButton` (glossy tile with a vector icon: undo, hint,
+  auto, draw, flag, tap; badge, attention pulse, compact toggle) so card games share one HUD look. Klondike also draws its felt
+  table and drifting suits itself (games/klondike/game.gd `Felt`, `Motes`): copy that for a consistent table.
 - `card_rules.gd` CardRules: THE interface each game implements (override what you need):
   `can_pick(t, pile, index)`, `can_drop(t, cards, from, to)`, `on_tap(t, pile, index)` (stock draw; index -1 = empty slot),
   `auto_target(t, pile, index)` (double-tap / tap-to-move destination), `after_move(t, from, to, count)` (flip exposed
@@ -95,7 +98,7 @@ Cards are data (`Card`: rank 1..13, suit 0 spades/1 hearts/2 diamonds/3 clubs, `
   and `refresh(true, moving_cards)`. It handles drag and drop with snap-back (drop target = best overlap that `can_drop`
   accepts), double-tap auto-move, optional `tap_to_move`, `move_cards()/move_list()` (tweened, one undo snapshot each),
   `undo()` (whole-table snapshots: piles, face-up flags, rules extra), `show_hint()` (cycles `rules.hints`),
-  `auto_complete(step)`, `play_win()` (foundation cascade with trails, tap skips) and signals `moved`, `changed`,
+  `sparkle(pile_id)`, `auto_complete(step)`, `play_win()` (foundation cascade with trails, tap skips) and signals `moved`, `changed`,
   `win_animation_finished`, `auto_complete_finished`. Input skips emulated duplicate events. Kit plays select/place/locked/tap sfx
   (`sfx = false` to mute). `busy` is true during auto-complete and the win cascade.
 - Game side: `BaseGame` subclass that owns a CardTable plus its own buttons/HUD. Example: games/klondike/game.gd (rules in

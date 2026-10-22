@@ -159,19 +159,23 @@ func _fan_pile(p: RefCounted) -> void:
 func _place(v: CardView, target: Vector2, animated: bool, delay := 0.0) -> void:
 	if v.move_tween:
 		v.move_tween.kill()
-	if not animated or not is_inside_tree() or v.position.distance_to(target) < 0.5:
+	if not animated or not is_inside_tree() or (v.position.distance_to(target) < 0.5 and absf(v.rotation) < 0.01):
 		v.position = target
+		v.rotation = 0.0
 		v.z_index = 0
 		v.lift = 0.0
 		return
 	v.z_index = 30
+	v.lift = maxf(v.lift, 0.55)
 	v.move_tween = create_tween()
 	if delay > 0.0:
 		v.move_tween.tween_interval(delay)
-	v.move_tween.tween_property(v, "position", target, 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	v.move_tween.parallel().tween_property(v, "lift", 0.0, 0.22)
+	v.move_tween.tween_property(v, "position", target, 0.24).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	v.move_tween.parallel().tween_property(v, "lift", 0.0, 0.24)
+	v.move_tween.parallel().tween_property(v, "rotation", 0.0, 0.2)
 	v.move_tween.tween_callback(func():
-		v.z_index = 0)
+		v.z_index = 0
+		v.settle())
 
 
 # --- moves and undo ----------------------------------------------------------
@@ -366,9 +370,12 @@ func _pointer_move(pos: Vector2) -> void:
 	first.x = clampf(first.x, 0.0, maxf(0.0, size.x - card_size.x))
 	first.y = clampf(first.y, 0.0, maxf(0.0, size.y - card_size.y))
 	var base: Vector2 = _drag.pile.offsets[_drag.index]
+	var tilt := clampf((pos.x - _drag.get("last", pos).x) * 0.012, -0.16, 0.16)
+	_drag.last = pos
 	for k in _drag.cards.size():
 		var v: CardView = views[_drag.cards[k].uid]
 		v.position = first + _drag.pile.offsets[_drag.index + k] - base
+		v.rotation = lerpf(v.rotation, tilt, 0.3)
 
 
 func _begin_drag(hit: Dictionary, grab: Vector2) -> void:
@@ -459,6 +466,13 @@ func _auto_move(p: RefCounted, i: int) -> void:
 		nudge(p.cards[i])
 		return
 	move_cards(p, i, to)
+
+
+## Sparkle burst on top of pile `id` (foundation completes, a card lands somewhere special).
+func sparkle(id: String, amount := 14) -> void:
+	var p: RefCounted = piles[id]
+	var c: Vector2 = (p.card_pos(p.cards.size() - 1) if not p.cards.is_empty() else p.origin) + card_size / 2.0
+	FX.burst(self, c, [FX.LEMON, FX.TANGERINE, Color.WHITE], amount, 0.6)
 
 
 ## Little horizontal wobble: "that card cannot go anywhere".
@@ -611,20 +625,35 @@ func _draw() -> void:
 		if not p.show_slot:
 			continue
 		var r := Rect2(p.origin, card_size)
-		FX.draw_round_gradient(self, r, rad, Color(0, 0, 0.08, 0.3), Color(0, 0, 0.08, 0.18))
+		# recessed well: dark gradient, bright lower lip, darker top edge
+		draw_style_box(_slot_box(rad), r.grow(1.5))
+		FX.draw_round_gradient(self, r, rad, Color(0, 0, 0.1, 0.5), Color(0, 0, 0.1, 0.22))
 		var pts := FX.round_rect_points(r, rad)
 		pts.append(pts[0])
-		draw_polyline(pts, Color(1, 1, 1, 0.2), 2.0, true)
+		draw_polyline(pts, Color(FX.LEMON, 0.22), 1.6, true)
+		var inner := FX.round_rect_points(r.grow(-4.0), rad * 0.8)
+		inner.append(inner[0])
+		draw_polyline(inner, Color(1, 1, 1, 0.07), 1.0, true)
 		if p.cards.is_empty():
 			if p.recycle:
 				_draw_recycle(r.get_center(), card_size.x * 0.22)
 			elif p.slot_label != "":
-				FX.draw_text_centered(self, r.get_center(), p.slot_label, int(card_size.x * 0.46),
-					Color(1, 1, 1, 0.22), font)
+				var c := r.get_center()
+				draw_arc(c, card_size.x * 0.27, 0.0, TAU, 32, Color(FX.LEMON, 0.18), 2.0, true)
+				FX.draw_text_centered(self, c, p.slot_label, int(card_size.x * 0.38), Color(FX.LEMON, 0.3), font)
 		var g: float = _slot_glow.get(id, 0.0)
 		if g > 0.0:
 			draw_polyline(pts, Color(FX.LEMON, g), 4.0, true)
 			FX.draw_glow(self, r.grow(card_size.x * 0.25), Color(FX.LEMON, 0.3 * g))
+
+
+static var _slot_sb := StyleBoxFlat.new()
+
+
+static func _slot_box(rad: float) -> StyleBoxFlat:
+	_slot_sb.set_corner_radius_all(int(rad))
+	_slot_sb.bg_color = Color(1, 1, 1, 0.05)
+	return _slot_sb
 
 
 func _draw_recycle(c: Vector2, r: float) -> void:

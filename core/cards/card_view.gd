@@ -20,7 +20,6 @@ var dim := 0.0:        ## 0..1 darkens (cards that cannot be picked up)
 	set(v):
 		dim = v
 		queue_redraw()
-var _flip := 1.0       ## horizontal scale during a flip
 var move_tween: Tween
 var _flip_tween: Tween
 
@@ -49,21 +48,24 @@ func sync_face(animated: bool) -> void:
 		return
 	if not animated or not is_inside_tree():
 		shown_up = card.face_up
-		_flip = 1.0
+		scale.x = 1.0
 		queue_redraw()
 		return
 	if _flip_tween:
 		_flip_tween.kill()
 	_flip_tween = create_tween()
-	_flip_tween.tween_method(_set_flip, 1.0, 0.0, 0.11).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	_flip_tween.tween_property(self, "scale:x", 0.04, 0.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	_flip_tween.tween_callback(func():
-		shown_up = card.face_up)
-	_flip_tween.tween_method(_set_flip, 0.0, 1.0, 0.11).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		shown_up = card.face_up
+		queue_redraw())
+	_flip_tween.tween_property(self, "scale:x", 1.0, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
-func _set_flip(v: float) -> void:
-	_flip = v
-	queue_redraw()
+## Landing squash: the card presses down a touch and springs back.
+func settle() -> void:
+	var tw := create_tween()
+	tw.tween_property(self, "scale", Vector2(1.05, 0.95), 0.06).set_ease(Tween.EASE_OUT)
+	tw.tween_property(self, "scale", Vector2.ONE, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 ## A short pulse (hint). Safe to call repeatedly.
@@ -79,8 +81,6 @@ func _draw() -> void:
 	if card == null:
 		return
 	var r := Rect2(Vector2.ZERO, size)
-	if _flip < 1.0:
-		draw_set_transform(Vector2(size.x * 0.5 * (1.0 - _flip), 0), 0.0, Vector2(maxf(_flip, 0.02), 1.0))
 	if shown_up:
 		CardArt.draw_face(self, r, card.suit, card.rank, lift)
 	else:
