@@ -74,8 +74,16 @@ def tower_stack(i, t):
             "block_width": ri(360, 260, t), "stars": [0, ri(3, 12, t), ri(6, 22, t)]}
 
 def block_puzzle(i, t):
-    return {"grid": 8, "target_lines": ri(4, 40, t), "prefilled": ri(0, 18, t),
-            "piece_set": "basic" if i < 10 else "extended", "stars": [0, ri(300, 3000, t), ri(600, 5500, t)]}
+    # Every 3rd level (from the 3rd) is "clear all marked blocks"; the rest are "clear N lines".
+    piece_set = "basic" if i < 10 else "extended"
+    if i % 3 == 2:
+        pre = ri(6, 26, t)
+        eq = max(4, pre // 2)
+        return {"grid": 8, "goal": "clear", "target_lines": 0, "prefilled": pre,
+                "piece_set": piece_set, "stars": [0, eq * 22, eq * 34]}
+    lines = ri(3, 20, t)
+    return {"grid": 8, "goal": "lines", "target_lines": lines, "prefilled": ri(0, 14, t),
+            "piece_set": piece_set, "stars": [0, lines * 22, lines * 34]}
 
 def number_merge(i, t):
     tiers = [128, 128, 256, 256, 256, 512, 512, 512, 512, 1024]
