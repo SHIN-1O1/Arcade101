@@ -92,8 +92,22 @@ def block_puzzle(i, t):
             "piece_set": piece_set, "stars": [0, lines * 22, lines * 34]}
 
 def bubble_shooter(i, t):
-    return {"rows": ri(4, 11, t), "colors": ri(3, 6, t), "shots": ri(30, 40, t),
-            "stars": [0, ri(8, 6, t), ri(14, 10, t)]}
+    # Goal cycles clear -> color -> gems (level 1 is always clear). More colours, taller and
+    # more awkward layouts as levels rise; the ceiling starts dropping from level 16.
+    goal = ["clear", "color", "gems"][i % 3] if i > 0 else "clear"
+    layout = "full" if i < 6 else ["gaps", "pillars", "hang"][i % 3]
+    colors = ri(3, 6, t)
+    rows = ri(4, 9, t)
+    d = {"goal": goal, "layout": layout, "rows": rows, "colors": colors,
+         "shots": int(rows * 2.5) + colors * 2 + 6 + (8 if goal == "clear" else 0) - (4 if i >= 15 and goal != "clear" else 0),
+         "drop_every": 0 if (i < 15 or goal == "clear") else ri(9, 6, (i - 15) / 14)}
+    if goal == "color":
+        d["target_color"] = i % colors
+        d["target_n"] = ri(8, 40, t)
+    if goal == "gems":
+        d["gems"] = ri(2, 8, t)
+    d["stars"] = [0, d["shots"] * 3 // 10, d["shots"] // 2]
+    return d
 
 GAMES = {
     "fruit_merge":    (fruit_merge,    "score"),
