@@ -32,6 +32,11 @@ scenes/            hub, level_select, game_host, settings (.tscn + .gd);
 data/games.json    game registry (order = hub order)
 data/how_to_play.json  how-to-play text per game id: steps (2-4 lines) + optional endless tip; every game needs one
 games/<id>/        game.tscn (+ scripts/assets) and levels.json (30 levels)
+tools/gen_branding.py  icon layers, splash, Play graphics from code -> branding/, store/graphics/, icon.svg
+tools/marketing_shots.sh  Play Store screenshots (xvfb) -> store/screenshots/ (git-ignored)
+tools/check_release.py  pre-launch blockers (placeholders, test ads, secrets in presets)
+docs/RELEASE.md, STORE_LISTING.md, PRIVACY_POLICY.md  publishing guide, store text, policy page
+export_presets.cfg  Android Debug APK + Release AAB presets, NO secrets (keystore fields stay empty)
 tools/gen_levels.py  regenerates every levels.json (overwrites hand edits!)
 tools/klondike_solver.py  finds verified-winnable Klondike deals -> tools/klondike_deals.json (gen_levels.py reads it)
 tests/smoke_test.gd  headless check: registry, levels, save logic, scenes load
@@ -198,6 +203,11 @@ any game that ships a `check.gd`.
 ## Commands
 - Smoke test: `godot --headless --import` once, then `godot --headless -s res://tests/smoke_test.gd`
 - Run: open project in editor, F5.
+
+## Release (docs/RELEASE.md)
+Package `com.shin1o1.arcade101`, arm64-v8a only, Gradle build on, target SDK = Godot default (36 in 4.7.2, Play needs 36).
+`project.godot` has the boot splash, 60 fps cap and Compatibility renderer; safe areas come from `UI.screen`, edge-to-edge is on in the preset.
+Keystore, passwords and real ad IDs never go in git. Run `python tools/check_release.py` before every release build.
 
 ## Rules
 - Original names/art only; copy mechanics, never trademarks or assets.

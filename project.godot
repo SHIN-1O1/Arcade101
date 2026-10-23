@@ -5,10 +5,16 @@ config_version=5
 
 config/name="Arcade 101"
 config/description="Offline mini-games collection"
+config/version="0.1.0"
 run/main_scene="res://scenes/hub.tscn"
-config/features=PackedStringArray("4.3", "Mobile")
+config/features=PackedStringArray("4.3", "GL Compatibility")
 config/icon="res://icon.svg"
 config/quit_on_go_back=false
+boot_splash/bg_color=Color(0.047058824, 0.039215688, 0.13333334, 1)
+boot_splash/image="res://branding/splash.png"
+boot_splash/fullsize=false
+boot_splash/use_filter=true
+run/max_fps=60
 
 [autoload]
 
@@ -38,3 +44,4 @@ pointing/emulate_touch_from_mouse=true
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/vram_compression/import_etc2_astc=true
+environment/defaults/default_clear_color=Color(0.047058824, 0.039215688, 0.13333334, 1)
