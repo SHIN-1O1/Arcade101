@@ -15,6 +15,7 @@ const Layout := preload("res://games/mahjong_match/layout.gd")
 const Faces := preload("res://games/mahjong_match/faces.gd")
 const Look := preload("res://games/mahjong_match/look.gd")
 const Icons := preload("res://games/mahjong_match/icons.gd")
+const TileCache := preload("res://games/mahjong_match/tile_cache.gd")
 const INDIGO := Color("#2B2A6B")
 const TANGERINE := Color("#FF8A1F")
 const LEMON := Color("#FFD23F")
@@ -106,6 +107,8 @@ var _shuffle_btn: Look.ActionButton
 var _undo_btn: Look.ActionButton
 var _sb := StyleBoxFlat.new()
 var _sb_line := StyleBoxFlat.new()
+var _cache: TileCache  # resting tile looks, pre-rendered once per tile size
+var _premult: CanvasItemMaterial
 
 
 func _ready() -> void:
@@ -756,32 +759,63 @@ func _apply(i: int) -> void:
 # --- drawing ----------------------------------------------------------------
 
 ## One tile in its own local space (centred on the origin). Called by Look.TileNode.
+## A resting tile is one quad from the shared atlas (TileCache); selected, hinted and shaking
+## tiles, and every tile until the atlas is ready, draw their vector shapes.
 func draw_tile_node(ci: CanvasItem, i: int) -> void:
 	var ts := tile_size()
 	if ts.x < 4.0:
 		return
-	var radius := int(ts.x * 0.15)
 	var r := Rect2(-ts / 2.0, ts)
 	var sel := selected == i
 	var free := free_now[i] != 0
 	var lay := board.ls[i]
+	var cache := _tile_cache()
+	var px := get_tree().root.get_final_transform().get_scale().x if is_inside_tree() else 1.0
+	cache.request(ts, tt, px)
+	var atlas := not sel and not _hint_pair.has(i) and _shake[i] <= 0.0 and cache.ready_for(ts, tt, px)
+	ci.material = _premult if atlas else null
 	if sel:
 		FX.draw_glow(ci, r.grow(ts.x * 0.4), Color(LEMON, 0.6))
 	elif _hint_pair.has(i):
 		FX.draw_glow(ci, r.grow(ts.x * 0.4), Color(TANGERINE, 0.7))
 	FX.draw_shadow(ci, Rect2(r.position + Vector2(tt * 0.5, tt * (1.0 + 0.25 * lay)), ts * Vector2(1.1, 1.08)),
-		0.55 if lay == 0 else 0.45)
+		0.55 if lay == 0 else 0.45)  # black, so it blends the same with the atlas's premultiplied mode
+	if atlas:
+		ci.draw_texture_rect_region(cache.tex, TileCache.cell_rect(ts, tt), cache.region(keys[i], variants[i], free))
+		return
+	paint_tile(ci, ts, tt, keys[i], variants[i], free, sel)
+	var radius := int(ts.x * 0.15)
+	if _shake[i] > 0.0:
+		_sb.set_corner_radius_all(radius)
+		_sb.bg_color = Color(1.0, 0.25, 0.25, 0.4 * _shake[i])
+		ci.draw_style_box(_sb, r)
+	if sel:
+		_sb_line.set_border_width_all(int(maxf(3.0, tt * 0.8)))
+		_sb_line.set_corner_radius_all(radius)
+		_sb_line.border_color = LEMON
+		ci.draw_style_box(_sb_line, r.grow(1.0))
+	elif _hint_pair.has(i):
+		_sb_line.set_border_width_all(int(maxf(3.0, tt * 0.7)))
+		_sb_line.set_corner_radius_all(radius)
+		_sb_line.border_color = TANGERINE
+		ci.draw_style_box(_sb_line, r.grow(1.0))
+
+
+## Tile body and face, centred on the origin (no shadow, glow or state outline). Also paints the atlas.
+func paint_tile(ci: CanvasItem, ts: Vector2, thick: float, key: int, variant: int, free: bool, sel := false) -> void:
+	var radius := int(ts.x * 0.15)
+	var r := Rect2(-ts / 2.0, ts)
 	_sb.draw_center = true
 	_sb.set_corner_radius_all(radius)
 	# two-layer tile seen from above: a jade back, an ivory body and a thin gold seam between them
 	_sb.bg_color = SIDE_DARK
-	ci.draw_style_box(_sb, Rect2(r.position + Vector2(tt, tt), ts))
+	ci.draw_style_box(_sb, Rect2(r.position + Vector2(thick, thick), ts))
 	_sb.bg_color = SIDE
-	ci.draw_style_box(_sb, Rect2(r.position + Vector2(tt * 0.72, tt * 0.72), ts))
+	ci.draw_style_box(_sb, Rect2(r.position + Vector2(thick * 0.72, thick * 0.72), ts))
 	_sb.bg_color = Color("#f6e7b0")
-	ci.draw_style_box(_sb, Rect2(r.position + Vector2(tt * 0.5, tt * 0.5), ts))
+	ci.draw_style_box(_sb, Rect2(r.position + Vector2(thick * 0.5, thick * 0.5), ts))
 	_sb.bg_color = Color("#dcc595") if free else Color("#c9b484")
-	ci.draw_style_box(_sb, Rect2(r.position + Vector2(tt * 0.42, tt * 0.42), ts))
+	ci.draw_style_box(_sb, Rect2(r.position + Vector2(thick * 0.42, thick * 0.42), ts))
 	var top_c := Color("#fffcf3")
 	var bot_c := Color("#f0dfb6")
 	if sel:
@@ -805,25 +839,25 @@ func draw_tile_node(ci: CanvasItem, i: int) -> void:
 	ci.draw_style_box(_sb_line, inner)
 	FX.draw_glow(ci, Rect2(r.position + ts * Vector2(-0.05, -0.08), ts * Vector2(0.9, 0.5)), Color(1, 1, 1, 0.4 if free else 0.15))
 	ci.draw_line(r.position + Vector2(radius, 1.5), Vector2(r.end.x - radius, r.position.y + 1.5), Color(1, 1, 1, 0.9), 2.0, true)
-	Faces.draw_face(ci, Rect2(r.position + ts * Vector2(0.1, 0.1), ts * Vector2(0.8, 0.78)), keys[i], variants[i], FX.font())
+	Faces.draw_face(ci, Rect2(r.position + ts * Vector2(0.1, 0.1), ts * Vector2(0.8, 0.78)), key, variant, FX.font())
 	if not free:
 		_sb.set_corner_radius_all(radius)
 		_sb.bg_color = Color(0.12, 0.08, 0.26, 0.15)
 		ci.draw_style_box(_sb, r)
-	if _shake[i] > 0.0:
-		_sb.set_corner_radius_all(radius)
-		_sb.bg_color = Color(1.0, 0.25, 0.25, 0.4 * _shake[i])
-		ci.draw_style_box(_sb, r)
-	if sel:
-		_sb_line.set_border_width_all(int(maxf(3.0, tt * 0.8)))
-		_sb_line.set_corner_radius_all(radius)
-		_sb_line.border_color = LEMON
-		ci.draw_style_box(_sb_line, r.grow(1.0))
-	elif _hint_pair.has(i):
-		_sb_line.set_border_width_all(int(maxf(3.0, tt * 0.7)))
-		_sb_line.set_corner_radius_all(radius)
-		_sb_line.border_color = TANGERINE
-		ci.draw_style_box(_sb_line, r.grow(1.0))
+
+
+## The shared tile atlas, created on first use under this game (freed with it).
+func _tile_cache() -> TileCache:
+	if _cache == null:
+		_cache = TileCache.new(paint_tile)
+		add_child.call_deferred(_cache)  # may be first asked for while drawing
+		_cache.rebuilt.connect(func():
+			for n in _nodes:
+				if n:
+					n.queue_redraw())
+		_premult = CanvasItemMaterial.new()
+		_premult.blend_mode = CanvasItemMaterial.BLEND_MODE_PREMULT_ALPHA  # the atlas is rendered premultiplied
+	return _cache
 
 
 ## HUD chips, shock rings, score pops and the banner; drawn above the tiles by Look.Overlay.
