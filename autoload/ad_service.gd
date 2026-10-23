@@ -72,6 +72,11 @@ func interstitial_due() -> bool:
 		and provider.is_interstitial_ready())
 
 
+## True while a full-screen ad is open or loading on screen. Nav ignores Back meanwhile.
+func is_showing() -> bool:
+	return _busy
+
+
 ## Runs `next` right away, or after an interstitial if one is due. Use it for the Next / Levels
 ## buttons on the result card, never mid-level. `next` is called exactly once.
 func run_after_interstitial(next: Callable) -> void:

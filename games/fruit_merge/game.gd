@@ -467,9 +467,15 @@ func _process(delta: float) -> void:
 			f.jelly = maxf(f.jelly, clampf(hit.length() / 2600.0, 0.03, 0.13))
 			f.jelly_dir = hit.angle()
 		f.vel = v
-		# damped spring: squash, overshoot into a small stretch, settle
-		f.jelly_v += (-900.0 * f.jelly - 15.0 * f.jelly_v) * delta
-		f.jelly += f.jelly_v * delta
+		# damped spring: squash, overshoot into a small stretch, settle. Stepped at <= 1/60 s:
+		# with k = 900 a single long frame (low-end phone hitch, return from background) made
+		# the plain Euler step blow up and a fruit stretched into a screen-wide coloured band.
+		var left := delta
+		while left > 0.0:
+			var dt := minf(left, 1.0 / 60.0)
+			left -= dt
+			f.jelly_v += (-900.0 * f.jelly - 15.0 * f.jelly_v) * dt
+			f.jelly = clampf(f.jelly + f.jelly_v * dt, -0.3, 0.3)
 		if absf(f.jelly) < 0.002 and absf(f.jelly_v) < 0.05:
 			f.jelly = 0.0
 			f.jelly_v = 0.0

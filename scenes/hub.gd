@@ -6,6 +6,7 @@ const Toast := preload("res://core/toast.gd")
 const CardArt := preload("res://core/cards/card_art.gd")
 
 var _ads_button: Button
+var _picker: Control  # mode picker overlay while it is open
 
 
 func _ready() -> void:
@@ -105,9 +106,11 @@ func _pick_mode(id: String) -> void:
 	var dim := ColorRect.new()
 	dim.color = Color(0.03, 0.02, 0.1, 0.7)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# Any press outside the card closes it. Phones send a touch (plus an emulated mouse
+	# click), desktops a click (plus an emulated touch); closing twice is harmless.
 	dim.gui_input.connect(func(e: InputEvent):
-		if e is InputEventMouseButton and e.pressed and e.device != InputEvent.DEVICE_ID_EMULATION:
-			layer.queue_free())
+		if (e is InputEventMouseButton or e is InputEventScreenTouch) and e.pressed:
+			handle_back())
 	layer.add_child(dim)
 	var card := PanelContainer.new()
 	card.add_theme_stylebox_override("panel", UI.card_box())
@@ -129,8 +132,19 @@ func _pick_mode(id: String) -> void:
 	center.add_child(card)
 	layer.add_child(center)
 	add_child(layer)
+	_picker = layer
 	card.pivot_offset = card.size / 2.0
 	FX.pop(card, 0.8, 0.25)
+
+
+## Android back / outside tap: close the mode picker if it is open. Called by Nav.back().
+func handle_back() -> bool:
+	if not is_instance_valid(_picker) or _picker.is_queued_for_deletion():
+		return false
+	_picker.queue_free()
+	_picker = null
+	Feedback.sfx("back")
+	return true
 
 
 func _refresh_ads_button() -> void:
@@ -149,6 +163,26 @@ class GameCard extends Button:
 	var max_stars := 90
 	var levels := true  # has a campaign (star bar)
 	var best := -1  # endless best score, -1 = no endless mode
+	var _press_at := Vector2.INF  # where a press started (canvas space), to tell a tap from a scroll
+
+	func _init() -> void:
+		# Cards cover most of the list: let drags through to the ScrollContainer so the list
+		# scrolls on a phone (with STOP it only scrolled from the thin gaps between cards).
+		mouse_filter = Control.MOUSE_FILTER_PASS
+
+	func _gui_input(e: InputEvent) -> void:
+		var at: Vector2 = get_global_transform() * (e.position if "position" in e else Vector2.ZERO)
+		if e is InputEventMouseButton or e is InputEventScreenTouch:
+			if e.pressed:
+				_press_at = at
+			else:
+				_press_at = Vector2.INF
+				if disabled:
+					set_deferred("disabled", false)
+		elif (e is InputEventMouseMotion or e is InputEventScreenDrag) and _press_at != Vector2.INF:
+			if not disabled and at.distance_to(_press_at) > 24.0:
+				disabled = true  # it is a scroll, so lifting the finger must not open the game
+				create_tween().tween_property(self, "scale", Vector2.ONE, 0.15)
 
 	func _draw() -> void:
 		var col := Color(game.get("color", "#8e7dbe"))
@@ -174,11 +208,13 @@ class GameCard extends Button:
 				draw_style_box(UI.box(FX.LEMON, 10), Rect2(bar.position, Vector2(maxf(20.0, bar.size.x * k), bar.size.y)))
 			FX.draw_star(self, Vector2(r.position.x + 34, bar.get_center().y), 17.0)
 		if best >= 0:
-			if levels:  # both modes: best score as a small tag in the corner
-				var tag := Rect2(r.position.x + 10, r.position.y + 8, 112, 34)
+			if levels and best > 0:  # both modes: best score as a small tag once there is one
+				var txt := "BEST %d" % best
+				var tw := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
+				var tag := Rect2(r.position.x + 10, r.position.y + 8, maxf(112.0, tw + 28.0), 34)
 				draw_style_box(UI.box(Color(0.05, 0.04, 0.16, 0.8), 17), tag)
-				FX.draw_text_centered(self, tag.get_center(), "BEST %d" % best, 20, FX.LEMON, font)
-			else:  # endless only: best score replaces the star bar
+				FX.draw_text_centered(self, tag.get_center(), txt, 20, FX.LEMON, font)
+			elif not levels:  # endless only: best score replaces the star bar
 				var pill := Rect2(r.position.x + 24, r.position.y + r.size.y * 0.815, r.size.x - 48, 40)
 				draw_style_box(UI.box(Color(0.05, 0.04, 0.16, 0.6), 20), pill)
 				FX.draw_text_centered(self, pill.get_center(), "BEST  %d" % best if best > 0 else "ENDLESS", 26,
@@ -251,8 +287,9 @@ class GameCard extends Button:
 				var cw := s * 1.0
 				var ch := cw * 1.4
 				for i in 3:
-					draw_set_transform(c + Vector2((i - 1) * s * 0.42, s * 0.78), deg_to_rad((i - 1) * 19.0), Vector2.ONE)
-					CardArt.draw_face(self, Rect2(Vector2(-cw / 2.0, -ch), Vector2(cw, ch)), [0, 1, 2][i], 1, 0.0, true)
+					var fan := Transform2D(deg_to_rad((i - 1) * 19.0), c + Vector2((i - 1) * s * 0.42, s * 0.78))
+					draw_set_transform_matrix(fan)
+					CardArt.draw_face(self, Rect2(Vector2(-cw / 2.0, -ch), Vector2(cw, ch)), [0, 1, 2][i], 1, 0.0, true, fan)
 				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 			_:
 				FX.draw_ball(self, c, s * 0.7, col.lightened(0.3), String(game.get("name", "?")).left(1))
