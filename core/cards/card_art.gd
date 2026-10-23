@@ -64,7 +64,7 @@ static func _outline(ci: CanvasItem, r: Rect2, rad: float, col: Color, width: fl
 
 static func _body(ci: CanvasItem, r: Rect2, top: Color, bottom: Color, edge: Color) -> void:
 	var rad := r.size.x * 0.12
-	FX.draw_round_gradient(ci, r, rad, top, bottom)
+	FX.draw_round_gradient(ci, r, rad, top, bottom, true, false)  # the outline below smooths it
 	_outline(ci, r, rad, edge, 1.7)
 	_outline(ci, r.grow(-2.2), rad * 0.8, Color(1, 1, 1, 0.75), 1.1)
 
