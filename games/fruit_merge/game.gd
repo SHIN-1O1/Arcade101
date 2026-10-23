@@ -19,12 +19,13 @@ const TANGERINE := Color("#FF8A1F")
 const LEMON := Color("#FFD23F")
 
 ## Radius of each tier in design units (jar is 600 units wide) and its particle colour.
-## Original set: blueberry, cherry, grape, lemon, orange, green apple, peach, dragon fruit, pineapple,
-## cantaloupe, watermelon (one clear hue each, so neighbouring tiers never look alike).
+## Original set: blueberry, cherry, grape, lemon, orange, green apple, pomegranate, coconut, pineapple,
+## pumpkin, watermelon (one clear hue each, so neighbouring tiers never look alike).
 const RADII := [19.0, 26.0, 34.0, 41.0, 51.0, 61.0, 71.0, 83.0, 97.0, 113.0, 131.0]
 const COLORS := [Color("#4F7FF0"), Color("#FF2E45"), Color("#B145D6"), Color("#FFE04A"), Color("#FF9A1F"),
-	Color("#8FD63A"), Color("#FFB07A"), Color("#FF4FA8"), Color("#FFC93C"), Color("#F0B870"), Color("#3FAE3A")]
+	Color("#8FD63A"), Color("#E8304E"), Color("#A8703E"), Color("#FFC93C"), Color("#FF8A1F"), Color("#3FAE3A")]
 const ART := "res://games/fruit_merge/art/"
+const SELF_LIT := [8]  # oval pineapple: lighting is baked into its skin (see art/gen_art.py SELF_LIT)
 const ART_HALF := 1.6  # fruit_<n>.png: canvas half-size in fruit radii (the disc is 120 of 192 px)
 const SCORE := [1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66]
 const MELON_BONUS := 100  # two of the last tier burst
@@ -702,7 +703,8 @@ func draw_fruit(c: Vector2, r: float, tier: int, rot: float, jelly: float, jdir:
 	var tint := Color(1, 1, 1, 1) if alpha >= 1.0 else Color(alpha, alpha, alpha * 1.1, 1.0)
 	draw_set_transform_matrix(base * Transform2D(rot, Vector2.ZERO))
 	draw_texture_rect(_skins[tier], rect, false, tint)
-	draw_set_transform_matrix(base)
-	draw_texture_rect(_shade, rect, false)
-	draw_texture_rect(_spec, rect, false, Color(1, 1, 1, alpha))
+	if tier not in SELF_LIT:
+		draw_set_transform_matrix(base)
+		draw_texture_rect(_shade, rect, false)
+		draw_texture_rect(_spec, rect, false, Color(1, 1, 1, alpha))
 	draw_set_transform_matrix(Transform2D.IDENTITY)
