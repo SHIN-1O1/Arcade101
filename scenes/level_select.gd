@@ -102,31 +102,27 @@ class LevelTile extends Button:
 		queue_redraw()
 
 	func _draw() -> void:
-		var r := Rect2(Vector2(3, 3), size - Vector2(6, 12))
+		var r := Rect2(Vector2(8, 8), size - Vector2(16, 16))
 		var cx := r.get_center().x
 		var font := FX.font()
-		var col := Color("#3b3970")
-		match state:
-			DONE:
-				col = accent
-			NEXT:
-				col = FX.TANGERINE
-				var pulse := 0.5 + 0.5 * sin(_time * 4.0)
-				FX.draw_glow(self, r.grow(26.0 + 8.0 * pulse), Color(FX.LEMON, 0.3 + 0.25 * pulse))
-		FX.draw_tile(self, r, col, 24)
-		if state == NEXT:
-			var ring := StyleBoxFlat.new()
-			ring.draw_center = false
-			ring.set_corner_radius_all(26)
-			ring.set_border_width_all(4)
-			ring.border_color = FX.LEMON
-			draw_style_box(ring, r.grow(3.0))
 		if state == LOCKED:
-			FX.draw_lock(self, Vector2(cx, r.position.y + r.size.y * 0.38), r.size.y * 0.42, Color(1, 1, 1, 0.42))
+			var sb := UI.box(Color(FX.NIGHT, 0.75), 20)
+			sb.border_color = Color(1, 1, 1, 0.14)
+			sb.set_border_width_all(2)
+			draw_style_box(sb, r)
+			FX.draw_lock(self, Vector2(cx, r.position.y + r.size.y * 0.38), r.size.y * 0.42, Color(1, 1, 1, 0.32))
 			FX.draw_text_centered(self, Vector2(cx, r.position.y + r.size.y * 0.8), str(number), 24,
-				Color(1, 1, 1, 0.45), font)
+				Color(1, 1, 1, 0.4), font)
 			return
-		FX.draw_text_centered(self, Vector2(cx, r.position.y + r.size.y * 0.38), str(number), 48, Color.WHITE, font)
+		var col := FX.neon(accent)
+		var width := 3.0
+		if state == NEXT:  # the level to play next hums brighter
+			col = FX.LEMON
+			var pulse := 0.5 + 0.5 * sin(_time * 4.0)
+			FX.draw_glow(self, r.grow(20.0 + 8.0 * pulse), Color(FX.LEMON, 0.18 + 0.2 * pulse))
+			width = 3.0 + 1.5 * pulse
+		FX.draw_neon_panel(self, r, 20, col, width)
+		FX.draw_neon_text(self, Vector2(cx, r.position.y + r.size.y * 0.38), str(number), 46, col, font, 0.8)
 		var sy := r.position.y + r.size.y * 0.76
 		for k in 3:
 			var lift := -4.0 if k == 1 else 0.0

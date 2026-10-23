@@ -149,23 +149,8 @@ func close() -> void:
 
 
 func _draw_card() -> void:
-	var r := Rect2(Vector2.ZERO, _card.size)
-	var sh := StyleBoxFlat.new()
-	sh.bg_color = Color(0, 0, 0, 0)
-	sh.set_corner_radius_all(44)
-	sh.shadow_color = Color(0, 0, 0, 0.5)
-	sh.shadow_size = 30
-	sh.shadow_offset = Vector2(0, 16)
-	_card.draw_style_box(sh, r)
-	FX.draw_round_gradient(_card, r, 44, FX.INDIGO.lightened(0.2), FX.INDIGO.darkened(0.35))
-	# Header band in the game's own colour, like the result card.
-	var band_h := _head.position.y + _head.size.y + 24.0
-	FX.draw_round_gradient(_card, Rect2(0, 0, r.size.x, band_h), 44, accent.lightened(0.15), accent.darkened(0.2), false)
-	_card.draw_rect(Rect2(0, band_h - 4, r.size.x, 4), Color(0, 0, 0, 0.25))
-	FX.draw_glow(_card, Rect2(r.size.x * 0.1, -band_h * 0.3, r.size.x * 0.8, band_h), Color(1, 1, 1, 0.22))
-	var rim := FX.round_rect_points(r, 44)
-	rim.append(rim[0])
-	_card.draw_polyline(rim, Color(1, 1, 1, 0.16), 3.0, true)
+	FX.draw_neon_card(_card, Rect2(Vector2.ZERO, _card.size), 44, FX.neon(accent),
+		_head.position.y + _head.size.y + 24.0)
 
 
 ## Glossy round step number.

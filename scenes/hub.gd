@@ -32,10 +32,8 @@ func _ready() -> void:
 	top.add_theme_constant_override("separation", 16)
 	top.add_child(UI.icon_button("settings", Nav.to_settings))
 
-	var heading := VBoxContainer.new()
-	heading.add_theme_constant_override("separation", -26)
-	heading.add_child(UI.title("ARCADE", 90, FX.LEMON))
-	heading.add_child(UI.title("101", 90, FX.TANGERINE))
+	var heading := NeonTitle.new()
+	heading.custom_minimum_size = Vector2(0, 210)
 	col.add_child(heading)
 
 	var scroll := ScrollContainer.new()
@@ -156,7 +154,39 @@ func _on_iap_busy(busy: bool) -> void:
 	_ads_button.modulate.a = 0.6 if busy else 1.0
 
 
-## Game card: glossy tile in the game's colour, a little drawn emblem, name, star progress.
+## "ARCADE 101" as a neon sign: pink and tangerine tubes that hum and now and then flicker.
+class NeonTitle extends Control:
+	var _t := 0.0
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _process(delta: float) -> void:
+		_t += delta
+		queue_redraw()
+
+	## 1 most of the time; a quick stutter for a moment every few seconds.
+	func _flicker(offset: float) -> float:
+		var k := fposmod(_t + offset, 5.3)
+		if k < 0.32:
+			return 0.35 if int(k * 22.0) % 3 == 0 else 1.0
+		return 0.93 + 0.07 * sin(_t * 9.0 + offset)
+
+	func _draw() -> void:
+		var c := size / 2.0
+		var f := FX.font()
+		FX.draw_glow(self, Rect2(c.x - size.x * 0.45, 0, size.x * 0.9, size.y), Color(FX.NEON_PINK, 0.16))
+		FX.draw_neon_text(self, c + Vector2(0, -46), "ARCADE", 100, FX.NEON_PINK, f, _flicker(0.0))
+		FX.draw_neon_text(self, c + Vector2(0, 58), "101", 96, FX.TANGERINE, f, _flicker(2.4))
+		var y := c.y + 4.0  # thin neon rules either side, like a sign's frame
+		for side in [-1, 1]:
+			var x0: float = c.x + side * 150.0
+			FX.draw_neon_polyline(self, PackedVector2Array([Vector2(x0, y), Vector2(x0 + side * 120.0, y)]),
+				FX.NEON_CYAN, 3.0, false, 0.8)
+
+
+## Game card: arcade-cabinet tile with a neon rim in the game's colour, a little CRT screen
+## with a neon line-art emblem, the name in neon type, and star progress.
 class GameCard extends Button:
 	var game: Dictionary
 	var stars := 0
@@ -184,112 +214,169 @@ class GameCard extends Button:
 				disabled = true  # it is a scroll, so lifting the finger must not open the game
 				create_tween().tween_property(self, "scale", Vector2.ONE, 0.15)
 
+	func _ready() -> void:
+		texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED  # scanlines
+
 	func _draw() -> void:
-		var col := Color(game.get("color", "#8e7dbe"))
-		var r := Rect2(Vector2(2, 2), size - Vector2(4, 12))
+		var col := FX.neon(Color(game.get("color", "#8e7dbe")))
+		var r := Rect2(Vector2(8, 8), size - Vector2(16, 18))
 		var cx := r.get_center().x
 		var font := FX.font()
-		FX.draw_tile(self, r, col, 34)
-		# Emblem on a darker plate.
-		var plate := Rect2(r.position + Vector2(18, 16), Vector2(r.size.x - 36, r.size.y * 0.46))
-		var sb := UI.box(Color(col.darkened(0.45), 0.55), 26)
-		draw_style_box(sb, plate)
-		_emblem(String(game.get("id", "")), plate.get_center(), plate.size.y * 0.42, col)
-		FX.draw_text_centered(self, Vector2(cx, r.position.y + r.size.y * 0.64), game.get("name", ""), 36,
-			Color.WHITE, font)
-		FX.draw_text_centered(self, Vector2(cx, r.position.y + r.size.y * 0.76), game.get("tagline", ""), 21,
-			Color(1, 1, 1, 0.82), font)
-		var bar := Rect2(r.position.x + 56, r.position.y + r.size.y * 0.85, r.size.x - 80, 20)
+		FX.draw_neon_panel(self, r, 26, col, 3.5)
+		# CRT screen with the emblem.
+		var plate := Rect2(r.position + Vector2(16, 16), Vector2(r.size.x - 32, r.size.y * 0.47))
+		FX.draw_round_gradient(self, plate, 16, FX.NIGHT, FX.NIGHT.lerp(col, 0.18))
+		for i in range(1, 6):  # faint perspective floor lines
+			var y := plate.end.y - plate.size.y * 0.06 * i * i * 0.5
+			draw_line(Vector2(plate.position.x + 8, y), Vector2(plate.end.x - 8, y), Color(col, 0.08), 1.5)
+		FX.draw_scanlines(self, plate.grow(-2.0), 0.22)
+		FX.draw_neon_rect(self, plate, 16, Color(col, 0.6), 1.6, 0.4)
+		_emblem(String(game.get("id", "")), plate.get_center(), plate.size.y * 0.4, col)
+		FX.draw_neon_text(self, Vector2(cx, r.position.y + r.size.y * 0.64), game.get("name", ""), 34, col, font, 0.8)
+		FX.draw_text_centered(self, Vector2(cx, r.position.y + r.size.y * 0.755), game.get("tagline", ""), 20,
+			Color(1, 1, 1, 0.72), font)
+		var bar := Rect2(r.position.x + 56, r.position.y + r.size.y * 0.855, r.size.x - 80, 14)
 		if levels:  # star progress bar
-			var track := UI.box(Color(0, 0, 0, 0.32), 10)
-			draw_style_box(track, bar)
+			var track := UI.box(Color(FX.NIGHT, 0.9), 7)
+			track.border_color = Color(col, 0.45)
+			track.set_border_width_all(2)
+			draw_style_box(track, bar.grow(2.0))
 			var k := clampf(float(stars) / maxf(1.0, max_stars), 0.0, 1.0)
 			if k > 0.0:
-				draw_style_box(UI.box(FX.LEMON, 10), Rect2(bar.position, Vector2(maxf(20.0, bar.size.x * k), bar.size.y)))
-			FX.draw_star(self, Vector2(r.position.x + 34, bar.get_center().y), 17.0)
+				var fr := Rect2(bar.position, Vector2(maxf(14.0, bar.size.x * k), bar.size.y))
+				FX.draw_glow(self, fr.grow(10.0), Color(FX.LEMON, 0.3))
+				FX.draw_round_gradient(self, fr, 7, FX.LEMON.lightened(0.3), FX.TANGERINE)
+			FX.draw_star(self, Vector2(r.position.x + 32, bar.get_center().y), 16.0)
 		if best >= 0:
-			if levels and best > 0:  # both modes: best score as a small tag once there is one
-				var txt := "BEST %d" % best
-				var tw := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
-				var tag := Rect2(r.position.x + 10, r.position.y + 8, maxf(112.0, tw + 28.0), 34)
-				draw_style_box(UI.box(Color(0.05, 0.04, 0.16, 0.8), 17), tag)
-				FX.draw_text_centered(self, tag.get_center(), txt, 20, FX.LEMON, font)
-			elif not levels:  # endless only: best score replaces the star bar
-				var pill := Rect2(r.position.x + 24, r.position.y + r.size.y * 0.815, r.size.x - 48, 40)
-				draw_style_box(UI.box(Color(0.05, 0.04, 0.16, 0.6), 20), pill)
-				FX.draw_text_centered(self, pill.get_center(), "BEST  %d" % best if best > 0 else "ENDLESS", 26,
-					Color.WHITE, font)
+			if levels:  # both modes: best score as a tag riding the top rim, once there is one
+				if best > 0:
+					var font_w := font.get_string_size("BEST %d" % best, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
+					var tag := Rect2(r.end.x - font_w - 46, r.position.y - 6, font_w + 30, 30)
+					draw_style_box(UI.box(Color(FX.NIGHT, 0.95), 15), tag)
+					FX.draw_neon_rect(self, tag, 15, FX.LEMON, 1.6, 0.5)
+					FX.draw_text_centered(self, tag.get_center(), "BEST %d" % best, 18, FX.LEMON, font)
+			else:  # endless only: best score replaces the star bar
+				var pill := Rect2(r.position.x + 26, r.position.y + r.size.y * 0.815, r.size.x - 52, 38)
+				draw_style_box(UI.box(Color(FX.NIGHT, 0.85), 19), pill)
+				FX.draw_neon_rect(self, pill, 19, Color(col, 0.7), 1.8, 0.5)
+				FX.draw_text_centered(self, pill.get_center(), "BEST  %d" % best if best > 0 else "ENDLESS", 24,
+					FX.LEMON if best > 0 else Color.WHITE, font)
 		if game.get("status", "") == "placeholder":
-			var tag := Rect2(r.end.x - 96, r.position.y + 8, 84, 34)
-			draw_style_box(UI.box(Color(0.05, 0.04, 0.16, 0.8), 17), tag)
-			FX.draw_text_centered(self, tag.get_center(), "SOON", 20, FX.LEMON, font)
+			var tag := Rect2(plate.end.x - 90, plate.position.y + 6, 84, 30)
+			draw_style_box(UI.box(Color(FX.NIGHT, 0.85), 15), tag)
+			FX.draw_text_centered(self, tag.get_center(), "SOON", 18, FX.LEMON, font)
 
-	## Tiny picture of each game; unknown ids get a glossy ball with the initial.
+	## Neon line-art picture of each game; unknown ids get a neon ring with the initial.
 	func _emblem(id: String, c: Vector2, s: float, col: Color) -> void:
+		var pink := FX.NEON_PINK
+		var cyan := FX.NEON_CYAN
+		var green := Color("#7dff6a")
 		match id:
 			"fruit_merge":
-				FX.draw_ball(self, c + Vector2(-s * 0.55, s * 0.25), s * 0.5, Color("#ff5d5d"))
-				FX.draw_ball(self, c + Vector2(s * 0.5, s * 0.3), s * 0.42, Color("#8bd448"))
-				FX.draw_ball(self, c + Vector2(0, -s * 0.3), s * 0.6, FX.TANGERINE)
+				var fruits := [[Vector2(-0.6, 0.3), 0.48, Color("#ff4f6a")], [Vector2(0.58, 0.36), 0.4, green],
+					[Vector2(0, -0.2), 0.62, FX.TANGERINE]]
+				for fr in fruits:
+					var p: Vector2 = c + fr[0] * s
+					var rad: float = fr[1] * s
+					draw_circle(p, rad, Color(fr[2], 0.22))
+					FX.draw_neon_circle(self, p, rad, fr[2], 3.0)
+					draw_arc(p, rad * 0.62, PI * 1.1, PI * 1.45, 10, Color(1, 1, 1, 0.6), 3.0, true)
+				var top := c + Vector2(0, -0.82) * s
+				FX.draw_neon_polyline(self, PackedVector2Array([top, top + Vector2(s * 0.08, -s * 0.22)]), green, 3.0)
+				FX.draw_neon_polyline(self, PackedVector2Array([top + Vector2(s * 0.06, -s * 0.14),
+					top + Vector2(s * 0.3, -s * 0.28), top + Vector2(s * 0.42, -s * 0.12), top + Vector2(s * 0.06, -s * 0.14)]),
+					green, 2.5)
 			"color_sort":
+				var cols := [FX.LEMON, pink, cyan]
 				for i in 3:
-					var x := c.x + (i - 1) * s * 0.75
-					var tube := Rect2(x - s * 0.26, c.y - s * 0.9, s * 0.52, s * 1.8)
-					draw_style_box(UI.box(Color(1, 1, 1, 0.18), int(s * 0.26)), tube)
-					var cols := [FX.LEMON, Color("#ff5d8f"), Color("#4fc3f7")]
+					var x := c.x + (i - 1) * s * 0.78
+					var tw := s * 0.25
+					var top := c.y - s * 0.95
+					var bot := c.y + s * 0.85
+					var tube := PackedVector2Array([Vector2(x - tw, top), Vector2(x - tw, bot - tw)])
+					for k in 9:
+						tube.append(Vector2(x, bot - tw) + Vector2.from_angle(PI - k * PI / 8.0) * tw)
+					tube.append(Vector2(x + tw, top))
+					FX.draw_neon_polyline(self, tube, Color(0.85, 0.95, 1.0), 2.5, false, 0.6)
 					for j in 3:
-						FX.draw_ball(self, Vector2(x, c.y + s * 0.62 - j * s * 0.5), s * 0.21, cols[(i + j) % 3])
+						var bc: Color = cols[(i + j) % 3]
+						var p := Vector2(x, bot - tw - j * s * 0.48)
+						FX.draw_glow(self, Rect2(p - Vector2(tw, tw) * 1.6, Vector2(tw, tw) * 3.2), Color(bc, 0.45))
+						draw_circle(p, tw * 0.78, bc)
+						draw_circle(p - Vector2(tw, tw) * 0.25, tw * 0.22, Color(1, 1, 1, 0.7))
 			"tower_stack":
+				var bcols := [FX.TANGERINE, FX.LEMON, cyan, pink]
 				for i in 4:
-					var w := s * (1.6 - i * 0.22)
-					FX.draw_tile(self, Rect2(c.x - w / 2.0 + (i % 2) * s * 0.12, c.y + s * 0.62 - i * s * 0.44,
-						w, s * 0.4), [FX.TANGERINE, FX.LEMON, Color("#4fc3f7"), Color("#ff5d8f")][i], 6, false)
+					var w := s * (1.7 - i * 0.24)
+					var br := Rect2(c.x - w / 2.0 + ((i % 2) * 2 - 1) * s * 0.07, c.y + s * 0.55 - i * s * 0.46, w, s * 0.36)
+					draw_rect(br, Color(bcols[i], 0.25))
+					FX.draw_neon_rect(self, br, 4, bcols[i], 2.5, 0.8)
 			"block_puzzle":
 				var cells := [Vector2(-1, 0), Vector2(0, 0), Vector2(1, 0), Vector2(0, -1), Vector2(1, 1)]
 				var cs := s * 0.5
 				for v in cells:
-					FX.draw_tile(self, Rect2(c + v * cs * 1.08 - Vector2(cs, cs) / 2.0, Vector2(cs, cs)),
-						FX.LEMON if v.y < 0 else Color("#4fc3f7"), 6, false)
+					var cr := Rect2(c + v * cs * 1.16 - Vector2(cs, cs) / 2.0, Vector2(cs, cs))
+					var bc := FX.LEMON if v.y < 0 else cyan
+					draw_rect(cr, Color(bc, 0.3))
+					FX.draw_neon_rect(self, cr, 4, bc, 2.5, 0.8)
 			"number_merge":
 				var labels := ["2", "4", "8", "16"]
-				var ts := s * 0.78
+				var tcols := [cyan, FX.LEMON, FX.TANGERINE, pink]
+				var ts := s * 0.8
 				for i in 4:
-					var p := c + Vector2((i % 2) - 0.5, int(i / 2.0) - 0.5) * ts * 1.1 - Vector2(ts, ts) / 2.0
-					FX.draw_tile(self, Rect2(p, Vector2(ts, ts)), [Color("#4fc3f7"), FX.LEMON, FX.TANGERINE,
-						Color("#ff5d5d")][i], 8, false)
-					FX.draw_text_centered(self, p + Vector2(ts, ts) / 2.0, labels[i], int(ts * 0.48), Color.WHITE,
-						FX.font())
+					var p := c + Vector2((i % 2) - 0.5, int(i / 2.0) - 0.5) * ts * 1.18 - Vector2(ts, ts) / 2.0
+					var tr := Rect2(p, Vector2(ts, ts))
+					draw_rect(tr, Color(tcols[i], 0.16))
+					FX.draw_neon_rect(self, tr, 8, tcols[i], 2.5, 0.8)
+					FX.draw_neon_text(self, tr.get_center(), labels[i], int(ts * 0.48), tcols[i], FX.font(), 0.7)
 			"bubble_shooter":
-				var bcols := [Color("#ff5d8f"), Color("#4fc3f7"), FX.LEMON, Color("#8bd448")]
-				var br := s * 0.3
+				var bcols := [pink, cyan, FX.LEMON, green]
+				var br := s * 0.28
 				for row in 3:
 					for i in 3 - row:
-						var p := c + Vector2((i - (2 - row) / 2.0) * br * 2.05, (row - 1) * br * 1.8)
-						FX.draw_ball(self, p, br, bcols[(i + row) % 4])
+						var p := c + Vector2((i - (2 - row) / 2.0) * br * 2.15, (row - 1.3) * br * 1.9)
+						var bc: Color = bcols[(i + row) % 4]
+						draw_circle(p, br, Color(bc, 0.2))
+						FX.draw_neon_circle(self, p, br, bc, 2.5, 0.8)
+						draw_arc(p, br * 0.6, PI * 1.1, PI * 1.45, 8, Color(1, 1, 1, 0.6), 2.5, true)
+				var gun := c + Vector2(0, s * 0.95)
+				for k in 4:  # dotted aim line
+					draw_circle(gun.lerp(c + Vector2(br * 1.1, -s * 0.05), (k + 1) / 5.0), 2.5, Color(1, 1, 1, 0.7))
+				draw_circle(gun, br * 0.75, Color(FX.TANGERINE, 0.3))
+				FX.draw_neon_circle(self, gun, br * 0.75, FX.TANGERINE, 2.5, 0.8)
 			"mahjong_match":
-				var tw := s * 0.95
-				var th := tw * 1.22
-				var spots := [Vector2(-0.62, 0.12), Vector2(0.62, 0.12), Vector2(0.0, -0.18)]
+				var tw := s * 0.88
+				var th := tw * 1.25
+				var spots := [Vector2(-0.66, 0.14), Vector2(0.66, 0.14), Vector2(0.0, -0.16)]
+				var ivory := Color("#fff1cf")
 				for k in 3:
 					var tr := Rect2(c + spots[k] * tw - Vector2(tw, th) / 2.0, Vector2(tw, th))
-					FX.draw_tile(self, tr, Color("#fff6df"), 8, k < 2)
-					var tc := tr.get_center() + Vector2(0, -th * 0.04)
+					draw_style_box(UI.box(Color(FX.NIGHT, 0.95), 8), tr)
+					FX.draw_neon_rect(self, tr, 8, ivory, 2.5, 0.7)
+					var tc := tr.get_center()
 					match k:
 						0:
-							for dx in [-1, 1]:
-								draw_circle(tc + Vector2(dx * tw * 0.2, 0), tw * 0.13, Color("#2b7bd6"))
+							for dy in [-1, 1]:
+								FX.draw_neon_circle(self, tc + Vector2(0, dy * th * 0.2), tw * 0.15, cyan, 2.0, 0.7)
 						1:
-							draw_rect(Rect2(tc - Vector2(tw * 0.09, th * 0.26), Vector2(tw * 0.18, th * 0.52)), Color("#2f9e5b"))
+							for dx in [-1, 1]:
+								FX.draw_neon_polyline(self, PackedVector2Array([tc + Vector2(dx * tw * 0.14, -th * 0.28),
+									tc + Vector2(dx * tw * 0.14, th * 0.28)]), green, 3.0, false, 0.7)
 						_:
-							draw_circle(tc, tw * 0.22, Color("#e5484d"))
-							draw_circle(tc, tw * 0.12, Color("#fff6df"))
+							FX.draw_neon_circle(self, tc, tw * 0.24, pink, 2.5, 0.8)
+							draw_circle(tc, tw * 0.07, pink)
 			"klondike":
-				var cw := s * 1.0
+				var cw := s * 0.95
 				var ch := cw * 1.4
 				for i in 3:
-					var fan := Transform2D(deg_to_rad((i - 1) * 19.0), c + Vector2((i - 1) * s * 0.42, s * 0.78))
-					draw_set_transform_matrix(fan)
-					CardArt.draw_face(self, Rect2(Vector2(-cw / 2.0, -ch), Vector2(cw, ch)), [0, 1, 2][i], 1, 0.0, true, fan)
+					draw_set_transform(c + Vector2((i - 1) * s * 0.44, s * 0.8), deg_to_rad((i - 1) * 18.0), Vector2.ONE)
+					var cr := Rect2(Vector2(-cw / 2.0, -ch), Vector2(cw, ch))
+					draw_style_box(UI.box(Color(FX.NIGHT, 0.95), 8), cr)
+					var ink: Color = [Color(0.85, 0.95, 1.0), pink, pink][i]
+					FX.draw_neon_rect(self, cr, 8, ink, 2.2, 0.7)
+					CardArt.draw_pip(self, [0, 1, 2][i], cr.get_center(), cw * 0.24, ink)
+					FX.draw_text_centered(self, cr.position + Vector2(cw * 0.2, ch * 0.13), "A", int(cw * 0.22), ink, FX.font())
 				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 			_:
-				FX.draw_ball(self, c, s * 0.7, col.lightened(0.3), String(game.get("name", "?")).left(1))
+				FX.draw_neon_circle(self, c, s * 0.7, col, 3.0)
+				FX.draw_neon_text(self, c, String(game.get("name", "?")).left(1), int(s * 0.8), col, FX.font())

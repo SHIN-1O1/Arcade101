@@ -74,8 +74,12 @@ a fresh pull into an open editor does not know new global classes yet).
 - Input: handle taps in `_gui_input` and skip `event.device == InputEvent.DEVICE_ID_EMULATION`;
   mouse/touch emulation is on, so every tap also arrives as an emulated twin.
 - Example: games/color_sort/game.gd.
+- Retro neon arcade style for menus/overlays: `FX.NEON_PINK/NEON_CYAN/NIGHT/PANEL`, `FX.neon(col)` (punchy version),
+  `draw_neon_polyline/rect/circle/text` (glow passes + hot core), `draw_neon_panel` (dark glass + neon rim),
+  `draw_neon_card` (overlay card with header band), `draw_scanlines` (needs `texture_repeat` on), `draw_neon_grid`,
+  `draw_retro_sun`. `FX.style_button` / `UI.button` give neon-rim buttons (default rim `UI.VIOLET`).
 - Menus: `UI.screen(root, accent)` sets `FX.theme()` (Lilita One, outlined text) and the
-  gradient Backdrop; `FX.draw_star`, `draw_lock`, `draw_icon` draw icons (the font has no ★).
+  animated synthwave Backdrop (sun, scrolling grid, drifting neon bubbles, scanlines); `FX.draw_star`, `draw_lock`, `draw_icon` draw icons (the font has no ★).
   Screens: scenes/hub.gd (game cards with drawn emblems), level_select.gd (LevelTile states).
 
 ## Card kit (core/cards/): for Klondike, Spider, FreeCell and any other card game
@@ -118,9 +122,10 @@ All audio is synthesised by `python tools/gen_audio.py` (numpy + ffmpeg) into `a
 `Feedback.sfx(name)` honours the sound toggle, uses an 8-voice pool and jitters pitch slightly.
 Names: `tap` (generic tap), `select` (pick a piece/tube/tile/level), `place` (drop a piece), `pour`,
 `pop`, `merge`, `clear` (line/set cleared), `star` (star earned), `win`, `fail`, `button` (menu
-button), `back`, `locked`, `unlock`. Unknown names warn once. `UI.wire`/`icon_button` already play
+button), `back`, `locked`, `unlock`, `swoosh` (something flying in). Unknown names warn once.
+`Feedback.sfx(name, pitch)` takes an optional pitch multiplier (the result card raises it per star). `UI.wire`/`icon_button` already play
 `button`/`back`; the host plays `win`/`fail`/`star`, so games add only their own move sounds.
-Music: `Feedback.play_music("menu"|"game")` loops with a crossfade and follows the music toggle;
+Music (80s synthwave: saw pads, octave bass, arps, drum machine): `Feedback.play_music("menu"|"game")` loops with a crossfade and follows the music toggle;
 Nav switches it (menu on hub/levels/settings, game in game_host), games never call it.
 New sound: add a recipe in gen_audio.py `SFX`, an entry in `Feedback.SFX`, and list it here.
 
