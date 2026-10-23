@@ -1,4 +1,4 @@
-"""Regenerates games/<id>/levels.json (endless-only games such as number_merge have none) with a smooth difficulty curve.
+"""Regenerates games/<id>/levels.json (endless-only games such as number_merge and fruit_merge have none) with a smooth difficulty curve.
 Run from the project root:  python tools/gen_levels.py
 Hand-edit the JSON afterwards if a level needs tuning; re-running overwrites it.
 Every level has "seed" (deterministic layout) and "stars": [1-star, 2-star, 3-star]
@@ -9,12 +9,6 @@ N = 30
 
 def lerp(a, b, t): return a + (b - a) * t
 def ri(a, b, t): return int(round(lerp(a, b, t)))
-
-def fruit_merge(i, t):
-    # Score attack: reach target_tier before the jar overflows.
-    target = ri(6, 11, t)
-    return {"target_tier": target, "spawn_max_tier": 3 if i < 10 else 4,
-            "jar_width": ri(520, 440, t), "stars": [ri(400, 4000, t), ri(700, 6500, t), ri(1000, 9000, t)]}
 
 def _pour(tubes, a, b, cap):
     src, dst = tubes[a], tubes[b]
@@ -162,14 +156,36 @@ def mahjong_match(i, t):
     return {"shape": shape, "layers": layers, "tiles": tiles, "types": ri(6, 27, t),
             "hints": ri(5, 2, t), "shuffles": ri(4, 1, t), "undos": ri(6, 3, t),
             "stars": [int(pairs * 9), int(pairs * 5.5), int(pairs * 3.6)]}
+def klondike(i, t):
+    """Verified-winnable deals from tools/klondike_deals.json (python tools/klondike_solver.py build).
+    Levels 1-12 draw 1 (easiest deals first), 13-30 draw 3. Undo limits tighten as levels rise."""
+    global _KL
+    if _KL is None:
+        path = os.path.join(os.path.dirname(__file__), "klondike_deals.json")
+        data = json.load(open(path))
+        _KL = {}
+        for name, count in (("draw1", 12), ("draw3", 18)):
+            pool = sorted(data[name], key=lambda d: d["nodes"] * 0.05 + d["moves"] * 2)
+            top = pool[: max(count, int(len(pool) * 0.85))]
+            picks = [top[round(k * (len(top) - 1) / (count - 1))] for k in range(count)]
+            _KL[name] = picks
+            _KL[name + "_all"] = [d["deck"] for d in pool]
+    draw = 1 if i < 12 else 3
+    d = _KL["draw1" if draw == 1 else "draw3"][i if draw == 1 else i - 12]
+    undos = -1 if i < 6 else (30 - (i - 6) * 3 if i < 12 else max(3, 30 - (i - 12) * 1.5))
+    par = d["moves"]
+    return {"seed": d["seed"], "draw": draw, "undos": int(undos), "deck": d["deck"], "time_k": 0.5,
+            "stars": [round(par * 3), round(par * 1.5), round(par * 1.1)]}
+
+_KL = None
 
 GAMES = {
-    "fruit_merge":    (fruit_merge,    "score"),
     "color_sort":     (color_sort,     "moves_used (lower is better)"),
     "tower_stack":    (tower_stack,    "perfect_drops"),
     "block_puzzle":   (block_puzzle,   "score"),
     "bubble_shooter": (bubble_shooter, "shots_left"),
     "mahjong_match":  (mahjong_match,  "seconds incl. hint/shuffle/undo penalty (lower is better)"),
+    "klondike":       (klondike,       "effort = max(moves, seconds * time_k), lower is better"),
 }
 
 root = os.path.join(os.path.dirname(__file__), "..", "games")
@@ -182,4 +198,7 @@ for gid, (fn, metric) in GAMES.items():
     os.makedirs(os.path.join(root, gid), exist_ok=True)
     with open(os.path.join(root, gid, "levels.json"), "w") as f:
         json.dump({"star_metric": metric, "levels": levels}, f, indent=1)
+if _KL:  # endless pool for Klondike: every verified deal
+    with open(os.path.join(root, "klondike", "deals.json"), "w") as f:
+        json.dump({"draw1": _KL["draw1_all"], "draw3": _KL["draw3_all"]}, f, separators=(",", ":"))
 print("wrote", len(GAMES), "games x", N, "levels")

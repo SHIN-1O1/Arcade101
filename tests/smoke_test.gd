@@ -42,12 +42,21 @@ func _run() -> void:
 	assert(games.endless_level("number_merge").endless)
 	save.reset_all()
 	errors += await _test_monetization()
+	errors += _test_cards()
 	for path in ["res://scenes/hub.tscn", "res://scenes/level_select.tscn", "res://scenes/settings.tscn", "res://scenes/game_host.tscn"]:
-		root.get_node("Nav").game_id = "fruit_merge"
+		root.get_node("Nav").game_id = "color_sort"  # a levels game; endless-only games have no level list
 		change_scene_to_file(path)
 		await process_frame
 		await process_frame
 		print("ok ", path)
+	for id in ["fruit_merge", "number_merge"]:  # endless runs
+		root.get_node("Nav").game_id = id
+		root.get_node("Nav").mode = "endless"
+		change_scene_to_file("res://scenes/game_host.tscn")
+		for i in 10:
+			await physics_frame
+		print("ok endless ", id)
+	root.get_node("Nav").mode = "levels"
 	print("SMOKE TEST ", "PASSED" if errors == 0 else "FAILED (%d)" % errors)
 	quit(errors)
 
@@ -113,4 +122,79 @@ func _test_monetization() -> int:
 	if granted != [true]: push_error("rewarded not granted"); errors += 1
 	save.reset_all()
 	print("monetization checks done")
+	return errors
+
+
+## Card kit and Klondike: seeded deck, stored deals, and a full headless win of level 1 from a solver move list.
+func _test_cards() -> int:
+	var errors := 0
+	var Deck = load("res://core/cards/deck.gd")
+	var CardTable = load("res://core/cards/card_table.gd")
+	var Rules = load("res://games/klondike/klondike_rules.gd")
+	var Pile = load("res://core/cards/pile.gd")
+	var base: Array = Deck.codes()
+	var a: Array = Deck.shuffled(base, 42)
+	if a != Deck.shuffled(base, 42) or a == Deck.shuffled(base, 43):
+		push_error("seeded shuffle is not reproducible"); errors += 1
+	var sorted_a := a.duplicate()
+	sorted_a.sort()
+	if sorted_a != base:
+		push_error("shuffle lost cards"); errors += 1
+	var games: Node = root.get_node("Games")
+	for lv in games.get_levels("klondike"):
+		var d: Array = lv.deck.map(func(x): return int(x))
+		d.sort()
+		if d != base or not [1, 3].has(int(lv.draw)):
+			push_error("klondike level %d has a bad deck" % lv.id); errors += 1
+	var pool = JSON.parse_string(FileAccess.get_file_as_string("res://games/klondike/deals.json"))
+	for key in ["draw1", "draw3"]:
+		if pool[key].size() < 20:
+			push_error("klondike %s pool too small" % key); errors += 1
+	# replay level 1
+	var moves = JSON.parse_string(FileAccess.get_file_as_string("res://tests/klondike_level1_moves.json"))
+	var t = CardTable.new()
+	t.sfx = false
+	var rules = Rules.new()
+	t.rules = rules
+	t.add_pile("stock", "stock")
+	t.add_pile("waste", "waste")
+	for i in 4:
+		t.add_pile("f%d" % i, "foundation")
+	for i in 7:
+		t.add_pile("t%d" % i, "tableau", Pile.Fan.DOWN)
+	var cards: Array = Deck.make_cards(games.get_levels("klondike")[0].deck)
+	var idx := 0
+	for r in 7:
+		for p in range(r, 7):
+			t.add_cards([cards[idx]], "t%d" % p)
+			cards[idx].face_up = r == p
+			idx += 1
+	t.add_cards(cards.slice(idx), "stock")
+	for m in moves:
+		var w = t.pile("waste")
+		match m[0]:
+			"D":
+				rules.draw(t)
+			"WF":
+				t.move_cards(w, w.cards.size() - 1, rules.foundation_for(t, w.top()))
+			"WT":
+				t.move_cards(w, w.cards.size() - 1, t.pile("t%d" % m[1]))
+			"TF":
+				var p = t.pile("t%d" % m[1])
+				t.move_cards(p, p.cards.size() - 1, rules.foundation_for(t, p.top()))
+			"TT":
+				var p = t.pile("t%d" % m[1])
+				if not rules.can_drop(t, p.cards.slice(p.cards.size() - m[2]), p, t.pile("t%d" % m[3])):
+					push_error("klondike replay: illegal move %s" % [m]); errors += 1
+					break
+				t.move_cards(p, p.cards.size() - m[2], t.pile("t%d" % m[3]))
+	if not rules.is_won(t) or rules.moves != moves.size():
+		push_error("klondike replay did not win (moves %d of %d)" % [rules.moves, moves.size()]); errors += 1
+	var undone := 0
+	while t.undo():
+		undone += 1
+	if undone != moves.size() or t.pile("stock").cards.size() != 24 or rules.moves != 0:
+		push_error("klondike undo did not restore the deal (%d)" % undone); errors += 1
+	t.free()
+	print("card checks done")
 	return errors

@@ -1,0 +1,449 @@
+#!/usr/bin/env python3
+"""Paints Fruit Fusion's art from scratch (original, CC0): 11 fruit skins, two light overlays and the
+orchard backdrop. Needs numpy and Pillow. Run from the project root:
+
+    python games/fruit_merge/art/gen_art.py
+
+Fruit skins (fruit_<tier>.png) are albedo only, painted on a sphere so detail wraps around it; they turn
+with the body. light_shade.png / light_spec.png are drawn on top without turning, so light always comes
+from the top left. Every fruit canvas is SIZE px with the fruit disc of radius DISC in the middle
+(game.gd draws it at (SIZE / DISC) x the fruit radius). Re-run after editing a recipe.
+"""
+from pathlib import Path
+
+import numpy as np
+from PIL import Image, ImageDraw, ImageFilter
+
+OUT = Path(__file__).resolve().parent
+SIZE = 384          # output canvas
+DISC = 120          # output disc radius (stems and leaves use the margin)
+SS = 2              # supersampling
+W = SIZE * SS
+C = W / 2.0
+R = DISC * SS
+
+
+def hexc(h):
+    h = h.lstrip("#")
+    return np.array([int(h[i:i + 2], 16) / 255.0 for i in (0, 2, 4)])
+
+
+# --- noise -----------------------------------------------------------------
+
+def _hash(ix, iy, iz, seed):
+    h = (ix * 374761393 + iy * 668265263 + iz * 2147483647 + seed * 1274126177) & 0xFFFFFFFF
+    h = ((h ^ (h >> 13)) * 1274126177) & 0xFFFFFFFF
+    return ((h ^ (h >> 16)) & 0xFFFF) / 65535.0
+
+
+def vnoise(x, y, z, seed=0):
+    ix, iy, iz = np.floor(x).astype(np.int64), np.floor(y).astype(np.int64), np.floor(z).astype(np.int64)
+    fx, fy, fz = x - ix, y - iy, z - iz
+    fx, fy, fz = [f * f * (3 - 2 * f) for f in (fx, fy, fz)]
+    out = 0
+    for dx in (0, 1):
+        for dy in (0, 1):
+            for dz in (0, 1):
+                w = (fx if dx else 1 - fx) * (fy if dy else 1 - fy) * (fz if dz else 1 - fz)
+                out = out + w * _hash(ix + dx, iy + dy, iz + dz, seed)
+    return out
+
+
+def fbm(x, y, z, octaves=4, seed=0):
+    total, amp, norm = 0, 0.5, 0
+    for o in range(octaves):
+        total = total + amp * vnoise(x, y, z, seed + o * 17)
+        norm += amp
+        x, y, z, amp = x * 2.03, y * 2.03, z * 2.03, amp * 0.5
+    return total / norm
+
+
+def worley(x, y, z, seed=0):
+    """(F1, F2) distances to jittered cell points in 3D."""
+    ix, iy, iz = np.floor(x).astype(np.int64), np.floor(y).astype(np.int64), np.floor(z).astype(np.int64)
+    f1 = np.full(x.shape, 9.0)
+    f2 = np.full(x.shape, 9.0)
+    for dx in (-1, 0, 1):
+        for dy in (-1, 0, 1):
+            for dz in (-1, 0, 1):
+                cx, cy, cz = ix + dx, iy + dy, iz + dz
+                px = cx + _hash(cx, cy, cz, seed)
+                py = cy + _hash(cx, cy, cz, seed + 1)
+                pz = cz + _hash(cx, cy, cz, seed + 2)
+                d = np.sqrt((x - px) ** 2 + (y - py) ** 2 + (z - pz) ** 2)
+                f2 = np.where(d < f1, f1, np.minimum(f2, d))
+                f1 = np.minimum(f1, d)
+    return f1, f2
+
+
+# --- sphere frame ----------------------------------------------------------
+
+yy, xx = np.mgrid[0:W, 0:W].astype(np.float64)
+U = (xx + 0.5 - C) / R
+V = (yy + 0.5 - C) / R
+D2 = U * U + V * V
+INSIDE = D2 <= 1.0
+Z = np.sqrt(np.clip(1.0 - D2, 0.0, 1.0))
+LON = np.arctan2(U, Z)               # around the vertical axis, 0 facing the viewer
+LAT = np.arcsin(np.clip(-V, -1, 1))  # +pi/2 at the top pole
+
+
+def mix(a, b, t):
+    t = np.clip(t, 0, 1)[..., None]
+    return a * (1 - t) + b * t
+
+
+def smooth(e0, e1, x):
+    t = np.clip((x - e0) / (e1 - e0), 0, 1)
+    return t * t * (3 - 2 * t)
+
+
+def lit(col, amount):
+    """Brighten (amount > 0) or darken a colour field by a scalar field."""
+    a = amount[..., None]
+    return np.where(a >= 0, col + (1 - col) * a, col * (1 + a))
+
+
+def disc_rgba(rgb):
+    img = np.zeros((W, W, 4))
+    img[..., :3] = np.clip(rgb, 0, 1)
+    img[..., 3] = INSIDE.astype(float)
+    return img
+
+
+def to_image(img):
+    """Supersampled float RGBA -> downsampled PIL image (premultiplied average for clean edges)."""
+    a = img[..., 3:4]
+    pm = np.concatenate([img[..., :3] * a, a], axis=-1)
+    pm = pm.reshape(SIZE, SS, SIZE, SS, 4).mean(axis=(1, 3))
+    alpha = pm[..., 3:4]
+    rgb = np.where(alpha > 1e-4, pm[..., :3] / np.maximum(alpha, 1e-4), 0)
+    out = np.concatenate([rgb, alpha], axis=-1)
+    return Image.fromarray((np.clip(out, 0, 1) * 255 + 0.5).astype(np.uint8), "RGBA")
+
+
+def to_canvas(img):
+    """Float RGBA at supersampled size -> PIL (still supersampled) for drawing stems on."""
+    return Image.fromarray((np.clip(img, 0, 1) * 255 + 0.5).astype(np.uint8), "RGBA")
+
+
+def finish(pil):
+    return pil.resize((SIZE, SIZE), Image.LANCZOS)
+
+
+def P(x, y):
+    """Disc-relative (x right, y down, 1 = radius) -> canvas pixel."""
+    return (C + x * R, C + y * R)
+
+
+def leaf(draw, base, tip, width, col, vein=True):
+    bx, by = base
+    tx, ty = tip
+    dx, dy = tx - bx, ty - by
+    nx, ny = -dy, dx
+    pts_l, pts_r = [], []
+    for i in range(13):
+        t = i / 12.0
+        w = np.sin(np.pi * t) ** 0.8 * width
+        cx, cy = bx + dx * t, by + dy * t
+        pts_l.append(P(cx + nx * w, cy + ny * w))
+        pts_r.append(P(cx - nx * w, cy - ny * w))
+    dark = tuple(int(c * 255) for c in col * 0.72) + (255,)
+    light = tuple(int(c * 255) for c in np.clip(col * 1.12, 0, 1)) + (255,)
+    draw.polygon(pts_l + pts_r[::-1], fill=dark)
+    draw.polygon(pts_l + [P(tx, ty)] + [P(bx + dx * t / 12, by + dy * t / 12) for t in range(12, -1, -1)], fill=light)
+    if vein:
+        draw.line([P(bx, by), P(bx + dx * 0.92, by + dy * 0.92)], fill=tuple(int(c * 255) for c in col * 0.55) + (255,),
+                  width=max(2, int(R * 0.025)))
+
+
+def stem(draw, pts, width, col=hexc("#6B4226")):
+    poly = [P(x, y) for x, y in pts]
+    draw.line(poly, fill=tuple(int(c * 255) for c in col) + (255,), width=int(width * R), joint="curve")
+    hl = tuple(int(c * 255) for c in np.clip(col * 1.5, 0, 1)) + (255,)
+    draw.line([(x - width * R * 0.18, y) for x, y in poly], fill=hl, width=max(2, int(width * R * 0.3)))
+
+
+def dimple(rgb, cy=-0.93, size=0.16, depth=0.35):
+    d = np.sqrt(U ** 2 + (V - cy) ** 2)
+    return lit(rgb, -depth * (1 - smooth(0, size, d)))
+
+
+# --- fruits ----------------------------------------------------------------
+
+def berry():  # glossy cherry-like berry
+    n = fbm(U * 3, V * 3, Z * 3, 3, 1)
+    rgb = mix(hexc("#8E0B24"), hexc("#E0233F"), 0.35 + 0.65 * smooth(-0.2, 1.0, -V * 0.5 + Z * 0.8) + (n - 0.5) * 0.4)
+    rgb = dimple(rgb, size=0.22, depth=0.45)
+    im = to_canvas(disc_rgba(rgb))
+    dr = ImageDraw.Draw(im)
+    stem(dr, [(0, -0.9), (0.08, -1.2), (0.22, -1.42), (0.42, -1.55)], 0.07, hexc("#5A7A2A"))
+    leaf(dr, (0.4, -1.52), (0.95, -1.42), 0.18, hexc("#3E9F45"))
+    return im
+
+
+def strawberry():
+    n = fbm(U * 4, V * 4, Z * 4, 3, 2)
+    rgb = mix(hexc("#B0101F"), hexc("#F0323C"), 0.4 + 0.5 * (-V * 0.4 + Z * 0.6) + (n - 0.5) * 0.5)
+    rgb = mix(rgb, hexc("#F7E3A0"), smooth(0.55, 1.0, -V) * 0.25)  # pale shoulders under the cap
+    # seeds on a staggered lat/long grid, sunk in little pockets
+    rows = (LAT + np.pi / 2) / np.pi * 9
+    ri = np.floor(rows)
+    cols = (LON / np.pi + 1) * 7 + (ri % 2) * 0.5
+    ci = np.floor(cols)
+    du = (cols - ci - 0.5) * 1.1
+    dv = rows - ri - 0.5
+    dd = np.sqrt(du ** 2 + dv ** 2) / np.maximum(Z, 0.25) ** 0.15
+    rgb = lit(rgb, -0.45 * (1 - smooth(0.12, 0.32, dd)))
+    seed = 1 - smooth(0.08, 0.14, np.sqrt((du * 1.3) ** 2 + (dv * 0.9) ** 2))
+    rgb = mix(rgb, hexc("#F6D35B"), seed * (V > -0.7))
+    im = to_canvas(disc_rgba(rgb))
+    dr = ImageDraw.Draw(im)
+    for a in np.linspace(-1.25, 1.25, 7):
+        leaf(dr, (0, -0.86), (np.sin(a) * 0.62, -0.86 + np.cos(a) * 0.2 - 0.12 * (1 - abs(a))), 0.13, hexc("#2F9E44"), False)
+    stem(dr, [(0, -0.86), (0.02, -1.12)], 0.08, hexc("#3C8A3A"))
+    return im
+
+
+def grape():
+    n = fbm(U * 2.5, V * 2.5, Z * 2.5, 4, 3)
+    rgb = mix(hexc("#3D1458"), hexc("#7B3FA8"), 0.35 + 0.5 * Z + (n - 0.5) * 0.6)
+    bloom = fbm(U * 16, V * 16, Z * 16, 3, 4)  # dusty bloom
+    rgb = mix(rgb, hexc("#B9A6D8"), smooth(0.45, 0.8, bloom) * 0.22)
+    rgb = dimple(rgb, size=0.12, depth=0.3)
+    im = to_canvas(disc_rgba(rgb))
+    dr = ImageDraw.Draw(im)
+    stem(dr, [(0, -0.92), (-0.04, -1.15), (0.05, -1.3)], 0.09, hexc("#7A5A2E"))
+    return im
+
+
+def lime():
+    n = fbm(U * 3, V * 3, Z * 3, 3, 5)
+    rgb = mix(hexc("#2F8A2B"), hexc("#7CCB45"), 0.3 + 0.5 * Z + (n - 0.5) * 0.5)
+    pores = fbm(U * 26, V * 26, Z * 26, 2, 6)
+    rgb = lit(rgb, (pores - 0.5) * 0.35)
+    rgb = mix(rgb, hexc("#C8E86A"), smooth(0.6, 0.8, fbm(U * 2, V * 2, Z * 2, 2, 7)) * 0.3)
+    nub = np.sqrt(U ** 2 + (V + 0.95) ** 2)
+    rgb = mix(rgb, hexc("#7A8B3A"), 1 - smooth(0.05, 0.1, nub))
+    return to_canvas(disc_rgba(rgb))
+
+
+def orange():
+    n = fbm(U * 3, V * 3, Z * 3, 3, 8)
+    rgb = mix(hexc("#E05A00"), hexc("#FFA21F"), 0.35 + 0.5 * Z + (n - 0.5) * 0.4)
+    dimples = fbm(U * 22, V * 22, Z * 22, 2, 9)
+    rgb = lit(rgb, (dimples - 0.5) * 0.45)
+    oil = vnoise(U * 40, V * 40, Z * 40, 10)
+    rgb = lit(rgb, -0.25 * smooth(0.82, 0.95, oil))
+    rgb = dimple(rgb, size=0.13, depth=0.35)
+    im = to_canvas(disc_rgba(rgb))
+    dr = ImageDraw.Draw(im)
+    for a in np.linspace(0, 2 * np.pi, 6, endpoint=False):
+        leaf(dr, (0, -0.93), (np.cos(a) * 0.1, -0.93 + np.sin(a) * 0.05), 0.05, hexc("#5E8C2A"), False)
+    stem(dr, [(0, -0.93), (0.03, -1.07)], 0.06, hexc("#5E8C2A"))
+    leaf(dr, (0.03, -1.03), (0.55, -1.3), 0.16, hexc("#2E8B3E"))
+    return im
+
+
+def apple():
+    n = fbm(U * 2.5, V * 2.5, Z * 2.5, 4, 11)
+    streak = fbm(LON * 6, LAT * 0.8, Z * 0.3, 4, 12)  # vertical streaks along meridians
+    red = mix(hexc("#8F0E1A"), hexc("#D7262F"), 0.4 + 0.4 * Z + (streak - 0.5) * 1.4)
+    rgb = mix(red, hexc("#E9A93F"), smooth(0.6, 0.95, n * 0.6 + streak * 0.4 + V * 0.3) * 0.55)
+    dots = vnoise(U * 30, V * 30, Z * 30, 13)
+    rgb = mix(rgb, hexc("#F7E6B0"), smooth(0.9, 0.97, dots) * 0.7)
+    rgb = dimple(rgb, size=0.26, depth=0.4)
+    im = to_canvas(disc_rgba(rgb))
+    dr = ImageDraw.Draw(im)
+    stem(dr, [(0, -0.84), (-0.03, -1.05), (-0.1, -1.25)], 0.07)
+    leaf(dr, (-0.06, -1.1), (-0.62, -1.32), 0.17, hexc("#3A9D3F"))
+    return im
+
+
+def pear():
+    n = fbm(U * 2.5, V * 2.5, Z * 2.5, 4, 14)
+    rgb = mix(hexc("#8FA82A"), hexc("#D9E36A"), 0.35 + 0.5 * Z + (n - 0.5) * 0.6)
+    blush = fbm(U * 1.6 + 3, V * 1.6, Z * 1.6, 3, 15)
+    rgb = mix(rgb, hexc("#E08A3C"), smooth(0.55, 0.8, blush) * 0.45)
+    russet = fbm(U * 6, V * 6, Z * 6, 3, 16)
+    rgb = mix(rgb, hexc("#9A6B33"), smooth(0.62, 0.78, russet) * 0.5 * smooth(0.1, -0.9, V))
+    specks = vnoise(U * 46, V * 46, Z * 46, 17)
+    rgb = mix(rgb, hexc("#6E5524"), smooth(0.86, 0.95, specks) * 0.8)
+    rgb = dimple(rgb, size=0.14, depth=0.3)
+    im = to_canvas(disc_rgba(rgb))
+    dr = ImageDraw.Draw(im)
+    stem(dr, [(0, -0.9), (0.05, -1.15), (0.16, -1.35)], 0.07)
+    return im
+
+
+def peach():
+    n = fbm(U * 2, V * 2, Z * 2, 4, 18)
+    base = mix(hexc("#F6A34A"), hexc("#FFD08A"), 0.3 + 0.5 * Z + (n - 0.5) * 0.4)
+    blush_t = smooth(0.35, 0.75, fbm(U * 1.4 - 2, V * 1.4, Z * 1.4, 4, 19) + U * 0.35 - V * 0.1)
+    rgb = mix(base, hexc("#E8434F"), blush_t * 0.85)
+    fuzz = vnoise(U * 70, V * 70, Z * 70, 20)
+    rgb = lit(rgb, (fuzz - 0.5) * 0.12)
+    crease_x = 0.32 * np.sqrt(np.clip(1 - V * V, 0, 1)) + 0.04 * np.sin(V * 3)
+    cd = np.abs(U - crease_x)
+    rgb = lit(rgb, -0.16 * (1 - smooth(0.0, 0.09, cd)))
+    rgb = lit(rgb, 0.12 * (1 - smooth(0.04, 0.12, np.abs(U - crease_x - 0.06))))
+    rgb = dimple(rgb, size=0.15, depth=0.35)
+    im = to_canvas(disc_rgba(rgb))
+    dr = ImageDraw.Draw(im)
+    stem(dr, [(0.02, -0.92), (0.05, -1.06)], 0.07)
+    leaf(dr, (0.05, -1.02), (0.62, -1.18), 0.17, hexc("#3E9F45"))
+    leaf(dr, (0.03, -1.0), (-0.35, -1.32), 0.13, hexc("#2F8A3E"))
+    return im
+
+
+def pineapple():
+    a = (LON / np.pi) * 7 + (LAT / np.pi) * 9   # two diagonal families on the sphere
+    b = (LON / np.pi) * 7 - (LAT / np.pi) * 9
+    fa, fb = a - np.floor(a) - 0.5, b - np.floor(b) - 0.5
+    cell = np.maximum(np.abs(fa), np.abs(fb))   # 0 at a scale's centre, 0.5 on its edge
+    n = fbm(U * 3, V * 3, Z * 3, 3, 21)
+    rgb = mix(hexc("#C27A08"), hexc("#FFC93C"), 0.3 + 0.55 * Z + (n - 0.5) * 0.5)
+    rgb = lit(rgb, 0.25 * (1 - smooth(0.05, 0.35, cell)) - 0.4 * smooth(0.38, 0.5, cell))
+    rgb = mix(rgb, hexc("#6E8F2A"), smooth(0.43, 0.5, cell) * 0.5)
+    eye = np.sqrt(fa ** 2 + (fb + 0.12) ** 2)
+    rgb = mix(rgb, hexc("#6B3E12"), (1 - smooth(0.05, 0.11, eye)) * 0.85)
+    im = to_canvas(disc_rgba(rgb))
+    dr = ImageDraw.Draw(im)
+    crown = [(-0.55, -1.25, 0.11), (0.55, -1.25, 0.11), (-0.35, -1.5, 0.12), (0.38, -1.52, 0.12),
+             (-0.12, -1.62, 0.12), (0.14, -1.6, 0.12), (0.0, -1.66, 0.11)]
+    for i, (tx, ty, w) in enumerate(crown):
+        leaf(dr, (tx * 0.15, -0.88), (tx, ty), w, hexc("#2F8A4A") if i % 2 else hexc("#3FA35A"), False)
+    return im
+
+
+def cantaloupe():
+    n = fbm(U * 2, V * 2, Z * 2, 4, 22)
+    rgb = mix(hexc("#8C8A3E"), hexc("#C9B866"), 0.3 + 0.5 * Z + (n - 0.5) * 0.6)
+    s = 5.0
+    wx = U * s + fbm(U * 4, V * 4, Z * 4, 2, 23) * 0.8
+    f1, f2 = worley(wx, V * s, Z * s, 24)
+    vein = 1 - smooth(0.0, 0.08, f2 - f1)
+    rgb = lit(rgb, -0.2 * smooth(0.1, 0.4, f2 - f1))
+    rgb = mix(rgb, hexc("#EFE3B6"), vein * 0.85)
+    ribs = np.abs(np.sin(LON * 5))
+    rgb = lit(rgb, -0.12 * (1 - smooth(0.0, 0.18, ribs)))
+    rgb = dimple(rgb, size=0.12, depth=0.35)
+    return to_canvas(disc_rgba(rgb))
+
+
+def melon():
+    n = fbm(U * 2, V * 2, Z * 2, 4, 25)
+    rgb = mix(hexc("#3C9A3A"), hexc("#7FCB5A"), 0.3 + 0.5 * Z + (n - 0.5) * 0.5)
+    wob = fbm(LON * 3, LAT * 8, Z, 4, 26)
+    stripe = np.sin(LON * 8 + (wob - 0.5) * 3.2)
+    edge = (fbm(LON * 9, LAT * 22, Z, 3, 27) - 0.5) * 0.5
+    dark = smooth(0.15 + edge, 0.35 + edge, stripe)
+    rgb = mix(rgb, hexc("#0E4A22"), dark * 0.92)
+    speck = fbm(U * 18, V * 18, Z * 18, 2, 28)
+    rgb = lit(rgb, (speck - 0.5) * 0.18)
+    rgb = dimple(rgb, size=0.1, depth=0.4)
+    im = to_canvas(disc_rgba(rgb))
+    dr = ImageDraw.Draw(im)
+    stem(dr, [(0, -0.95), (0.06, -1.12), (0.18, -1.2)], 0.06, hexc("#5E7A2A"))
+    return im
+
+
+FRUITS = [berry, strawberry, grape, lime, orange, apple, pear, peach, pineapple, cantaloupe, melon]
+
+
+# --- light overlays --------------------------------------------------------
+
+def light_layers():
+    L = np.array([-0.45, -0.65, 0.62])
+    L = L / np.linalg.norm(L)
+    ndl = np.clip(U * L[0] + V * L[1] + Z * L[2], 0, 1)
+    shade = (1 - (0.28 + 0.72 * ndl)) * 0.62 + (1 - Z) ** 3 * 0.25
+    shade += smooth(0.2, 1.0, V) * 0.12  # contact occlusion at the bottom
+    s = np.zeros((W, W, 4))
+    s[..., 3] = np.clip(shade, 0, 0.85) * INSIDE
+    H = L + np.array([0, 0, 1.0])
+    H = H / np.linalg.norm(H)
+    ndh = np.clip(U * H[0] + V * H[1] + Z * H[2], 0, 1)
+    spec = ndh ** 70 * 0.75 + ndh ** 10 * 0.2
+    rim = (1 - Z) ** 4 * np.clip(U * 0.5 + V * 0.6, 0, 1) * 0.5  # cool bounce light, bottom right
+    p = np.zeros((W, W, 4))
+    p[..., :3] = 1.0
+    p[..., 3] = np.clip(spec + rim, 0, 1) * INSIDE
+    return finish(to_canvas(s)), finish(to_canvas(p))
+
+
+# --- backdrop --------------------------------------------------------------
+
+def backdrop(w=540, h=960):
+    s = 2
+    W2, H2 = w * s, h * s
+    y = np.linspace(0, 1, H2)[:, None] * np.ones((1, W2))
+    x = np.ones((H2, 1)) * np.linspace(0, 1, W2)[None, :]
+    sky = mix(hexc("#1d1f33")[None, None, :] * np.ones((H2, W2, 3)), hexc("#3B2C7A"), smooth(0.0, 0.62, y))
+    sky = mix(sky, hexc("#7A3E8C"), smooth(0.45, 0.72, y) * 0.55)
+    sun = np.exp(-(((x - 0.72) * 1.6) ** 2 + ((y - 0.6) * 1.1) ** 2) * 9)
+    sky = mix(sky, hexc("#FF8A1F"), sun * 0.55)
+    sky = mix(sky, hexc("#FFD23F"), np.exp(-(((x - 0.72) * 1.6) ** 2 + ((y - 0.6) * 1.1) ** 2) * 60) * 0.6)
+    img = Image.fromarray((np.clip(sky, 0, 1) * 255).astype(np.uint8), "RGB").convert("RGBA")
+    rng = np.random.default_rng(3)
+    dr = ImageDraw.Draw(img)
+    for _ in range(90):  # stars in the upper sky
+        sx, sy = rng.uniform(0, W2), rng.uniform(0, H2 * 0.45)
+        r = rng.uniform(1.0, 3.2)
+        a = int(rng.uniform(60, 200) * (1 - sy / (H2 * 0.45)))
+        dr.ellipse([sx - r, sy - r, sx + r, sy + r], fill=(255, 245, 220, a))
+
+    def hill(base, amp, freq, phase, col, trees, tree_col, fruit_cols):
+        xs = np.linspace(0, W2, 200)
+        ys = H2 * (base - amp * np.sin(xs / W2 * np.pi * freq + phase) - amp * 0.4 * np.sin(xs / W2 * 7 + phase * 2))
+        layer = Image.new("RGBA", (W2, H2), (0, 0, 0, 0))
+        ld = ImageDraw.Draw(layer)
+        for i in range(trees):  # round orchard trees on the ridge
+            tx = rng.uniform(0, W2)
+            ty = float(np.interp(tx, xs, ys))
+            tr = rng.uniform(0.035, 0.06) * W2
+            ld.rectangle([tx - tr * 0.12, ty - tr * 0.8, tx + tr * 0.12, ty + 4], fill=tree_col)
+            for k in range(4):
+                ox, oy = rng.uniform(-0.45, 0.45) * tr, rng.uniform(-0.35, 0.2) * tr
+                cr = tr * rng.uniform(0.55, 0.8)
+                ld.ellipse([tx + ox - cr, ty - tr * 1.2 + oy - cr, tx + ox + cr, ty - tr * 1.2 + oy + cr], fill=tree_col)
+            for k in range(5):
+                fx, fy = tx + rng.uniform(-0.7, 0.7) * tr, ty - tr * 1.2 + rng.uniform(-0.6, 0.5) * tr
+                fr = tr * 0.11
+                ld.ellipse([fx - fr, fy - fr, fx + fr, fy + fr], fill=fruit_cols[k % len(fruit_cols)])
+        ld.polygon([(0, H2)] + list(zip(xs, ys)) + [(W2, H2)], fill=col)
+        rim = [(px, py) for px, py in zip(xs, ys)]
+        ld.line(rim, fill=tuple(min(255, c + 40) for c in col[:3]) + (120,), width=4)
+        return layer
+
+    img.alpha_composite(hill(0.66, 0.035, 2.2, 0.4, (78, 52, 128, 255), 6, (64, 44, 112, 255),
+                             [(255, 138, 31, 140), (255, 210, 63, 140)]))
+    img = img.filter(ImageFilter.GaussianBlur(1.2))
+    img.alpha_composite(hill(0.76, 0.04, 1.6, 2.0, (52, 38, 104, 255), 5, (44, 32, 90, 255),
+                             [(255, 138, 31, 200), (255, 90, 110, 190), (255, 210, 63, 200)]))
+    img.alpha_composite(hill(0.88, 0.03, 2.8, 4.1, (32, 26, 72, 255), 4, (27, 22, 62, 255),
+                             [(255, 138, 31, 230), (255, 210, 63, 230)]))
+    glow = Image.new("RGBA", (W2, H2), (0, 0, 0, 0))  # soft bokeh drifting over everything
+    gd = ImageDraw.Draw(glow)
+    for _ in range(26):
+        bx, by = rng.uniform(0, W2), rng.uniform(0, H2)
+        br = rng.uniform(0.02, 0.07) * W2
+        col = [(255, 210, 63), (255, 138, 31), (180, 160, 255)][rng.integers(0, 3)]
+        gd.ellipse([bx - br, by - br, bx + br, by + br], fill=col + (int(rng.uniform(10, 26)),))
+    img.alpha_composite(glow.filter(ImageFilter.GaussianBlur(10)))
+    return img.convert("RGB").resize((w, h), Image.LANCZOS)
+
+
+def main():
+    for i, fn in enumerate(FRUITS):
+        finish(fn()).save(OUT / f"fruit_{i}.png", optimize=True)
+        print("fruit", i, fn.__name__)
+    shade, spec = light_layers()
+    shade.save(OUT / "light_shade.png", optimize=True)
+    spec.save(OUT / "light_spec.png", optimize=True)
+    backdrop().save(OUT / "backdrop.png", optimize=True)
+    print("done")
+
+
+if __name__ == "__main__":
+    main()
