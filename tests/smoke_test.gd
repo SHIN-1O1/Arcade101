@@ -18,6 +18,10 @@ func _run() -> void:
 		game.free()
 		if games.how_to_play(g.id).get("steps", []).is_empty():
 			push_error("%s has no how-to-play steps in data/how_to_play.json" % g.id); errors += 1
+		# A game may ship res://games/<id>/check.gd with check_levels(levels) -> error count (e.g. solvability).
+		var check_path := "res://games/%s/check.gd" % g.id
+		if levels.size() > 0 and ResourceLoader.exists(check_path):
+			errors += load(check_path).check_levels(levels)
 	var fb: Node = root.get_node("Feedback")
 	for sfx_name in fb.SFX:
 		if load("%s%s.ogg" % [fb.SFX_DIR, fb.SFX[sfx_name][0]]) == null:

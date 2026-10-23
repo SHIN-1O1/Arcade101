@@ -1,0 +1,485 @@
+{
+ "star_metric": "seconds incl. hint/shuffle/undo penalty (lower is better)",
+ "levels": [
+  {
+   "id": 1,
+   "seed": 1000,
+   "shape": "rect",
+   "layers": 1,
+   "tiles": 16,
+   "types": 6,
+   "hints": 5,
+   "shuffles": 4,
+   "undos": 6,
+   "stars": [
+    72,
+    44,
+    28
+   ]
+  },
+  {
+   "id": 2,
+   "seed": 8919,
+   "shape": "oct",
+   "layers": 1,
+   "tiles": 20,
+   "types": 7,
+   "hints": 5,
+   "shuffles": 4,
+   "undos": 6,
+   "stars": [
+    90,
+    55,
+    36
+   ]
+  },
+  {
+   "id": 3,
+   "seed": 16838,
+   "shape": "diamond",
+   "layers": 1,
+   "tiles": 24,
+   "types": 7,
+   "hints": 5,
+   "shuffles": 4,
+   "undos": 6,
+   "stars": [
+    108,
+    66,
+    43
+   ]
+  },
+  {
+   "id": 4,
+   "seed": 24757,
+   "shape": "cross",
+   "layers": 2,
+   "tiles": 28,
+   "types": 8,
+   "hints": 5,
+   "shuffles": 4,
+   "undos": 6,
+   "stars": [
+    126,
+    77,
+    50
+   ]
+  },
+  {
+   "id": 5,
+   "seed": 32676,
+   "shape": "rect",
+   "layers": 2,
+   "tiles": 30,
+   "types": 9,
+   "hints": 5,
+   "shuffles": 4,
+   "undos": 6,
+   "stars": [
+    135,
+    82,
+    54
+   ]
+  },
+  {
+   "id": 6,
+   "seed": 40595,
+   "shape": "rect",
+   "layers": 2,
+   "tiles": 34,
+   "types": 10,
+   "hints": 4,
+   "shuffles": 3,
+   "undos": 5,
+   "stars": [
+    153,
+    93,
+    61
+   ]
+  },
+  {
+   "id": 7,
+   "seed": 48514,
+   "shape": "rect",
+   "layers": 2,
+   "tiles": 38,
+   "types": 10,
+   "hints": 4,
+   "shuffles": 3,
+   "undos": 5,
+   "stars": [
+    171,
+    104,
+    68
+   ]
+  },
+  {
+   "id": 8,
+   "seed": 56433,
+   "shape": "rect",
+   "layers": 2,
+   "tiles": 42,
+   "types": 11,
+   "hints": 4,
+   "shuffles": 3,
+   "undos": 5,
+   "stars": [
+    189,
+    115,
+    75
+   ]
+  },
+  {
+   "id": 9,
+   "seed": 64352,
+   "shape": "rect",
+   "layers": 2,
+   "tiles": 46,
+   "types": 12,
+   "hints": 4,
+   "shuffles": 3,
+   "undos": 5,
+   "stars": [
+    207,
+    126,
+    82
+   ]
+  },
+  {
+   "id": 10,
+   "seed": 72271,
+   "shape": "rect",
+   "layers": 3,
+   "tiles": 50,
+   "types": 13,
+   "hints": 4,
+   "shuffles": 3,
+   "undos": 5,
+   "stars": [
+    225,
+    137,
+    90
+   ]
+  },
+  {
+   "id": 11,
+   "seed": 80190,
+   "shape": "rect",
+   "layers": 3,
+   "tiles": 54,
+   "types": 13,
+   "hints": 4,
+   "shuffles": 3,
+   "undos": 5,
+   "stars": [
+    243,
+    148,
+    97
+   ]
+  },
+  {
+   "id": 12,
+   "seed": 88109,
+   "shape": "rect",
+   "layers": 3,
+   "tiles": 58,
+   "types": 14,
+   "hints": 4,
+   "shuffles": 3,
+   "undos": 5,
+   "stars": [
+    261,
+    159,
+    104
+   ]
+  },
+  {
+   "id": 13,
+   "seed": 96028,
+   "shape": "rect",
+   "layers": 3,
+   "tiles": 62,
+   "types": 15,
+   "hints": 4,
+   "shuffles": 3,
+   "undos": 5,
+   "stars": [
+    279,
+    170,
+    111
+   ]
+  },
+  {
+   "id": 14,
+   "seed": 103947,
+   "shape": "oct",
+   "layers": 3,
+   "tiles": 66,
+   "types": 15,
+   "hints": 4,
+   "shuffles": 3,
+   "undos": 5,
+   "stars": [
+    297,
+    181,
+    118
+   ]
+  },
+  {
+   "id": 15,
+   "seed": 111866,
+   "shape": "diamond",
+   "layers": 3,
+   "tiles": 70,
+   "types": 16,
+   "hints": 4,
+   "shuffles": 3,
+   "undos": 5,
+   "stars": [
+    315,
+    192,
+    126
+   ]
+  },
+  {
+   "id": 16,
+   "seed": 119785,
+   "shape": "cross",
+   "layers": 3,
+   "tiles": 74,
+   "types": 17,
+   "hints": 3,
+   "shuffles": 2,
+   "undos": 4,
+   "stars": [
+    333,
+    203,
+    133
+   ]
+  },
+  {
+   "id": 17,
+   "seed": 127704,
+   "shape": "rect",
+   "layers": 4,
+   "tiles": 78,
+   "types": 18,
+   "hints": 3,
+   "shuffles": 2,
+   "undos": 4,
+   "stars": [
+    351,
+    214,
+    140
+   ]
+  },
+  {
+   "id": 18,
+   "seed": 135623,
+   "shape": "rect",
+   "layers": 4,
+   "tiles": 82,
+   "types": 18,
+   "hints": 3,
+   "shuffles": 2,
+   "undos": 4,
+   "stars": [
+    369,
+    225,
+    147
+   ]
+  },
+  {
+   "id": 19,
+   "seed": 143542,
+   "shape": "rect",
+   "layers": 4,
+   "tiles": 86,
+   "types": 19,
+   "hints": 3,
+   "shuffles": 2,
+   "undos": 4,
+   "stars": [
+    387,
+    236,
+    154
+   ]
+  },
+  {
+   "id": 20,
+   "seed": 151461,
+   "shape": "rect",
+   "layers": 4,
+   "tiles": 88,
+   "types": 20,
+   "hints": 3,
+   "shuffles": 2,
+   "undos": 4,
+   "stars": [
+    396,
+    242,
+    158
+   ]
+  },
+  {
+   "id": 21,
+   "seed": 159380,
+   "shape": "rect",
+   "layers": 4,
+   "tiles": 92,
+   "types": 20,
+   "hints": 3,
+   "shuffles": 2,
+   "undos": 4,
+   "stars": [
+    414,
+    253,
+    165
+   ]
+  },
+  {
+   "id": 22,
+   "seed": 167299,
+   "shape": "rect",
+   "layers": 4,
+   "tiles": 96,
+   "types": 21,
+   "hints": 3,
+   "shuffles": 2,
+   "undos": 4,
+   "stars": [
+    432,
+    264,
+    172
+   ]
+  },
+  {
+   "id": 23,
+   "seed": 175218,
+   "shape": "rect",
+   "layers": 4,
+   "tiles": 100,
+   "types": 22,
+   "hints": 3,
+   "shuffles": 2,
+   "undos": 4,
+   "stars": [
+    450,
+    275,
+    180
+   ]
+  },
+  {
+   "id": 24,
+   "seed": 183137,
+   "shape": "rect",
+   "layers": 5,
+   "tiles": 104,
+   "types": 23,
+   "hints": 3,
+   "shuffles": 2,
+   "undos": 4,
+   "stars": [
+    468,
+    286,
+    187
+   ]
+  },
+  {
+   "id": 25,
+   "seed": 191056,
+   "shape": "rect",
+   "layers": 5,
+   "tiles": 108,
+   "types": 23,
+   "hints": 3,
+   "shuffles": 2,
+   "undos": 4,
+   "stars": [
+    486,
+    297,
+    194
+   ]
+  },
+  {
+   "id": 26,
+   "seed": 198975,
+   "shape": "rect",
+   "layers": 5,
+   "tiles": 112,
+   "types": 24,
+   "hints": 2,
+   "shuffles": 1,
+   "undos": 3,
+   "stars": [
+    504,
+    308,
+    201
+   ]
+  },
+  {
+   "id": 27,
+   "seed": 206894,
+   "shape": "cross",
+   "layers": 5,
+   "tiles": 116,
+   "types": 25,
+   "hints": 2,
+   "shuffles": 1,
+   "undos": 3,
+   "stars": [
+    522,
+    319,
+    208
+   ]
+  },
+  {
+   "id": 28,
+   "seed": 214813,
+   "shape": "cross",
+   "layers": 5,
+   "tiles": 120,
+   "types": 26,
+   "hints": 2,
+   "shuffles": 1,
+   "undos": 3,
+   "stars": [
+    540,
+    330,
+    216
+   ]
+  },
+  {
+   "id": 29,
+   "seed": 222732,
+   "shape": "towers",
+   "layers": 5,
+   "tiles": 124,
+   "types": 26,
+   "hints": 2,
+   "shuffles": 1,
+   "undos": 3,
+   "stars": [
+    558,
+    341,
+    223
+   ]
+  },
+  {
+   "id": 30,
+   "seed": 230651,
+   "shape": "rect",
+   "layers": 5,
+   "tiles": 128,
+   "types": 27,
+   "hints": 2,
+   "shuffles": 1,
+   "undos": 3,
+   "stars": [
+    576,
+    352,
+    230
+   ]
+  }
+ ]
+}

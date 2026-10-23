@@ -29,8 +29,9 @@ func _ready() -> void:
 	top.add_child(UI.icon_button("back", func(): Nav.back()))
 	var title_text: String = _game_def.get("name", "") if _endless \
 		else "%s  ·  Level %d" % [_game_def.get("name", ""), Nav.level_index + 1]
-	var title := UI.title(title_text, 36, Color.WHITE)
+	var title := UI.title(title_text, 36 if title_text.length() <= 20 else 30, Color.WHITE)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS  # never push the buttons off a narrow screen
 	top.add_child(title)
 	if not Games.how_to_play(Nav.game_id).get("steps", []).is_empty():
 		top.add_child(UI.icon_button("info", _show_how_to.bind(false)))
