@@ -6,7 +6,7 @@ signal settings_changed(key: String, value: Variant)
 signal no_ads_changed(enabled: bool)
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 3  # 2: added "highscores", 3: added "howto_hidden" (both additive, old saves load unchanged)
+const SAVE_VERSION := 3  # 2: added "highscores", 3: added "howto_seen" (both additive, old saves load unchanged)
 
 var data: Dictionary = {}
 
@@ -22,7 +22,7 @@ func _default_data() -> Dictionary:
 		"no_ads": false,
 		"progress": {},  # game_id -> {"stars": [int per level]}
 		"highscores": {},  # game_id -> best endless score
-		"howto_hidden": {},  # game_id -> true once "Don't show again" was tapped on its how-to-play card
+		"howto_seen": {},  # game_id -> true once its how-to-play card has popped up on first entry
 	}
 
 
@@ -32,19 +32,34 @@ func load_game() -> void:
 		return
 	var parsed = JSON.parse_string(FileAccess.get_file_as_string(SAVE_PATH))
 	if typeof(parsed) != TYPE_DICTIONARY:
-		push_warning("Save file unreadable, starting fresh")
+		push_warning("Save file unreadable, starting fresh (old file kept as save.json.bad)")
+		DirAccess.copy_absolute(SAVE_PATH, SAVE_PATH + ".bad")
 		return
-	# Merge so new default keys survive old saves.
+	# Merge so new default keys survive old saves. Keys of the wrong type (hand-edited or
+	# damaged file) keep their defaults instead of crashing later lookups.
+	var defaults := _default_data()
 	for key in parsed:
-		if key == "settings" and typeof(parsed[key]) == TYPE_DICTIONARY:
-			data.settings.merge(parsed[key], true)
+		if key == "settings":
+			if typeof(parsed[key]) == TYPE_DICTIONARY:
+				data.settings.merge(parsed[key], true)
+		elif key != "version" and defaults.has(key) and typeof(parsed[key]) != typeof(defaults[key]):
+			push_warning("Save key '%s' has the wrong type, using the default" % key)
 		else:
 			data[key] = parsed[key]
 	data.version = SAVE_VERSION
 	if typeof(data.get("highscores")) != TYPE_DICTIONARY:
 		data.highscores = {}
-	if typeof(data.get("howto_hidden")) != TYPE_DICTIONARY:
-		data.howto_hidden = {}
+	if typeof(data.get("howto_seen")) != TYPE_DICTIONARY:
+		data.howto_seen = {}
+	for id in data.progress.keys():
+		var entry = data.progress[id]
+		if typeof(entry) != TYPE_DICTIONARY or typeof(entry.get("stars")) != TYPE_ARRAY:
+			data.progress.erase(id)
+			continue
+		var stars: Array = []
+		for v in entry.stars:
+			stars.append(clampi(int(v), 0, 3) if typeof(v) in [TYPE_INT, TYPE_FLOAT] else 0)
+		entry.stars = stars
 
 
 func save_game() -> void:
@@ -112,13 +127,13 @@ func record_score(game_id: String, score: int) -> bool:
 
 # --- How-to-play card -------------------------------------------------------
 
-## True when the player asked not to see this game's how-to-play card on load (the "i" button still opens it).
-func is_howto_hidden(game_id: String) -> bool:
-	return bool(data.howto_hidden.get(game_id, false))
+## True once this game's how-to-play card has popped up by itself (first entry only; the "i" button still opens it).
+func is_howto_seen(game_id: String) -> bool:
+	return bool(data.howto_seen.get(game_id, false))
 
 
-func set_howto_hidden(game_id: String, hidden: bool) -> void:
-	data.howto_hidden[game_id] = hidden
+func set_howto_seen(game_id: String) -> void:
+	data.howto_seen[game_id] = true
 	save_game()
 
 

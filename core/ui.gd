@@ -11,6 +11,7 @@ const ACCENT := Color("#ffd166")
 const GOOD := Color("#06d6a0")
 const BAD := Color("#ef476f")
 const MUTED := Color("#55586f")
+const VIOLET := Color("#7a6cff")  # default neon rim for menu buttons
 
 
 static func box(color: Color, radius := 24) -> StyleBoxFlat:
@@ -21,19 +22,20 @@ static func box(color: Color, radius := 24) -> StyleBoxFlat:
 	return sb
 
 
-## Translucent panel with a light rim, for grouping rows on a gradient background.
-static func card_box(radius := 32) -> StyleBoxFlat:
-	var sb := box(Color(FX.INDIGO.darkened(0.35), 0.82), radius)
-	sb.border_color = Color(1, 1, 1, 0.1)
+## Dark glass panel with a neon rim (the shadow is the glow), for grouping rows on the backdrop.
+static func card_box(radius := 32, rim := FX.NEON_CYAN) -> StyleBoxFlat:
+	var sb := box(Color(FX.PANEL, 0.9), radius)
+	sb.border_color = Color(rim.lerp(Color.WHITE, 0.2), 0.85)
 	sb.set_border_width_all(3)
-	sb.shadow_color = Color(0, 0, 0, 0.3)
-	sb.shadow_size = 16
-	sb.shadow_offset = Vector2(0, 8)
+	sb.shadow_color = Color(rim, 0.28)
+	sb.shadow_size = 18
+	sb.shadow_offset = Vector2.ZERO
+	sb.anti_aliasing = true
 	sb.set_content_margin_all(28)
 	return sb
 
 
-static func button(text: String, on_press: Callable, color := FX.INDIGO.lightened(0.12), font := 34) -> Button:
+static func button(text: String, on_press: Callable, color := VIOLET, font := 34) -> Button:
 	var b := Button.new()
 	b.text = text
 	b.custom_minimum_size = Vector2(0, 96)
@@ -45,9 +47,10 @@ static func button(text: String, on_press: Callable, color := FX.INDIGO.lightene
 
 
 ## Square button with a drawn icon: "back", "restart" or "settings".
-static func icon_button(icon: String, on_press: Callable, color := FX.INDIGO.lightened(0.12)) -> Button:
+static func icon_button(icon: String, on_press: Callable, color := VIOLET) -> Button:
 	var b := IconButton.new()
 	b.icon_name = icon
+	b.tint = color
 	b.custom_minimum_size = Vector2(88, 88)
 	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	FX.style_button(b, color)
@@ -108,9 +111,11 @@ static func title(text: String, font := 56, color := FX.LEMON, outline := Color(
 ## Rounded badge with a gold star in front of the text, e.g. "12 / 90".
 static func star_pill(text: String) -> PanelContainer:
 	var p := PanelContainer.new()
-	var sb := box(Color(0.05, 0.04, 0.16, 0.7), 40)
-	sb.border_color = Color(FX.LEMON, 0.55)
+	var sb := box(Color(FX.NIGHT, 0.82), 40)
+	sb.border_color = Color(FX.LEMON, 0.9)
 	sb.set_border_width_all(3)
+	sb.shadow_color = Color(FX.LEMON, 0.25)
+	sb.shadow_size = 10
 	sb.content_margin_left = 64
 	sb.content_margin_right = 24
 	sb.content_margin_top = 6
@@ -201,38 +206,72 @@ static func safe_margins(node: Control) -> Vector2i:
 
 # --- widgets ----------------------------------------------------------------
 
-## Menu background: FX gradient, an accent glow at the top, faint rings for depth.
+## Menu background: synthwave night sky, striped retro sun on a scrolling neon grid,
+## twinkling stars, neon bubbles drifting up, and faint CRT scanlines. Animated unless animate = false.
 class Backdrop extends Control:
+	const HORIZON := 0.8  # horizon height as a share of the screen
+
 	var accent := FX.TANGERINE
+	var animate := true
+	var _t := 0.0
+	var _bubbles: Array = []  # [x 0..1, y 0..1, radius, rise speed (screens/s), sway phase, colour]
+	var _stars: Array[Vector3] = []  # x, y (0..1), twinkle phase
 
 	func _ready() -> void:
+		texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED  # scanline tiling
 		resized.connect(queue_redraw)
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 11
+		var cols := [FX.NEON_CYAN, FX.NEON_PINK, FX.LEMON, FX.TANGERINE, accent.lightened(0.2)]
+		for i in 16:
+			_bubbles.append([rng.randf(), rng.randf(), rng.randf_range(14.0, 82.0), rng.randf_range(0.012, 0.04),
+				rng.randf() * TAU, cols[i % cols.size()]])
+		for i in 46:
+			_stars.append(Vector3(rng.randf(), rng.randf() * HORIZON * 0.9, rng.randf() * TAU))
+		set_process(animate)
+
+	func _process(delta: float) -> void:
+		_t += delta
+		queue_redraw()
 
 	func _draw() -> void:
 		var w := size.x
 		var h := size.y
-		FX.draw_background(self, Rect2(Vector2.ZERO, size))
-		FX.draw_glow(self, Rect2(-w * 0.35, -h * 0.2, w * 1.7, h * 0.5), Color(accent, 0.26))
-		var rng := RandomNumberGenerator.new()
-		rng.seed = 11
-		for i in 12:
-			var c := Vector2(rng.randf() * w, rng.randf() * h)
-			var r := rng.randf_range(24.0, 110.0)
-			draw_circle(c, r, Color(1, 1, 1, 0.022))
-			draw_arc(c, r, 0.0, TAU, 48, Color(1, 1, 1, 0.045), 2.0, true)
-		FX.draw_vgradient(self, Rect2(0, h * 0.75, w, h * 0.25), Color(0, 0, 0, 0), Color(0, 0, 0, 0.3))
+		var hy := h * HORIZON
+		FX.draw_vgradient(self, Rect2(0, 0, w, hy * 0.55), FX.NIGHT, Color("#1a1045"))
+		FX.draw_vgradient(self, Rect2(0, hy * 0.55, w, hy * 0.45 + 1.0), Color("#1a1045"), Color("#3d1458"))
+		FX.draw_vgradient(self, Rect2(0, hy, w, h - hy), Color("#1a0a33"), FX.NIGHT)
+		FX.draw_glow(self, Rect2(-w * 0.35, -h * 0.2, w * 1.7, h * 0.5), Color(accent, 0.2))
+		for st in _stars:
+			var tw := 0.5 + 0.5 * sin(_t * 1.7 + st.z * 3.0)
+			draw_circle(Vector2(st.x * w, st.y * h), 1.2 + tw * 1.3, Color(1, 1, 1, 0.15 + 0.5 * tw))
+		FX.draw_retro_sun(self, Vector2(w * 0.5, hy - w * 0.12), w * 0.3, 0.5)
+		FX.draw_neon_grid(self, Rect2(0, hy, w, h - hy), FX.NEON_PINK, _t * 0.35)
+		for b in _bubbles:
+			var r: float = b[2]
+			var y := fposmod(b[1] - _t * b[3], 1.0) * (h + r * 4.0) - r * 2.0
+			var x: float = b[0] * w + sin(_t * 0.5 + b[4]) * 26.0
+			var c := Vector2(x, y)
+			var col: Color = b[5]
+			draw_circle(c, r, Color(col, 0.05))
+			FX.draw_neon_circle(self, c, r, Color(col, 0.42), 2.0, 0.6)
+			draw_arc(c, r * 0.7, PI * 1.08, PI * 1.42, 12, Color(1, 1, 1, 0.3), maxf(2.0, r * 0.08), true)
+		FX.draw_scanlines(self, Rect2(Vector2.ZERO, size), 0.14)
+		FX.draw_vgradient(self, Rect2(0, h * 0.86, w, h * 0.14), Color(0, 0, 0, 0), Color(0, 0, 0, 0.35))
 
 
 ## Button that draws an FX icon on its raised face.
 class IconButton extends Button:
 	var icon_name := ""
+	var tint := Color.WHITE  # glow colour around the icon (the button's rim colour)
 
 	func _draw() -> void:
 		var down := get_draw_mode() == DRAW_PRESSED or get_draw_mode() == DRAW_HOVER_PRESSED
-		var c := size / 2.0 + Vector2(0, 1.0 if down else -3.0)
+		var c := size / 2.0 + Vector2(0, 2.0 if down else 0.0)
 		var s := size.y * 0.6
-		FX.draw_icon(self, icon_name, c + Vector2(0, 3), s, Color(0, 0, 0, 0.3))
-		FX.draw_icon(self, icon_name, c, s)
+		FX.draw_glow(self, Rect2(c - Vector2(s, s) * 0.8, Vector2(s, s) * 1.6), Color(tint, 0.35))
+		FX.draw_icon(self, icon_name, c, s * 1.08, Color(tint.lerp(Color.WHITE, 0.3), 0.45))
+		FX.draw_icon(self, icon_name, c, s, Color(1, 1, 1, 0.97))
 
 
 ## Pill-shaped on/off switch with a sliding glossy knob.

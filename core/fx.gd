@@ -11,11 +11,17 @@ const TANGERINE := Color("#FF8A1F")
 const LEMON := Color("#FFD23F")
 const BG_TOP := Color("#1d1f33")  # same as UI.BG so the host's top bar blends in
 const BG_BOTTOM := Color("#141331")
+# Retro neon arcade accents (menus, hub, overlays). Fruit Pop stays the core palette.
+const NEON_PINK := Color("#ff4fd8")
+const NEON_CYAN := Color("#3df5ff")
+const NIGHT := Color("#0c0a22")  # near-black indigo behind neon
+const PANEL := Color("#16123a")  # dark glass for neon panels and cards
 
 static var _shadow: GradientTexture2D
 static var _light: GradientTexture2D
 static var _shade: GradientTexture2D
 static var _box := StyleBoxFlat.new()
+static var _scan: ImageTexture
 static var _font: Font
 static var _theme: Theme
 
@@ -31,8 +37,8 @@ static func _radial(offsets: Array, colors: Array) -> GradientTexture2D:
 	t.fill = GradientTexture2D.FILL_RADIAL
 	t.fill_from = Vector2(0.5, 0.5)
 	t.fill_to = Vector2(1.0, 0.5)
-	t.width = 128
-	t.height = 128
+	t.width = 256  # sharp rims on big balls at 1440p; still tiny and built once
+	t.height = 256
 	return t
 
 
@@ -82,12 +88,19 @@ static func draw_vgradient(ci: CanvasItem, r: Rect2, top: Color, bottom: Color) 
 ## Rounded rect with a vertical gradient (cards, banners). round_bottom = false keeps
 ## the bottom corners square, e.g. for a coloured header band across a card's top.
 static func draw_round_gradient(ci: CanvasItem, r: Rect2, radius: float, top: Color, bottom: Color,
-		round_bottom := true) -> void:
+		round_bottom := true, smooth_edge := true) -> void:
 	var pts := round_rect_points(r, radius, round_bottom)
 	var cols := PackedColorArray()
 	for p in pts:
 		cols.append(top.lerp(bottom, clampf((p.y - r.position.y) / r.size.y, 0.0, 1.0)))
 	ci.draw_polygon(pts, cols)
+	if not smooth_edge:  # caller draws its own anti-aliased outline (e.g. playing cards)
+		return
+	# Polygons have no anti-aliasing in the Compatibility renderer: a 1 px smoothed rim in the
+	# same colours keeps card edges crisp instead of stair-stepped on high-density screens.
+	pts.append(pts[0])
+	cols.append(cols[0])
+	ci.draw_polyline_colors(pts, cols, 1.0, true)
 
 
 ## Outline of a rounded rect, clockwise from the top edge (for draw_polygon / draw_polyline).
@@ -245,6 +258,159 @@ static func ease_smooth(x: float) -> float:
 	return x * x * (3.0 - 2.0 * x)
 
 
+# --- retro neon (arcade signs, grids, scanlines) -----------------------------
+
+## Neon tube along pts: wide faint glow, tighter glow, then a hot near-white core.
+## Glow passes are cheap polylines, so it stays crisp at any size (no textures).
+static func draw_neon_polyline(ci: CanvasItem, pts: PackedVector2Array, col: Color, width := 4.0,
+		closed := false, glow := 1.0) -> void:
+	if pts.size() < 2:
+		return
+	if closed:
+		pts = pts.duplicate()
+		pts.append(pts[0])
+	var a := col.a  # col's alpha fades the whole tube
+	if glow > 0.0:
+		ci.draw_polyline(pts, Color(col, 0.07 * glow * a), width * 6.0, true)
+		ci.draw_polyline(pts, Color(col, 0.16 * glow * a), width * 3.2, true)
+		ci.draw_polyline(pts, Color(col, 0.5 * glow * a), width * 1.7, true)
+	ci.draw_polyline(pts, Color(col, a), width, true)
+	ci.draw_polyline(pts, Color(col.lerp(Color.WHITE, 0.6), 0.75 * a), maxf(1.0, width * 0.34), true)
+
+
+## Punchy neon version of any palette colour (full brightness, saturation pushed up).
+static func neon(col: Color) -> Color:
+	return Color.from_hsv(col.h, clampf(col.s * 1.3, 0.55, 0.85), 1.0, col.a)
+
+
+## Neon outline of a rounded rect.
+static func draw_neon_rect(ci: CanvasItem, r: Rect2, radius: float, col: Color, width := 4.0, glow := 1.0) -> void:
+	draw_neon_polyline(ci, round_rect_points(r, radius), col, width, true, glow)
+
+
+## Neon ring.
+static func draw_neon_circle(ci: CanvasItem, c: Vector2, rad: float, col: Color, width := 4.0, glow := 1.0) -> void:
+	var pts := PackedVector2Array()
+	var n := clampi(int(rad * 0.8), 16, 64)
+	for i in n:
+		pts.append(c + Vector2.from_angle(i * TAU / n) * rad)
+	draw_neon_polyline(ci, pts, col, width, true, glow)
+
+
+## Neon sign text centred on c: coloured haze, outline glow, then a pale hot core.
+static func draw_neon_text(ci: CanvasItem, c: Vector2, text: String, font_size: int, col: Color,
+		font: Font = null, glow := 1.0) -> void:
+	if font_size <= 0:
+		return
+	if font == null:
+		font = font()
+	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var p := c + Vector2(-tw / 2.0, font_size * 0.36)
+	for pass_ in [[0.5, 0.08], [0.28, 0.18], [0.14, 0.45]]:
+		ci.draw_string_outline(font, p, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size,
+			maxi(2, int(font_size * pass_[0])), Color(col, pass_[1] * glow))
+	ci.draw_string_outline(font, p, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size,
+		maxi(2, int(font_size * 0.07)), col)
+	ci.draw_string(font, p, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, col.lerp(Color.WHITE, 0.72))
+
+
+## Dark glass panel with a neon rim in col (cards, overlays, hub tiles).
+static func draw_neon_panel(ci: CanvasItem, r: Rect2, radius: float, col: Color, width := 4.0,
+		fill := PANEL) -> void:
+	var sb := _box
+	sb.set_corner_radius_all(int(radius))
+	sb.set_border_width_all(0)
+	sb.shadow_size = 0
+	sb.draw_center = true
+	sb.bg_color = Color(0, 0, 0, 0)
+	sb.shadow_color = Color(col, 0.22)
+	sb.shadow_size = int(width * 5.0)
+	ci.draw_style_box(sb, r)  # outer bloom
+	sb.shadow_size = 0
+	draw_round_gradient(ci, r, radius, fill.lerp(col, 0.12), fill.darkened(0.35))
+	draw_neon_rect(ci, r, radius, col, width)
+
+
+## Overlay card (result, how-to-play): neon panel in accent with a tinted header band of
+## height band_h and a neon rule under it.
+static func draw_neon_card(ci: CanvasItem, r: Rect2, radius: float, accent: Color, band_h: float) -> void:
+	var sh := StyleBoxFlat.new()
+	sh.bg_color = Color(0, 0, 0, 0)
+	sh.set_corner_radius_all(int(radius))
+	sh.shadow_color = Color(0, 0, 0, 0.55)
+	sh.shadow_size = 30
+	sh.shadow_offset = Vector2(0, 16)
+	ci.draw_style_box(sh, r)
+	draw_neon_panel(ci, r, radius, accent, 5.0)
+	draw_round_gradient(ci, Rect2(r.position, Vector2(r.size.x, band_h)).grow(-5.0), radius - 5.0,
+		Color(accent, 0.42), Color(accent, 0.06), false)
+	draw_glow(ci, Rect2(r.position.x + r.size.x * 0.1, r.position.y - band_h * 0.4, r.size.x * 0.8, band_h * 1.2),
+		Color(accent, 0.3))
+	var y := r.position.y + band_h
+	draw_neon_polyline(ci, PackedVector2Array([Vector2(r.position.x + 30, y), Vector2(r.end.x - 30, y)]), accent, 2.5,
+		false, 0.8)
+
+
+## Thin horizontal scanlines over r (CRT feel). The canvas item needs texture_repeat enabled.
+static func draw_scanlines(ci: CanvasItem, r: Rect2, alpha := 0.12) -> void:
+	if _scan == null:
+		var img := Image.create(4, 4, false, Image.FORMAT_RGBA8)
+		img.fill(Color(0, 0, 0, 0))
+		for x in 4:
+			img.set_pixel(x, 3, Color(0, 0, 0, 1))
+		_scan = ImageTexture.create_from_image(img)
+	ci.draw_texture_rect(_scan, r, true, Color(1, 1, 1, alpha))
+
+
+## Synthwave floor: perspective neon grid from the horizon line down to r.end.y.
+## scroll (0..1, wraps) slides the cross lines towards the viewer.
+static func draw_neon_grid(ci: CanvasItem, r: Rect2, col: Color, scroll := 0.0, alpha := 1.0) -> void:
+	var hy := r.position.y
+	var h := r.size.y
+	var cx := r.get_center().x
+	draw_vgradient(ci, r, Color(col, 0.0), Color(col, 0.10 * alpha))
+	for i in range(-9, 10):  # rays to the vanishing point
+		var x0 := cx + i * r.size.x * 0.035
+		var x1 := cx + i * r.size.x * 0.32
+		var k := 1.0 - absf(i) / 10.0
+		ci.draw_line(Vector2(x0, hy), Vector2(x1, r.end.y), Color(col, (0.12 + 0.2 * k) * alpha), 2.0, true)
+	for j in 9:  # cross lines bunch up towards the horizon
+		var z := (j + 1.0 - fposmod(scroll, 1.0)) / 9.0
+		var y := hy + h * z * z
+		var a := z * alpha
+		ci.draw_line(Vector2(r.position.x, y), Vector2(r.end.x, y), Color(col, 0.10 * a), 7.0)
+		ci.draw_line(Vector2(r.position.x, y), Vector2(r.end.x, y), Color(col, 0.45 * a), 2.0)
+	ci.draw_line(Vector2(r.position.x, hy), Vector2(r.end.x, hy), Color(col.lerp(Color.WHITE, 0.5), 0.6 * alpha), 2.0)
+	draw_glow(ci, Rect2(r.position.x - r.size.x * 0.2, hy - h * 0.25, r.size.x * 1.4, h * 0.5), Color(col, 0.18 * alpha))
+
+
+## Striped retro sun sitting on a horizon at c.y + rad * 0.3 (only the part above it is drawn).
+static func draw_retro_sun(ci: CanvasItem, c: Vector2, rad: float, alpha := 1.0) -> void:
+	draw_glow(ci, Rect2(c - Vector2(rad, rad) * 2.0, Vector2(rad, rad) * 4.0), Color(NEON_PINK, 0.22 * alpha))
+	var bottom := c.y + rad * 0.3
+	var bands := 16
+	for i in bands:
+		var y0 := c.y - rad + i * (rad * 2.0 / bands)
+		var y1 := y0 + rad * 2.0 / bands
+		if y0 >= bottom:
+			break
+		var k := float(i) / bands
+		var gap := 0.0 if k < 0.4 else (k - 0.4) * 1.1  # widening stripes in the lower half
+		var ym := minf(y1 - (y1 - y0) * gap, bottom)
+		if ym <= y0 + 0.5:
+			continue
+		var left := PackedVector2Array()
+		var right := PackedVector2Array()
+		for j in 5:  # band edges follow the circle, so the rim stays smooth
+			var y := lerpf(y0, ym, j / 4.0)
+			var half := sqrt(maxf(0.0, rad * rad - (y - c.y) * (y - c.y)))
+			left.append(Vector2(c.x - half, y))
+			right.append(Vector2(c.x + half, y))
+		right.reverse()
+		var col := Color(LEMON.lerp(NEON_PINK, clampf(k * 1.25, 0.0, 1.0)), alpha)
+		ci.draw_colored_polygon(left + right, col)
+
+
 # --- fonts and theme --------------------------------------------------------
 
 ## Rounded display font for menus (Lilita One, OFL; see core/fonts/OFL.txt).
@@ -280,8 +446,9 @@ static func theme() -> Theme:
 
 # --- node helpers -----------------------------------------------------------
 
-## Chunky 3D button look (raised face, shadow) plus a squash on press.
+## Neon arcade button look (glowing rim, dark face, tinted text glow) plus a squash on press.
 static func style_button(b: Button, col: Color) -> void:
+	b.add_theme_color_override("font_outline_color", Color(col.darkened(0.2), 0.55))
 	b.add_theme_stylebox_override("normal", button_box(col, false))
 	b.add_theme_stylebox_override("hover", button_box(col.lightened(0.08), false))
 	b.add_theme_stylebox_override("pressed", button_box(col.darkened(0.1), true))
@@ -292,18 +459,22 @@ static func style_button(b: Button, col: Color) -> void:
 	b.resized.connect(func(): b.pivot_offset = b.size / 2.0)
 
 
+## Neon arcade button: dark glass face, glowing rim in col (the box shadow is the bloom),
+## a lit strip along the top; pressed sinks the text and dims the glow.
 static func button_box(col: Color, flat: bool) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = col
-	sb.set_corner_radius_all(30)
-	sb.border_color = col.darkened(0.4)
-	sb.border_width_bottom = 2 if flat else 7
+	sb.bg_color = Color(col.darkened(0.62), 0.92 * col.a)
+	sb.set_corner_radius_all(26)
+	sb.border_color = Color(col.lerp(Color.WHITE, 0.25), col.a)
+	sb.set_border_width_all(4)
+	sb.border_width_top = 5
+	sb.border_blend = false
 	sb.set_content_margin_all(16)
-	sb.content_margin_top = 21.0 if flat else 16.0  # text sinks a little when pressed
-	if not flat:
-		sb.shadow_color = Color(0, 0, 0, 0.35)
-		sb.shadow_size = 10
-		sb.shadow_offset = Vector2(0, 5)
+	sb.content_margin_top = 20.0 if flat else 16.0  # text sinks a little when pressed
+	sb.shadow_color = Color(col, (0.22 if flat else 0.45) * col.a)
+	sb.shadow_size = 8 if flat else 16
+	sb.shadow_offset = Vector2.ZERO
+	sb.anti_aliasing = true
 	return sb
 
 

@@ -28,7 +28,7 @@ core/
   monetization/    ad_config.gd (test IDs, pacing, flags), ad_provider*.gd, iap_provider*.gd
 scenes/            hub, level_select, game_host, settings (.tscn + .gd);
                    result_overlay.gd = level complete/failed card (preloaded by game_host)
-                   how_to_play.gd = how-to-play card (host shows it on load unless hidden, and from the "i" button)
+                   how_to_play.gd = how-to-play card (host pops it up on the first entry to each game, Save.howto_seen; the "i" button reopens it)
 data/games.json    game registry (order = hub order)
 data/how_to_play.json  how-to-play text per game id: steps (2-4 lines) + optional endless tip; every game needs one
 games/<id>/        game.tscn (+ scripts/assets) and levels.json (30 levels)
@@ -45,6 +45,9 @@ calls `start_level(level_dict, index)`. On `finished(won, stars)` it saves via
 overlay (Next/Retry/Levels). Restart button re-instances the game scene (fades the new board in).
 Scenes change via Nav only (never change_scene_* directly) so transitions stay consistent.
 Level N unlocks when level N-1 has >= 1 star.
+Interrupts: game_host pauses the tree behind a Paused card on app focus-out/pause (scenes/pause_overlay.gd),
+so games need no pause code. Android Back: a screen may define `handle_back() -> bool` to close its own
+popup first (hub mode picker, pause card); Nav ignores Back during slides and full-screen ads.
 
 ## BaseGame contract (core/base_game.gd)
 - Root of game.tscn extends `BaseGame` (a full-rect Control inside the host's area;
@@ -71,8 +74,12 @@ a fresh pull into an open editor does not know new global classes yet).
 - Input: handle taps in `_gui_input` and skip `event.device == InputEvent.DEVICE_ID_EMULATION`;
   mouse/touch emulation is on, so every tap also arrives as an emulated twin.
 - Example: games/color_sort/game.gd.
+- Retro neon arcade style for menus/overlays: `FX.NEON_PINK/NEON_CYAN/NIGHT/PANEL`, `FX.neon(col)` (punchy version),
+  `draw_neon_polyline/rect/circle/text` (glow passes + hot core), `draw_neon_panel` (dark glass + neon rim),
+  `draw_neon_card` (overlay card with header band), `draw_scanlines` (needs `texture_repeat` on), `draw_neon_grid`,
+  `draw_retro_sun`. `FX.style_button` / `UI.button` give neon-rim buttons (default rim `UI.VIOLET`).
 - Menus: `UI.screen(root, accent)` sets `FX.theme()` (Lilita One, outlined text) and the
-  gradient Backdrop; `FX.draw_star`, `draw_lock`, `draw_icon` draw icons (the font has no ★).
+  animated synthwave Backdrop (sun, scrolling grid, drifting neon bubbles, scanlines); `FX.draw_star`, `draw_lock`, `draw_icon` draw icons (the font has no ★).
   Screens: scenes/hub.gd (game cards with drawn emblems), level_select.gd (LevelTile states).
 
 ## Card kit (core/cards/): for Klondike, Spider, FreeCell and any other card game
@@ -115,16 +122,17 @@ All audio is synthesised by `python tools/gen_audio.py` (numpy + ffmpeg) into `a
 `Feedback.sfx(name)` honours the sound toggle, uses an 8-voice pool and jitters pitch slightly.
 Names: `tap` (generic tap), `select` (pick a piece/tube/tile/level), `place` (drop a piece), `pour`,
 `pop`, `merge`, `clear` (line/set cleared), `star` (star earned), `win`, `fail`, `button` (menu
-button), `back`, `locked`, `unlock`. Unknown names warn once. `UI.wire`/`icon_button` already play
+button), `back`, `locked`, `unlock`, `swoosh` (something flying in). Unknown names warn once.
+`Feedback.sfx(name, pitch)` takes an optional pitch multiplier (the result card raises it per star). `UI.wire`/`icon_button` already play
 `button`/`back`; the host plays `win`/`fail`/`star`, so games add only their own move sounds.
-Music: `Feedback.play_music("menu"|"game")` loops with a crossfade and follows the music toggle;
+Music (80s synthwave: saw pads, octave bass, arps, drum machine): `Feedback.play_music("menu"|"game")` loops with a crossfade and follows the music toggle;
 Nav switches it (menu on hub/levels/settings, game in game_host), games never call it.
 New sound: add a recipe in gen_audio.py `SFX`, an entry in `Feedback.SFX`, and list it here.
 
 ## Ads and purchases (autoload/ad_service.gd, iap_service.gd, core/monetization/, docs/MONETIZATION.md)
 Games never touch ads: the host does. `Ads.on_level_finished(won, level_index)` records a finished level;
 the interstitial plays only via `Ads.run_after_interstitial(next)` wrapped around the result card's
-Next/Levels buttons (every 2nd win (`INTERSTITIAL_EVERY` in ad_config.gd), 60 s cooldown, not after level 1, never on fail, off with No Ads).
+Next/Retry/Levels buttons (every 2nd win (`INTERSTITIAL_EVERY` in ad_config.gd), 30 s cooldown, not after level 1, never on fail, off with No Ads).
 Endless modes: call `on_level_finished(won)` with level_index -1 and wrap their "play again/home" the same way.
 Rewarded hook for hints/undo: `Ads.rewarded_available()`, `Ads.show_rewarded()`, signal `rewarded_finished(granted)`.
 Backends are chosen at startup: AdMob / Play Billing plugins on Android when `addons/admob` /
@@ -161,7 +169,7 @@ Per-game params (defined in tools/gen_levels.py):
 | fruit_merge | Fruit Fusion (drop & merge physics) | none: endless only (games.json `endless` block: ramp_score) | high score |
 | color_sort | Tube Sort (water/ball sort) | colors, capacity, empty_tubes | moves used, lower better |
 | tower_stack | Sky Stacker (one-tap stacker) | target_height, speed, speed_step, block_width | perfect drops |
-| block_puzzle | Block Fit (8x8 drag pieces, clear lines) | grid, goal (lines/clear), target_lines, prefilled, piece_set | score |
+| block_puzzle | Block Fit (8x8 drag pieces, clear lines) | grid, goal (lines/clear), target_lines, prefilled, piece_set, ext_weight | pieces used, lower better (thresholds from games/block_puzzle/bot.gd -> par.json) |
 | number_merge | Merge Tiles (2048-like swipe) | none: endless only (games.json `endless` block: ramp_score) | high score |
 | bubble_shooter | Bubble Burst (aim-and-pop) | goal (clear/color/gems), layout, rows, colors, shots, drop_every, target_color, target_n, gems; also has an endless mode | shots left (endless: score) |
 | klondike | Solitaire (Klondike rules; player-facing name is "Solitaire", id/paths stay klondike) | deck (52 card codes, verified winnable), draw 1/3, undos (-1 = unlimited), time_k | effort = max(moves, seconds * time_k), lower better |

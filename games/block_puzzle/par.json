@@ -1,0 +1,244 @@
+{
+ "levels": [
+  {
+   "best": 12,
+   "casual_runs": 12,
+   "casual_wins": 12,
+   "greedy": 13,
+   "level": 1,
+   "median": 14
+  },
+  {
+   "best": 14,
+   "casual_runs": 12,
+   "casual_wins": 11,
+   "greedy": 16,
+   "level": 2,
+   "median": 19
+  },
+  {
+   "best": 13,
+   "casual_runs": 12,
+   "casual_wins": 12,
+   "greedy": 16,
+   "level": 3,
+   "median": 23
+  },
+  {
+   "best": 15,
+   "casual_runs": 12,
+   "casual_wins": 12,
+   "greedy": 16,
+   "level": 4,
+   "median": 19
+  },
+  {
+   "best": 19,
+   "casual_runs": 12,
+   "casual_wins": 9,
+   "greedy": 19,
+   "level": 5,
+   "median": 22
+  },
+  {
+   "best": 19,
+   "casual_runs": 12,
+   "casual_wins": 12,
+   "greedy": 19,
+   "level": 6,
+   "median": 23
+  },
+  {
+   "best": 17,
+   "casual_runs": 12,
+   "casual_wins": 12,
+   "greedy": 19,
+   "level": 7,
+   "median": 21
+  },
+  {
+   "best": 17,
+   "casual_runs": 12,
+   "casual_wins": 12,
+   "greedy": 20,
+   "level": 8,
+   "median": 22
+  },
+  {
+   "best": 11,
+   "casual_runs": 12,
+   "casual_wins": 12,
+   "greedy": 11,
+   "level": 9,
+   "median": 18
+  },
+  {
+   "best": 23,
+   "casual_runs": 12,
+   "casual_wins": 12,
+   "greedy": 25,
+   "level": 10,
+   "median": 29
+  },
+  {
+   "best": 19,
+   "casual_runs": 12,
+   "casual_wins": 10,
+   "greedy": 20,
+   "level": 11,
+   "median": 23
+  },
+  {
+   "best": 22,
+   "casual_runs": 12,
+   "casual_wins": 6,
+   "greedy": 23,
+   "level": 12,
+   "median": 30
+  },
+  {
+   "best": 25,
+   "casual_runs": 12,
+   "casual_wins": 11,
+   "greedy": 25,
+   "level": 13,
+   "median": 26
+  },
+  {
+   "best": 22,
+   "casual_runs": 12,
+   "casual_wins": 12,
+   "greedy": 25,
+   "level": 14,
+   "median": 25
+  },
+  {
+   "best": 15,
+   "casual_runs": 12,
+   "casual_wins": 10,
+   "greedy": 15,
+   "level": 15,
+   "median": 28
+  },
+  {
+   "best": 26,
+   "casual_runs": 12,
+   "casual_wins": 8,
+   "greedy": 28,
+   "level": 16,
+   "median": 29
+  },
+  {
+   "best": 28,
+   "casual_runs": 12,
+   "casual_wins": 7,
+   "greedy": 29,
+   "level": 17,
+   "median": 31
+  },
+  {
+   "best": 14,
+   "casual_runs": 12,
+   "casual_wins": 8,
+   "greedy": 17,
+   "level": 18,
+   "median": 30
+  },
+  {
+   "best": 28,
+   "casual_runs": 12,
+   "casual_wins": 9,
+   "greedy": 29,
+   "level": 19,
+   "median": 29
+  },
+  {
+   "best": 29,
+   "casual_runs": 12,
+   "casual_wins": 8,
+   "greedy": 29,
+   "level": 20,
+   "median": 31
+  },
+  {
+   "best": 23,
+   "casual_runs": 12,
+   "casual_wins": 10,
+   "greedy": 37,
+   "level": 21,
+   "median": 32
+  },
+  {
+   "best": 31,
+   "casual_runs": 12,
+   "casual_wins": 10,
+   "greedy": 33,
+   "level": 22,
+   "median": 36
+  },
+  {
+   "best": 32,
+   "casual_runs": 12,
+   "casual_wins": 11,
+   "greedy": 34,
+   "level": 23,
+   "median": 35
+  },
+  {
+   "best": 13,
+   "casual_runs": 12,
+   "casual_wins": 6,
+   "greedy": 13,
+   "level": 24,
+   "median": 30
+  },
+  {
+   "best": 32,
+   "casual_runs": 12,
+   "casual_wins": 6,
+   "greedy": 32,
+   "level": 25,
+   "median": 37
+  },
+  {
+   "best": 32,
+   "casual_runs": 12,
+   "casual_wins": 5,
+   "greedy": 32,
+   "level": 26,
+   "median": 34
+  },
+  {
+   "best": 16,
+   "casual_runs": 12,
+   "casual_wins": 8,
+   "greedy": 19,
+   "level": 27,
+   "median": 29
+  },
+  {
+   "best": 36,
+   "casual_runs": 12,
+   "casual_wins": 7,
+   "greedy": 37,
+   "level": 28,
+   "median": 40
+  },
+  {
+   "best": 37,
+   "casual_runs": 12,
+   "casual_wins": 3,
+   "greedy": -1,
+   "level": 29,
+   "median": 42
+  },
+  {
+   "best": 16,
+   "casual_runs": 12,
+   "casual_wins": 6,
+   "greedy": 16,
+   "level": 30,
+   "median": 25
+  }
+ ]
+}

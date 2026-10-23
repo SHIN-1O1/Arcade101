@@ -8,8 +8,9 @@ extends BaseGame
 ## Physics: one RigidBody2D circle per fruit, kept under a plain Node so the bodies live in this
 ## Control's local coordinates but ignore its transform (the host scales/fades the game; shakes move
 ## it). Bodies use shape-cast CCD, thick static walls and sleep when still; low friction and angular
-## damping let fruit roll, and a spring "jelly" squash on impacts keeps them soft. Nothing is drawn by
-## the bodies: _draw() paints each fruit from its body: the skin texture turns with the body, the light
+## damping let fruit roll; the jar's bottom corners are curved (a fan of triangles) so fruit roll off
+## them. Landings are soft: a small hop scaled by the fall, air drag that eases fruit into their top
+## speed, and a spring "jelly" squash that flattens a fruit onto what it hit. Nothing is drawn by the bodies: _draw() paints each fruit from its body: the skin texture turns with the body, the light
 ## layers on top do not. Art in art/ is painted by art/gen_art.py (re-run it to retune a fruit).
 
 const FX := preload("res://core/fx.gd")
@@ -18,11 +19,13 @@ const TANGERINE := Color("#FF8A1F")
 const LEMON := Color("#FFD23F")
 
 ## Radius of each tier in design units (jar is 600 units wide) and its particle colour.
-## Original set: berry, strawberry, grape, lime, orange, apple, pear, peach, pineapple, cantaloupe, melon.
+## Original set: blueberry, cherry, grape, lemon, orange, green apple, pomegranate, coconut, pineapple,
+## pumpkin, watermelon (one clear hue each, so neighbouring tiers never look alike).
 const RADII := [19.0, 26.0, 34.0, 41.0, 51.0, 61.0, 71.0, 83.0, 97.0, 113.0, 131.0]
-const COLORS := [Color("#D7213C"), Color("#E8323A"), Color("#7B3FA8"), Color("#6CC04A"), Color("#FF8A1F"),
-	Color("#C8232E"), Color("#C9D35A"), Color("#F7A35A"), Color("#FFC93C"), Color("#D9C98A"), Color("#3C9A3A")]
+const COLORS := [Color("#4F7FF0"), Color("#FF2E45"), Color("#B145D6"), Color("#FFE04A"), Color("#FF9A1F"),
+	Color("#8FD63A"), Color("#E8304E"), Color("#A8703E"), Color("#FFC93C"), Color("#FF8A1F"), Color("#3FAE3A")]
 const ART := "res://games/fruit_merge/art/"
+const SELF_LIT := [8]  # oval pineapple: lighting is baked into its skin (see art/gen_art.py SELF_LIT)
 const ART_HALF := 1.6  # fruit_<n>.png: canvas half-size in fruit radii (the disc is 120 of 192 px)
 const SCORE := [1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66]
 const MELON_BONUS := 100  # two of the last tier burst
@@ -34,6 +37,18 @@ const GRACE := 1.0  # a fresh fruit may cross the line while it falls in
 const COOLDOWN := [0.55, 0.38]  # seconds between drops at difficulty 0 and 1
 const GRAVITY_SCALE := 1.35
 const MAX_SPEED := 820.0  # px/s: under one berry radius per physics step, so nothing sinks into a fruit
+const DRAG := 0.0016  # quadratic air drag (1/px): terminal speed ~ sqrt(g / DRAG), eased instead of clipped
+const BOUNCE := 0.03  # material restitution, kept tiny: the landing hop below is what players see
+## Landing hop: a fruit that stops a fall faster than HOP_MIN px/s rebounds at HOP of its impact speed,
+## so the hop grows with the drop height (a fall from the top rises about 12 px, short drops barely lift).
+const HOP := 0.22
+const HOP_MIN := 260.0
+## Jelly spring (per second squared / per second) and the strongest squash an impact may cause.
+const JELLY_K := 380.0
+const JELLY_C := 8.0
+const JELLY_MAX := 0.2
+const CORNER := 70.0  # inner radius of the jar's curved bottom corners (design units)
+const JELLY_STEP := 1.0 / 120.0  # fixed sub-step: a long frame never blows the spring up
 const JAR_WIDTH := 600.0
 const WALL := 18.0  # drawn wall thickness; the physics walls are much thicker
 const TOP := 235.0  # y of the jar rim / danger line
@@ -54,6 +69,7 @@ class Fruit:
 	var jelly_v := 0.0
 	var jelly_dir := PI / 2.0
 	var vel := Vector2.ZERO  # last velocity, to spot impacts
+	var fall := 0.0  # downward speed at the last physics step, to spot landings
 	var dead := false
 
 
@@ -125,7 +141,7 @@ func _try_build() -> void:
 	var walls := StaticBody2D.new()
 	var mat := PhysicsMaterial.new()
 	mat.friction = 0.35
-	mat.bounce = 0.05
+	mat.bounce = 0.0
 	walls.physics_material_override = mat
 	var t := 400.0  # thick walls: nothing can pass through in one step
 	for r in [Rect2(jar.position.x - t, -2000.0, t, jar.end.y + 2000.0 + t),
@@ -137,6 +153,20 @@ func _try_build() -> void:
 		cs.shape = rs
 		cs.position = r.get_center()
 		walls.add_child(cs)
+	# curved bottom corners: a fan of triangles between each corner point and its arc
+	var cr := CORNER * u
+	for side in [-1.0, 1.0]:
+		var corner := Vector2(jar.position.x if side < 0.0 else jar.end.x, jar.end.y)
+		var centre := corner + Vector2(-side * cr, -cr)
+		for k in 10:
+			var a0 := PI / 2.0 * (k / 10.0)
+			var a1 := PI / 2.0 * ((k + 1) / 10.0)
+			var tri := ConvexPolygonShape2D.new()
+			tri.points = PackedVector2Array([corner, centre + Vector2(side * cos(a0), sin(a0)) * cr,
+				centre + Vector2(side * cos(a1), sin(a1)) * cr])
+			var tc := CollisionShape2D.new()
+			tc.shape = tri
+			walls.add_child(tc)
 	_world.add_child(walls)
 	queue_redraw()
 
@@ -215,10 +245,10 @@ func _add_fruit(tier: int, pos: Vector2, vel: Vector2, grown := true) -> Fruit:
 	b.continuous_cd = RigidBody2D.CCD_MODE_CAST_SHAPE
 	b.can_sleep = true
 	b.linear_damp = 0.05
-	b.angular_damp = 0.3
+	b.angular_damp = 0.1
 	var mat := PhysicsMaterial.new()
 	mat.friction = 0.3
-	mat.bounce = 0.14
+	mat.bounce = BOUNCE
 	b.physics_material_override = mat
 	var cs := CollisionShape2D.new()
 	f.shape = CircleShape2D.new()
@@ -247,10 +277,17 @@ func _physics_process(delta: float) -> void:
 		if f.grow < 1.0:
 			f.grow = minf(1.0, f.grow + delta / 0.12)
 			f.shape.radius = f.r * lerpf(0.6, 1.0, f.grow)
+		var lv := f.body.linear_velocity
+		if f.fall > HOP_MIN * u and lv.y < f.fall * 0.35:  # just landed: one small hop
+			f.body.linear_velocity.y = minf(lv.y, -f.fall * HOP)
+		f.fall = maxf(0.0, f.body.linear_velocity.y)
 		var sp2 := f.body.linear_velocity.length_squared()
-		if sp2 < 900.0 and not f.body.sleeping:  # rolling resistance: free rolling, gentle settling
-			f.body.linear_velocity *= 0.97
-			f.body.angular_velocity *= 0.94
+		if sp2 < 225.0 and not f.body.sleeping:  # rolling resistance only at a crawl: roll on, then settle
+			f.body.linear_velocity *= 0.985
+			f.body.angular_velocity *= 0.97
+		if sp2 > 40000.0:  # air drag: speed eases toward a terminal velocity under the hard cap
+			var sp := sqrt(sp2)
+			f.body.linear_velocity *= 1.0 / (1.0 + DRAG / u * sp * delta)
 		if f.body.linear_velocity.length_squared() > MAX_SPEED * MAX_SPEED * u * u:
 			f.body.linear_velocity = f.body.linear_velocity.limit_length(MAX_SPEED * u)
 		var p := f.body.position
@@ -463,13 +500,20 @@ func _process(delta: float) -> void:
 	for f in fruits:
 		var v := f.body.linear_velocity
 		var hit := f.vel - v  # a sudden change of velocity is an impact
-		if hit.length() > 170.0 and f.vel.length() > 160.0:
-			f.jelly = maxf(f.jelly, clampf(hit.length() / 2600.0, 0.03, 0.13))
-			f.jelly_dir = hit.angle()
+		if hit.length() > 120.0 and f.vel.length() > 110.0:
+			var j := clampf(hit.length() / 2400.0, 0.03, JELLY_MAX)
+			if j > f.jelly:
+				f.jelly = j
+				f.jelly_v = 0.0
+				f.jelly_dir = hit.angle()
 		f.vel = v
-		# damped spring: squash, overshoot into a small stretch, settle
-		f.jelly_v += (-900.0 * f.jelly - 15.0 * f.jelly_v) * delta
-		f.jelly += f.jelly_v * delta
+		# damped spring: squash, overshoot into a small stretch, settle (fixed sub-steps, always stable)
+		var left := minf(delta, 0.1)
+		while left > 0.0:
+			var dt := minf(left, JELLY_STEP)
+			f.jelly_v += (-JELLY_K * f.jelly - JELLY_C * f.jelly_v) * dt
+			f.jelly = clampf(f.jelly + f.jelly_v * dt, -JELLY_MAX, JELLY_MAX)
+			left -= dt
 		if absf(f.jelly) < 0.002 and absf(f.jelly_v) < 0.05:
 			f.jelly = 0.0
 			f.jelly_v = 0.0
@@ -534,6 +578,23 @@ func _draw_backdrop() -> void:
 		FX.draw_glow(self, Rect2(x - r, y - r, r * 2.0, r * 2.0), Color(col, 0.10 + 0.06 * sin(_time + i)))
 
 
+## Jar outline: small round top corners, big bottom ones that follow the physics curve.
+func _jar_points() -> PackedVector2Array:
+	var o := _jar_outline()
+	var top := 34.0
+	var bot := CORNER * u + WALL
+	var pts := PackedVector2Array()
+	var specs := [[Vector2(o.end.x - top, o.position.y + top), top, -PI / 2.0],
+		[Vector2(o.end.x - bot, o.end.y - bot), bot, 0.0],
+		[Vector2(o.position.x + bot, o.end.y - bot), bot, PI / 2.0],
+		[Vector2(o.position.x + top, o.position.y + top), top, PI]]
+	for sp in specs:
+		for k in 13:
+			var a: float = sp[2] + k * PI / 24.0
+			pts.append(sp[0] + Vector2(cos(a), sin(a)) * sp[1])
+	return pts
+
+
 func _jar_outline() -> Rect2:
 	return Rect2(jar.position.x - WALL, jar.position.y - 12.0, jar.size.x + WALL * 2.0, jar.size.y + 12.0 + WALL)
 
@@ -548,14 +609,18 @@ func _draw_jar_back() -> void:
 		var gx := stand.position.x + stand.size.x * (0.18 + 0.22 * i)
 		draw_line(Vector2(gx, stand.position.y + 9.0), Vector2(gx + 26.0, stand.position.y + 9.0), Color(0.35, 0.15, 0.05, 0.35), 2.0)
 	# glass body: dark tint, a soft inner glow and fine vertical reflections
-	FX.draw_round_gradient(self, o, 34.0, Color(0.09, 0.07, 0.24, 0.78), Color(0.14, 0.10, 0.32, 0.9))
+	var body := _jar_points()
+	var cols := PackedColorArray()
+	for p in body:
+		cols.append(Color(0.09, 0.07, 0.24, 0.78).lerp(Color(0.14, 0.10, 0.32, 0.9), clampf((p.y - o.position.y) / o.size.y, 0.0, 1.0)))
+	draw_polygon(body, cols)
 	FX.draw_glow(self, Rect2(jar.position.x, jar.position.y + jar.size.y * 0.3, jar.size.x, jar.size.y * 0.8),
 		Color(0.6, 0.5, 1.0, 0.10))
 
 
 func _draw_jar_front() -> void:
 	var o := _jar_outline()
-	var pts := FX.round_rect_points(o, 34.0)
+	var pts := _jar_points()
 	pts.append(pts[0])
 	draw_polyline(pts, Color(0.85, 0.85, 1.0, 0.55), 5.0, true)  # glass edge
 	draw_polyline(pts, Color(1, 1, 1, 0.12), 14.0, true)  # glass thickness
@@ -621,11 +686,14 @@ func _draw_hud() -> void:
 
 
 ## A fruit at c with radius r: painted skin turned by rot, fixed light on top. jelly squashes it along
-## angle jdir (stretches across it). alpha < 1 dims it (held fruit while cooling down, chain strip).
+## angle jdir (stretches across it), anchored on the side it hit. alpha < 1 dims it (held fruit while
+## cooling down, chain strip).
 func draw_fruit(c: Vector2, r: float, tier: int, rot: float, jelly: float, jdir: float, alpha := 1.0) -> void:
 	if r < 1.0:
 		return
 	FX.draw_shadow(self, Rect2(c.x - r * 0.8, c.y + r * 0.66, r * 1.6, r * 0.5), 0.3 * alpha)
+	if jelly > 0.0:  # flatten onto the contact: the side that hit stays put, the far side sinks in
+		c += Vector2.from_angle(jdir) * r * jelly
 	var base := Transform2D(0.0, c)
 	if jelly != 0.0:
 		base = base * Transform2D(jdir, Vector2.ZERO) * Transform2D(0.0, Vector2(1.0 - jelly, 1.0 + jelly), 0.0,
@@ -635,7 +703,8 @@ func draw_fruit(c: Vector2, r: float, tier: int, rot: float, jelly: float, jdir:
 	var tint := Color(1, 1, 1, 1) if alpha >= 1.0 else Color(alpha, alpha, alpha * 1.1, 1.0)
 	draw_set_transform_matrix(base * Transform2D(rot, Vector2.ZERO))
 	draw_texture_rect(_skins[tier], rect, false, tint)
-	draw_set_transform_matrix(base)
-	draw_texture_rect(_shade, rect, false)
-	draw_texture_rect(_spec, rect, false, Color(1, 1, 1, alpha))
+	if tier not in SELF_LIT:
+		draw_set_transform_matrix(base)
+		draw_texture_rect(_shade, rect, false)
+		draw_texture_rect(_spec, rect, false, Color(1, 1, 1, alpha))
 	draw_set_transform_matrix(Transform2D.IDENTITY)

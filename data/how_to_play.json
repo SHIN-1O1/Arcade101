@@ -30,7 +30,7 @@
     "steps": [
       "Drag a piece from the tray onto the 8x8 board.",
       "Fill a whole row or column to clear it.",
-      "Clear several lines at once for bonus points.",
+      "Reach the goal with fewer pieces for more stars: clear several lines at once!",
       "If no piece fits anywhere, the game is over."
     ],
     "endless": "Endless: there is no goal, just keep clearing for the best score."
