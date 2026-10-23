@@ -36,7 +36,7 @@ func _ready() -> void:
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS  # never push the buttons off a narrow screen
 	top.add_child(title)
 	if not Games.how_to_play(Nav.game_id).get("steps", []).is_empty():
-		top.add_child(UI.icon_button("info", _show_how_to.bind(false)))
+		top.add_child(UI.icon_button("info", _show_how_to))
 	top.add_child(UI.icon_button("restart", _start))
 
 	_status = UI.label("", 28, UI.ACCENT)
@@ -57,8 +57,9 @@ func _ready() -> void:
 	col.add_child(_area)
 	Ads.hide_banner()
 	_start()
-	if not Save.is_howto_hidden(Nav.game_id):
-		_show_how_to(true)
+	if not Save.is_howto_seen(Nav.game_id):  # first time in this game only, not every level
+		_show_how_to()
+		Save.set_howto_seen(Nav.game_id)
 
 
 ## Interrupts (call, home button, notification shade): freeze the run so timers and falling
@@ -147,8 +148,7 @@ func _on_finished(won: bool, stars: int) -> void:
 
 
 ## How-to-play card over the game, which is paused (no timers, physics or input) until it closes.
-## auto: shown on load, with a "Don't show again" button that is saved per game.
-func _show_how_to(auto: bool) -> void:
+func _show_how_to() -> void:
 	var info := Games.how_to_play(Nav.game_id)
 	if _how_to or _overlay or info.get("steps", []).is_empty():
 		return
@@ -157,13 +157,10 @@ func _show_how_to(auto: bool) -> void:
 	o.steps = info.steps
 	o.extra = str(info.get("endless", "")) if _endless else ""
 	o.accent = Color(_game_def.get("color", "#FF8A1F"))
-	o.auto = auto
-	o.on_close = func(dont_show: bool):
+	o.on_close = func():
 		_how_to = null
 		if _game:
 			_game.process_mode = Node.PROCESS_MODE_INHERIT
-		if dont_show:
-			Save.set_howto_hidden(Nav.game_id, true)
 	_how_to = o
 	if _game:
 		_game.process_mode = Node.PROCESS_MODE_DISABLED
@@ -198,7 +195,7 @@ func _show_result(won: bool, stars: int, best: bool) -> void:
 	o.accent = Color(_game_def.get("color", "#FF8A1F"))
 	if Nav.level_index + 1 < _levels.size():
 		o.on_next = func(): Ads.run_after_interstitial(func(): Nav.play(Nav.game_id, Nav.level_index + 1))
-	o.on_retry = _start
+	o.on_retry = func(): Ads.run_after_interstitial(_start)  # a no-op after a fail (fails never make an ad due)
 	o.on_levels = func(): Ads.run_after_interstitial(func(): Nav.to_level_select(Nav.game_id))
 	_overlay = o
 	add_child(o)

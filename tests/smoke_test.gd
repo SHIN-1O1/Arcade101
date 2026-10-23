@@ -42,9 +42,9 @@ func _run() -> void:
 	assert(save.get_high_score("number_merge") == 120)
 	assert(games.has_endless("number_merge") and not games.has_levels("number_merge"))
 	assert(games.endless_level("number_merge").endless)
-	assert(not save.is_howto_hidden("color_sort"))
-	save.set_howto_hidden("color_sort", true)
-	assert(save.is_howto_hidden("color_sort") and not save.is_howto_hidden("klondike"))
+	assert(not save.is_howto_seen("color_sort"))
+	save.set_howto_seen("color_sort")
+	assert(save.is_howto_seen("color_sort") and not save.is_howto_seen("klondike"))
 	# A damaged save must load as defaults, not crash later lookups.
 	var f := FileAccess.open(save.SAVE_PATH, FileAccess.WRITE)
 	f.store_string('{"version":1,"progress":{"color_sort":{"stars":[3,null]},"block_puzzle":7},"highscores":[1]}')
@@ -105,7 +105,7 @@ func _test_monetization() -> int:
 	ads.run_after_interstitial(go)
 	if ads.provider.shown_interstitials != 1 or shown.size() != 1:
 		push_error("interstitial not shown exactly once"); errors += 1
-	# Cooldown: more wins right away must not show another ad within 60 s.
+	# Cooldown: more wins right away must not show another ad within the cooldown.
 	for i in 2:
 		ads.on_level_finished(true, 5 + i)
 	if ads.interstitial_due(): push_error("cooldown ignored"); errors += 1
