@@ -320,6 +320,10 @@ func _snap_cell(p: Vector2) -> Vector2i:
 				if d < bd:
 					bd = d
 					best = Vector2i(c, y)
+	if best.x < 0 and ry < 60:
+		# Every nearby cell is taken (dense wall, very fast frame): try one row further down
+		# rather than returning (-1, -1), which would overwrite the last bubble of the last row.
+		return _snap_cell(p + Vector2(0, row_h))
 	return best
 
 
