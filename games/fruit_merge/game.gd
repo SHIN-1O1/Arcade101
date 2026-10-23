@@ -19,10 +19,11 @@ const TANGERINE := Color("#FF8A1F")
 const LEMON := Color("#FFD23F")
 
 ## Radius of each tier in design units (jar is 600 units wide) and its particle colour.
-## Original set: berry, strawberry, grape, lime, orange, apple, pear, peach, pineapple, cantaloupe, melon.
+## Original set: blueberry, cherry, grape, lemon, orange, green apple, peach, dragon fruit, pineapple,
+## cantaloupe, watermelon (one clear hue each, so neighbouring tiers never look alike).
 const RADII := [19.0, 26.0, 34.0, 41.0, 51.0, 61.0, 71.0, 83.0, 97.0, 113.0, 131.0]
-const COLORS := [Color("#D7213C"), Color("#E8323A"), Color("#7B3FA8"), Color("#6CC04A"), Color("#FF8A1F"),
-	Color("#C8232E"), Color("#C9D35A"), Color("#F7A35A"), Color("#FFC93C"), Color("#D9C98A"), Color("#3C9A3A")]
+const COLORS := [Color("#4F7FF0"), Color("#FF2E45"), Color("#B145D6"), Color("#FFE04A"), Color("#FF9A1F"),
+	Color("#8FD63A"), Color("#FFB07A"), Color("#FF4FA8"), Color("#FFC93C"), Color("#F0B870"), Color("#3FAE3A")]
 const ART := "res://games/fruit_merge/art/"
 const ART_HALF := 1.6  # fruit_<n>.png: canvas half-size in fruit radii (the disc is 120 of 192 px)
 const SCORE := [1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66]

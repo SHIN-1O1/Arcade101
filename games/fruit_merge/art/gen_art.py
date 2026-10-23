@@ -171,121 +171,101 @@ def dimple(rgb, cy=-0.93, size=0.16, depth=0.35):
 
 # --- fruits ----------------------------------------------------------------
 
-def berry():  # glossy cherry-like berry
+def blueberry():  # dusty blue with a five-point crown
     n = fbm(U * 3, V * 3, Z * 3, 3, 1)
-    rgb = mix(hexc("#8E0B24"), hexc("#E0233F"), 0.35 + 0.65 * smooth(-0.2, 1.0, -V * 0.5 + Z * 0.8) + (n - 0.5) * 0.4)
+    rgb = mix(hexc("#16257A"), hexc("#4F7FF0"), 0.3 + 0.55 * Z + (-V) * 0.15 + (n - 0.5) * 0.4)
+    bloom = fbm(U * 14, V * 14, Z * 14, 3, 2)
+    rgb = mix(rgb, hexc("#B9CBF5"), smooth(0.4, 0.8, bloom) * 0.35)
+    # crown: a dark star-shaped pit at the top
+    ang = np.arctan2(U, V + 0.9)
+    d = np.sqrt(U ** 2 + (V + 0.9) ** 2)
+    star = 0.13 + 0.06 * np.cos(ang * 5)
+    rgb = lit(rgb, -0.55 * (1 - smooth(star - 0.03, star + 0.02, d)))
+    rgb = mix(rgb, hexc("#2A1F55"), (1 - smooth(0.03, 0.07, d)))
+    return to_canvas(disc_rgba(rgb))
+
+
+def cherry():  # bright glossy red, long stem and a leaf
+    n = fbm(U * 3, V * 3, Z * 3, 3, 3)
+    rgb = mix(hexc("#9A0016"), hexc("#FF2E45"), 0.35 + 0.6 * smooth(-0.2, 1.0, -V * 0.4 + Z * 0.8) + (n - 0.5) * 0.3)
     rgb = dimple(rgb, size=0.22, depth=0.45)
     im = to_canvas(disc_rgba(rgb))
     dr = ImageDraw.Draw(im)
     stem(dr, [(0, -0.9), (0.08, -1.2), (0.22, -1.42), (0.42, -1.55)], 0.07, hexc("#5A7A2A"))
-    leaf(dr, (0.4, -1.52), (0.95, -1.42), 0.18, hexc("#3E9F45"))
+    leaf(dr, (0.4, -1.52), (0.95, -1.42), 0.18, hexc("#3EB04A"))
     return im
 
 
-def strawberry():
-    n = fbm(U * 4, V * 4, Z * 4, 3, 2)
-    rgb = mix(hexc("#B0101F"), hexc("#F0323C"), 0.4 + 0.5 * (-V * 0.4 + Z * 0.6) + (n - 0.5) * 0.5)
-    rgb = mix(rgb, hexc("#F7E3A0"), smooth(0.55, 1.0, -V) * 0.25)  # pale shoulders under the cap
-    # seeds on a staggered lat/long grid, sunk in little pockets
-    rows = (LAT + np.pi / 2) / np.pi * 9
-    ri = np.floor(rows)
-    cols = (LON / np.pi + 1) * 7 + (ri % 2) * 0.5
-    ci = np.floor(cols)
-    du = (cols - ci - 0.5) * 1.1
-    dv = rows - ri - 0.5
-    dd = np.sqrt(du ** 2 + dv ** 2) / np.maximum(Z, 0.25) ** 0.15
-    rgb = lit(rgb, -0.45 * (1 - smooth(0.12, 0.32, dd)))
-    seed = 1 - smooth(0.08, 0.14, np.sqrt((du * 1.3) ** 2 + (dv * 0.9) ** 2))
-    rgb = mix(rgb, hexc("#F6D35B"), seed * (V > -0.7))
-    im = to_canvas(disc_rgba(rgb))
-    dr = ImageDraw.Draw(im)
-    for a in np.linspace(-1.25, 1.25, 7):
-        leaf(dr, (0, -0.86), (np.sin(a) * 0.62, -0.86 + np.cos(a) * 0.2 - 0.12 * (1 - abs(a))), 0.13, hexc("#2F9E44"), False)
-    stem(dr, [(0, -0.86), (0.02, -1.12)], 0.08, hexc("#3C8A3A"))
-    return im
-
-
-def grape():
-    n = fbm(U * 2.5, V * 2.5, Z * 2.5, 4, 3)
-    rgb = mix(hexc("#3D1458"), hexc("#7B3FA8"), 0.35 + 0.5 * Z + (n - 0.5) * 0.6)
-    bloom = fbm(U * 16, V * 16, Z * 16, 3, 4)  # dusty bloom
-    rgb = mix(rgb, hexc("#B9A6D8"), smooth(0.45, 0.8, bloom) * 0.22)
+def grape():  # violet-magenta with a frosty bloom
+    n = fbm(U * 2.5, V * 2.5, Z * 2.5, 4, 4)
+    rgb = mix(hexc("#4A0E63"), hexc("#B145D6"), 0.35 + 0.5 * Z + (n - 0.5) * 0.5)
+    bloom = fbm(U * 16, V * 16, Z * 16, 3, 5)
+    rgb = mix(rgb, hexc("#E2C4F2"), smooth(0.45, 0.8, bloom) * 0.25)
     rgb = dimple(rgb, size=0.12, depth=0.3)
     im = to_canvas(disc_rgba(rgb))
     dr = ImageDraw.Draw(im)
     stem(dr, [(0, -0.92), (-0.04, -1.15), (0.05, -1.3)], 0.09, hexc("#7A5A2E"))
+    leaf(dr, (0.02, -1.2), (0.5, -1.45), 0.15, hexc("#4CAF50"))
     return im
 
 
-def lime():
-    n = fbm(U * 3, V * 3, Z * 3, 3, 5)
-    rgb = mix(hexc("#2F8A2B"), hexc("#7CCB45"), 0.3 + 0.5 * Z + (n - 0.5) * 0.5)
-    pores = fbm(U * 26, V * 26, Z * 26, 2, 6)
-    rgb = lit(rgb, (pores - 0.5) * 0.35)
-    rgb = mix(rgb, hexc("#C8E86A"), smooth(0.6, 0.8, fbm(U * 2, V * 2, Z * 2, 2, 7)) * 0.3)
-    nub = np.sqrt(U ** 2 + (V + 0.95) ** 2)
-    rgb = mix(rgb, hexc("#7A8B3A"), 1 - smooth(0.05, 0.1, nub))
-    return to_canvas(disc_rgba(rgb))
+def lemon():  # sunny yellow, pitted peel, pointed tips
+    n = fbm(U * 3, V * 3, Z * 3, 3, 6)
+    rgb = mix(hexc("#E0A800"), hexc("#FFEB55"), 0.35 + 0.55 * Z + (n - 0.5) * 0.4)
+    pores = fbm(U * 26, V * 26, Z * 26, 2, 7)
+    rgb = lit(rgb, (pores - 0.5) * 0.3)
+    rgb = mix(rgb, hexc("#C9D94A"), smooth(0.65, 0.85, fbm(U * 2, V * 2, Z * 2, 2, 8)) * 0.25)
+    im = to_canvas(disc_rgba(rgb))
+    dr = ImageDraw.Draw(im)
+    for sx in (-1, 1):  # little nubs at both ends
+        pts = [P(sx * 0.94, -0.16), P(sx * 1.1, -0.03), P(sx * 1.1, 0.03), P(sx * 0.94, 0.16)]
+        dr.polygon(pts, fill=(226, 190, 20, 255))
+        dr.polygon([P(sx * 0.95, -0.09), P(sx * 1.07, -0.02), P(sx * 0.95, 0.0)], fill=(255, 232, 90, 255))
+    leaf(dr, (0.0, -0.95), (0.45, -1.3), 0.15, hexc("#3E9F45"))
+    return im
 
 
 def orange():
-    n = fbm(U * 3, V * 3, Z * 3, 3, 8)
-    rgb = mix(hexc("#E05A00"), hexc("#FFA21F"), 0.35 + 0.5 * Z + (n - 0.5) * 0.4)
-    dimples = fbm(U * 22, V * 22, Z * 22, 2, 9)
-    rgb = lit(rgb, (dimples - 0.5) * 0.45)
-    oil = vnoise(U * 40, V * 40, Z * 40, 10)
-    rgb = lit(rgb, -0.25 * smooth(0.82, 0.95, oil))
+    n = fbm(U * 3, V * 3, Z * 3, 3, 9)
+    rgb = mix(hexc("#E85A00"), hexc("#FFAE2E"), 0.35 + 0.5 * Z + (n - 0.5) * 0.4)
+    dimples = fbm(U * 22, V * 22, Z * 22, 2, 10)
+    rgb = lit(rgb, (dimples - 0.5) * 0.4)
+    oil = vnoise(U * 40, V * 40, Z * 40, 11)
+    rgb = lit(rgb, -0.2 * smooth(0.82, 0.95, oil))
     rgb = dimple(rgb, size=0.13, depth=0.35)
     im = to_canvas(disc_rgba(rgb))
     dr = ImageDraw.Draw(im)
     for a in np.linspace(0, 2 * np.pi, 6, endpoint=False):
         leaf(dr, (0, -0.93), (np.cos(a) * 0.1, -0.93 + np.sin(a) * 0.05), 0.05, hexc("#5E8C2A"), False)
     stem(dr, [(0, -0.93), (0.03, -1.07)], 0.06, hexc("#5E8C2A"))
-    leaf(dr, (0.03, -1.03), (0.55, -1.3), 0.16, hexc("#2E8B3E"))
+    leaf(dr, (0.03, -1.03), (0.55, -1.3), 0.16, hexc("#2E9B3E"))
     return im
 
 
-def apple():
-    n = fbm(U * 2.5, V * 2.5, Z * 2.5, 4, 11)
-    streak = fbm(LON * 6, LAT * 0.8, Z * 0.3, 4, 12)  # vertical streaks along meridians
-    red = mix(hexc("#8F0E1A"), hexc("#D7262F"), 0.4 + 0.4 * Z + (streak - 0.5) * 1.4)
-    rgb = mix(red, hexc("#E9A93F"), smooth(0.6, 0.95, n * 0.6 + streak * 0.4 + V * 0.3) * 0.55)
-    dots = vnoise(U * 30, V * 30, Z * 30, 13)
-    rgb = mix(rgb, hexc("#F7E6B0"), smooth(0.9, 0.97, dots) * 0.7)
+def green_apple():  # crisp lime-green with a yellow blush and pale freckles
+    n = fbm(U * 2.5, V * 2.5, Z * 2.5, 4, 12)
+    streak = fbm(LON * 6, LAT * 0.8, Z * 0.3, 4, 13)
+    rgb = mix(hexc("#3E8E12"), hexc("#A8E33E"), 0.4 + 0.45 * Z + (streak - 0.5) * 0.3)
+    rgb = mix(rgb, hexc("#E8E35A"), smooth(0.55, 0.9, n * 0.6 + streak * 0.4 - V * 0.2) * 0.45)
+    dots = vnoise(U * 30, V * 30, Z * 30, 14)
+    rgb = mix(rgb, hexc("#F2F7C8"), smooth(0.9, 0.97, dots) * 0.7)
     rgb = dimple(rgb, size=0.26, depth=0.4)
     im = to_canvas(disc_rgba(rgb))
     dr = ImageDraw.Draw(im)
     stem(dr, [(0, -0.84), (-0.03, -1.05), (-0.1, -1.25)], 0.07)
-    leaf(dr, (-0.06, -1.1), (-0.62, -1.32), 0.17, hexc("#3A9D3F"))
+    leaf(dr, (-0.06, -1.1), (-0.62, -1.32), 0.17, hexc("#2E8B3E"))
     return im
 
 
-def pear():
-    n = fbm(U * 2.5, V * 2.5, Z * 2.5, 4, 14)
-    rgb = mix(hexc("#8FA82A"), hexc("#D9E36A"), 0.35 + 0.5 * Z + (n - 0.5) * 0.6)
-    blush = fbm(U * 1.6 + 3, V * 1.6, Z * 1.6, 3, 15)
-    rgb = mix(rgb, hexc("#E08A3C"), smooth(0.55, 0.8, blush) * 0.45)
-    russet = fbm(U * 6, V * 6, Z * 6, 3, 16)
-    rgb = mix(rgb, hexc("#9A6B33"), smooth(0.62, 0.78, russet) * 0.5 * smooth(0.1, -0.9, V))
-    specks = vnoise(U * 46, V * 46, Z * 46, 17)
-    rgb = mix(rgb, hexc("#6E5524"), smooth(0.86, 0.95, specks) * 0.8)
-    rgb = dimple(rgb, size=0.14, depth=0.3)
-    im = to_canvas(disc_rgba(rgb))
-    dr = ImageDraw.Draw(im)
-    stem(dr, [(0, -0.9), (0.05, -1.15), (0.16, -1.35)], 0.07)
-    return im
-
-
-def peach():
-    n = fbm(U * 2, V * 2, Z * 2, 4, 18)
-    base = mix(hexc("#F6A34A"), hexc("#FFD08A"), 0.3 + 0.5 * Z + (n - 0.5) * 0.4)
-    blush_t = smooth(0.35, 0.75, fbm(U * 1.4 - 2, V * 1.4, Z * 1.4, 4, 19) + U * 0.35 - V * 0.1)
-    rgb = mix(base, hexc("#E8434F"), blush_t * 0.85)
-    fuzz = vnoise(U * 70, V * 70, Z * 70, 20)
-    rgb = lit(rgb, (fuzz - 0.5) * 0.12)
+def peach():  # soft apricot with a rosy blush and a crease
+    n = fbm(U * 2, V * 2, Z * 2, 4, 15)
+    base = mix(hexc("#FF9A5A"), hexc("#FFD9A0"), 0.3 + 0.5 * Z + (n - 0.5) * 0.4)
+    blush_t = smooth(0.35, 0.75, fbm(U * 1.4 - 2, V * 1.4, Z * 1.4, 4, 16) + U * 0.35 - V * 0.1)
+    rgb = mix(base, hexc("#F2506A"), blush_t * 0.75)
+    fuzz = vnoise(U * 70, V * 70, Z * 70, 17)
+    rgb = lit(rgb, (fuzz - 0.5) * 0.1)
     crease_x = 0.32 * np.sqrt(np.clip(1 - V * V, 0, 1)) + 0.04 * np.sin(V * 3)
-    cd = np.abs(U - crease_x)
-    rgb = lit(rgb, -0.16 * (1 - smooth(0.0, 0.09, cd)))
+    rgb = lit(rgb, -0.16 * (1 - smooth(0.0, 0.09, np.abs(U - crease_x))))
     rgb = lit(rgb, 0.12 * (1 - smooth(0.04, 0.12, np.abs(U - crease_x - 0.06))))
     rgb = dimple(rgb, size=0.15, depth=0.35)
     im = to_canvas(disc_rgba(rgb))
@@ -296,59 +276,88 @@ def peach():
     return im
 
 
+def dragonfruit():  # hot pink with green-tipped flame scales
+    n = fbm(U * 2.5, V * 2.5, Z * 2.5, 4, 18)
+    rgb = mix(hexc("#B0105A"), hexc("#FF4FA8"), 0.35 + 0.55 * Z + (n - 0.5) * 0.4)
+    rows = (LAT + np.pi / 2) / np.pi * 5
+    ri = np.floor(rows)
+    cols = (LON / np.pi + 1) * 4 + (ri % 2) * 0.5
+    du = cols - np.floor(cols) - 0.5
+    dv = rows - ri - 0.5
+    scale = np.sqrt((du * 1.2) ** 2 + (dv * 1.6 + du * du * 1.5) ** 2)
+    rgb = lit(rgb, 0.22 * (1 - smooth(0.1, 0.42, scale)) - 0.25 * smooth(0.42, 0.55, scale))
+    tip = np.sqrt((du * 2.4) ** 2 + ((dv - 0.32) * 3.0) ** 2)
+    rgb = mix(rgb, hexc("#7BCB3A"), (1 - smooth(0.25, 0.5, tip)) * 0.9)
+    im = to_canvas(disc_rgba(rgb))
+    dr = ImageDraw.Draw(im)
+    for k, a in enumerate(np.linspace(-2.5, 2.5, 8)):  # fins sticking out around the fruit
+        bx, by = np.sin(a) * 0.9, -np.cos(a) * 0.9
+        tx, ty = np.sin(a + 0.3) * 1.15, -np.cos(a + 0.3) * 1.15
+        leaf(dr, (bx, by), (tx, ty), 0.11, hexc("#FF5FB0"), False)
+        mx, my = bx + (tx - bx) * 0.55, by + (ty - by) * 0.55
+        leaf(dr, (mx, my), (tx, ty), 0.09, hexc("#6CC23A"), False)
+    return im
+
+
 def pineapple():
-    a = (LON / np.pi) * 7 + (LAT / np.pi) * 9   # two diagonal families on the sphere
+    a = (LON / np.pi) * 7 + (LAT / np.pi) * 9
     b = (LON / np.pi) * 7 - (LAT / np.pi) * 9
     fa, fb = a - np.floor(a) - 0.5, b - np.floor(b) - 0.5
-    cell = np.maximum(np.abs(fa), np.abs(fb))   # 0 at a scale's centre, 0.5 on its edge
-    n = fbm(U * 3, V * 3, Z * 3, 3, 21)
-    rgb = mix(hexc("#C27A08"), hexc("#FFC93C"), 0.3 + 0.55 * Z + (n - 0.5) * 0.5)
-    rgb = lit(rgb, 0.25 * (1 - smooth(0.05, 0.35, cell)) - 0.4 * smooth(0.38, 0.5, cell))
-    rgb = mix(rgb, hexc("#6E8F2A"), smooth(0.43, 0.5, cell) * 0.5)
+    cell = np.maximum(np.abs(fa), np.abs(fb))
+    n = fbm(U * 3, V * 3, Z * 3, 3, 19)
+    rgb = mix(hexc("#D88A00"), hexc("#FFD447"), 0.3 + 0.55 * Z + (n - 0.5) * 0.5)
+    rgb = lit(rgb, 0.25 * (1 - smooth(0.05, 0.35, cell)) - 0.35 * smooth(0.38, 0.5, cell))
+    rgb = mix(rgb, hexc("#7A9B2A"), smooth(0.43, 0.5, cell) * 0.45)
     eye = np.sqrt(fa ** 2 + (fb + 0.12) ** 2)
-    rgb = mix(rgb, hexc("#6B3E12"), (1 - smooth(0.05, 0.11, eye)) * 0.85)
+    rgb = mix(rgb, hexc("#6B3E12"), (1 - smooth(0.05, 0.11, eye)) * 0.8)
     im = to_canvas(disc_rgba(rgb))
     dr = ImageDraw.Draw(im)
     crown = [(-0.55, -1.25, 0.11), (0.55, -1.25, 0.11), (-0.35, -1.5, 0.12), (0.38, -1.52, 0.12),
              (-0.12, -1.62, 0.12), (0.14, -1.6, 0.12), (0.0, -1.66, 0.11)]
     for i, (tx, ty, w) in enumerate(crown):
-        leaf(dr, (tx * 0.15, -0.88), (tx, ty), w, hexc("#2F8A4A") if i % 2 else hexc("#3FA35A"), False)
+        leaf(dr, (tx * 0.15, -0.88), (tx, ty), w, hexc("#2F9A4A") if i % 2 else hexc("#45B860"), False)
     return im
 
 
-def cantaloupe():
-    n = fbm(U * 2, V * 2, Z * 2, 4, 22)
-    rgb = mix(hexc("#8C8A3E"), hexc("#C9B866"), 0.3 + 0.5 * Z + (n - 0.5) * 0.6)
+def cantaloupe():  # warm apricot rind under a cream net
+    n = fbm(U * 2, V * 2, Z * 2, 4, 20)
+    rgb = mix(hexc("#C9782E"), hexc("#F5C27A"), 0.3 + 0.5 * Z + (n - 0.5) * 0.5)
     s = 5.0
-    wx = U * s + fbm(U * 4, V * 4, Z * 4, 2, 23) * 0.8
-    f1, f2 = worley(wx, V * s, Z * s, 24)
+    wx = U * s + fbm(U * 4, V * 4, Z * 4, 2, 21) * 0.8
+    f1, f2 = worley(wx, V * s, Z * s, 22)
     vein = 1 - smooth(0.0, 0.08, f2 - f1)
-    rgb = lit(rgb, -0.2 * smooth(0.1, 0.4, f2 - f1))
-    rgb = mix(rgb, hexc("#EFE3B6"), vein * 0.85)
+    rgb = lit(rgb, -0.15 * smooth(0.1, 0.4, f2 - f1))
+    rgb = mix(rgb, hexc("#FFF2D2"), vein * 0.9)
     ribs = np.abs(np.sin(LON * 5))
     rgb = lit(rgb, -0.12 * (1 - smooth(0.0, 0.18, ribs)))
     rgb = dimple(rgb, size=0.12, depth=0.35)
-    return to_canvas(disc_rgba(rgb))
+    im = to_canvas(disc_rgba(rgb))
+    dr = ImageDraw.Draw(im)
+    stem(dr, [(0, -0.95), (0.05, -1.1)], 0.07, hexc("#7A6A2E"))
+    return im
 
 
-def melon():
-    n = fbm(U * 2, V * 2, Z * 2, 4, 25)
-    rgb = mix(hexc("#3C9A3A"), hexc("#7FCB5A"), 0.3 + 0.5 * Z + (n - 0.5) * 0.5)
-    wob = fbm(LON * 3, LAT * 8, Z, 4, 26)
+def watermelon():
+    n = fbm(U * 2, V * 2, Z * 2, 4, 23)
+    rgb = mix(hexc("#3FAE3A"), hexc("#94E06A"), 0.3 + 0.5 * Z + (n - 0.5) * 0.5)
+    wob = fbm(LON * 3, LAT * 8, Z, 4, 24)
     stripe = np.sin(LON * 8 + (wob - 0.5) * 3.2)
-    edge = (fbm(LON * 9, LAT * 22, Z, 3, 27) - 0.5) * 0.5
+    edge = (fbm(LON * 9, LAT * 22, Z, 3, 25) - 0.5) * 0.5
     dark = smooth(0.15 + edge, 0.35 + edge, stripe)
-    rgb = mix(rgb, hexc("#0E4A22"), dark * 0.92)
-    speck = fbm(U * 18, V * 18, Z * 18, 2, 28)
-    rgb = lit(rgb, (speck - 0.5) * 0.18)
+    rgb = mix(rgb, hexc("#0C5A24"), dark * 0.92)
+    speck = fbm(U * 18, V * 18, Z * 18, 2, 26)
+    rgb = lit(rgb, (speck - 0.5) * 0.16)
     rgb = dimple(rgb, size=0.1, depth=0.4)
     im = to_canvas(disc_rgba(rgb))
     dr = ImageDraw.Draw(im)
     stem(dr, [(0, -0.95), (0.06, -1.12), (0.18, -1.2)], 0.06, hexc("#5E7A2A"))
+    leaf(dr, (0.12, -1.16), (0.55, -1.38), 0.14, hexc("#3E9F45"))
     return im
 
 
-FRUITS = [berry, strawberry, grape, lime, orange, apple, pear, peach, pineapple, cantaloupe, melon]
+# Distinct hue per tier, smallest first: blue, red, violet, yellow, orange, green, apricot, pink,
+# gold, tan, striped green. Keep game.gd COLORS (burst particles) in step with these.
+FRUITS = [blueberry, cherry, grape, lemon, orange, green_apple, peach, dragonfruit, pineapple, cantaloupe, watermelon]
 
 
 # --- light overlays --------------------------------------------------------
@@ -357,14 +366,14 @@ def light_layers():
     L = np.array([-0.45, -0.65, 0.62])
     L = L / np.linalg.norm(L)
     ndl = np.clip(U * L[0] + V * L[1] + Z * L[2], 0, 1)
-    shade = (1 - (0.28 + 0.72 * ndl)) * 0.62 + (1 - Z) ** 3 * 0.25
-    shade += smooth(0.2, 1.0, V) * 0.12  # contact occlusion at the bottom
+    shade = (1 - (0.28 + 0.72 * ndl)) * 0.46 + (1 - Z) ** 3 * 0.2
+    shade += smooth(0.2, 1.0, V) * 0.1  # contact occlusion at the bottom
     s = np.zeros((W, W, 4))
     s[..., 3] = np.clip(shade, 0, 0.85) * INSIDE
     H = L + np.array([0, 0, 1.0])
     H = H / np.linalg.norm(H)
     ndh = np.clip(U * H[0] + V * H[1] + Z * H[2], 0, 1)
-    spec = ndh ** 70 * 0.75 + ndh ** 10 * 0.2
+    spec = ndh ** 70 * 0.85 + ndh ** 10 * 0.24
     rim = (1 - Z) ** 4 * np.clip(U * 0.5 + V * 0.6, 0, 1) * 0.5  # cool bounce light, bottom right
     p = np.zeros((W, W, 4))
     p[..., :3] = 1.0
