@@ -655,11 +655,38 @@ func _draw_bubble(c: Vector2, color: int, gem := false, scale_ := 1.0) -> void:
 	draw_texture_rect(_body_tex, rect, false, COLORS[color])
 	draw_texture_rect(_spec_tex, rect, false)
 	if gem:
-		var s := r * 0.42 * scale_
-		var pts := PackedVector2Array([c + Vector2(0, -s), c + Vector2(s * 0.8, 0), c + Vector2(0, s), c + Vector2(-s * 0.8, 0)])
-		draw_colored_polygon(pts, Color(1, 1, 1, 0.92))
-		draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[3], pts[0]]), Color(0.2, 0.2, 0.4, 0.8), 2.0, true)
-		draw_line(c + Vector2(-s * 0.8, 0), c + Vector2(s * 0.8, 0), Color(0.4, 0.5, 0.9, 0.7), 1.5)
+		_draw_diamond(c, r * 0.62 * scale_)
+
+
+## Blue cut diamond (side view: crown with a table on top, pointed pavilion below) on a soft glow,
+## so a gem reads clearly inside a bubble of any colour.
+func _draw_diamond(c: Vector2, s: float) -> void:
+	FX.draw_glow(self, Rect2(c - Vector2.ONE * s * 1.1, Vector2.ONE * s * 2.2), Color(1, 1, 1, 0.55))
+	var t1 := c + Vector2(-0.45, -0.55) * s
+	var t2 := c + Vector2(0.45, -0.55) * s
+	var g0 := c + Vector2(-0.9, -0.18) * s
+	var g1 := c + Vector2(-0.3, -0.18) * s
+	var g2 := c + Vector2(0.3, -0.18) * s
+	var g3 := c + Vector2(0.9, -0.18) * s
+	var tip := c + Vector2(0, 0.8) * s
+	var facets := [
+		[[g0, t1, g1], Color("#9FE3FF")], [[t1, t2, g2, g1], Color("#D2F4FF")], [[t2, g3, g2], Color("#5CC0FF")],
+		[[g0, g1, tip], Color("#2F8FE8")], [[g1, g2, tip], Color("#58B4FF")], [[g2, g3, tip], Color("#1A5FC4")],
+	]
+	for f in facets:
+		draw_colored_polygon(PackedVector2Array(f[0]), f[1])
+	var edge := Color("#0E3A8A")
+	var w := maxf(1.2, s * 0.06)
+	draw_polyline(PackedVector2Array([g0, t1, t2, g3, tip, g0]), edge, w, true)
+	draw_line(g0, g3, Color(edge, 0.7), w * 0.7, true)
+	draw_polyline(PackedVector2Array([t1, g1, tip, g2, t2]), Color(edge, 0.45), w * 0.6, true)
+	# sparkle on the table
+	var sp := c + Vector2(-0.18, -0.38) * s
+	var k := s * 0.22
+	draw_colored_polygon(PackedVector2Array([sp + Vector2(0, -k), sp + Vector2(k * 0.22, 0), sp + Vector2(0, k),
+		sp + Vector2(-k * 0.22, 0)]), Color(1, 1, 1, 0.95))
+	draw_colored_polygon(PackedVector2Array([sp + Vector2(-k, 0), sp + Vector2(0, k * 0.22), sp + Vector2(k, 0),
+		sp + Vector2(0, -k * 0.22)]), Color(1, 1, 1, 0.95))
 
 
 func _draw() -> void:
