@@ -45,6 +45,9 @@ calls `start_level(level_dict, index)`. On `finished(won, stars)` it saves via
 overlay (Next/Retry/Levels). Restart button re-instances the game scene (fades the new board in).
 Scenes change via Nav only (never change_scene_* directly) so transitions stay consistent.
 Level N unlocks when level N-1 has >= 1 star.
+Interrupts: game_host pauses the tree behind a Paused card on app focus-out/pause (scenes/pause_overlay.gd),
+so games need no pause code. Android Back: a screen may define `handle_back() -> bool` to close its own
+popup first (hub mode picker, pause card); Nav ignores Back during slides and full-screen ads.
 
 ## BaseGame contract (core/base_game.gd)
 - Root of game.tscn extends `BaseGame` (a full-rect Control inside the host's area;

@@ -66,15 +66,15 @@ func on_level_finished(won := true, level_index := -1) -> void:
 		_due = true
 
 
-## True while a full-screen ad is on screen (Nav ignores Back meanwhile).
-func is_showing() -> bool:
-	return _busy
-
-
 func interstitial_due() -> bool:
 	return (_due and ads_enabled() and not _busy
 		and _now_msec() - _last_ad_msec >= Cfg.INTERSTITIAL_COOLDOWN_SEC * 1000
 		and provider.is_interstitial_ready())
+
+
+## True while a full-screen ad is open or loading on screen. Nav ignores Back meanwhile.
+func is_showing() -> bool:
+	return _busy
 
 
 ## Runs `next` right away, or after an interstitial if one is due. Use it for the Next / Levels
