@@ -1,0 +1,3 @@
+# Used only if you publish docs/ with GitHub Pages (see docs/RELEASE.md, "Privacy policy page").
+theme: jekyll-theme-minimal
+title: Arcade 101

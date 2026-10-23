@@ -55,6 +55,7 @@ func _run() -> void:
 	save.reset_all()
 	errors += await _test_monetization()
 	errors += _test_cards()
+	errors += _test_release_files()
 	for path in ["res://scenes/hub.tscn", "res://scenes/level_select.tscn", "res://scenes/settings.tscn", "res://scenes/game_host.tscn"]:
 		root.get_node("Nav").game_id = "color_sort"  # a levels game; endless-only games have no level list
 		change_scene_to_file(path)
@@ -214,4 +215,26 @@ func _test_cards() -> int:
 		push_error("klondike undo did not restore the deal (%d)" % undone); errors += 1
 	t.free()
 	print("card checks done")
+	return errors
+
+
+## Release files: branding images exist, Android presets carry no secrets and the right package id.
+func _test_release_files() -> int:
+	var errors := 0
+	for img in ["icon_foreground_432", "icon_background_432", "icon_monochrome_432", "icon_legacy_192", "splash"]:
+		if not ResourceLoader.exists("res://branding/%s.png" % img):
+			push_error("missing branding/%s.png" % img); errors += 1
+	var cfg := ConfigFile.new()
+	if cfg.load("res://export_presets.cfg") != OK:
+		push_error("export_presets.cfg missing or unreadable"); return errors + 1
+	for section in cfg.get_sections():
+		if not section.ends_with(".options"):
+			continue
+		if cfg.get_value(section, "package/unique_name", "") != "com.shin1o1.arcade101":
+			push_error("%s: wrong package id" % section); errors += 1
+		for key in ["keystore/release", "keystore/release_user", "keystore/release_password", "keystore/debug_password"]:
+			if str(cfg.get_value(section, key, "")) != "":
+				push_error("%s: %s must stay empty in git" % [section, key]); errors += 1
+		if not cfg.get_value(section, "architectures/arm64-v8a", false):
+			push_error("%s: arm64-v8a off" % section); errors += 1
 	return errors
