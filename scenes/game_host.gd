@@ -2,6 +2,7 @@ extends Control
 ## Hosts any BaseGame: top bar, live star meter, game area, result overlay, saving and ads.
 
 const ResultOverlay := preload("res://scenes/result_overlay.gd")
+const HowToPlay := preload("res://scenes/how_to_play.gd")
 const FX := preload("res://core/fx.gd")
 
 var _game_def: Dictionary
@@ -12,6 +13,7 @@ var _status: Label
 var _meter: UI.StarMeter
 var _score_bar: ScoreBar
 var _overlay: Control
+var _how_to: Control
 var _endless := false
 
 
@@ -27,9 +29,12 @@ func _ready() -> void:
 	top.add_child(UI.icon_button("back", func(): Nav.back()))
 	var title_text: String = _game_def.get("name", "") if _endless \
 		else "%s  ·  Level %d" % [_game_def.get("name", ""), Nav.level_index + 1]
-	var title := UI.title(title_text, 36, Color.WHITE)
+	var title := UI.title(title_text, 36 if title_text.length() <= 20 else 30, Color.WHITE)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS  # never push the buttons off a narrow screen
 	top.add_child(title)
+	if not Games.how_to_play(Nav.game_id).get("steps", []).is_empty():
+		top.add_child(UI.icon_button("info", _show_how_to.bind(false)))
 	top.add_child(UI.icon_button("restart", _start))
 
 	_status = UI.label("", 28, UI.ACCENT)
@@ -50,6 +55,8 @@ func _ready() -> void:
 	col.add_child(_area)
 	Ads.hide_banner()
 	_start()
+	if not Save.is_howto_hidden(Nav.game_id):
+		_show_how_to(true)
 
 
 func _start() -> void:
@@ -101,6 +108,30 @@ func _on_finished(won: bool, stars: int) -> void:
 		Feedback.vibrate(120)
 	Ads.on_level_finished(won, Nav.level_index)
 	_show_result(won, stars, best)
+
+
+## How-to-play card over the game, which is paused (no timers, physics or input) until it closes.
+## auto: shown on load, with a "Don't show again" button that is saved per game.
+func _show_how_to(auto: bool) -> void:
+	var info := Games.how_to_play(Nav.game_id)
+	if _how_to or _overlay or info.get("steps", []).is_empty():
+		return
+	var o := HowToPlay.new()
+	o.game_name = _game_def.get("name", "")
+	o.steps = info.steps
+	o.extra = str(info.get("endless", "")) if _endless else ""
+	o.accent = Color(_game_def.get("color", "#FF8A1F"))
+	o.auto = auto
+	o.on_close = func(dont_show: bool):
+		_how_to = null
+		if _game:
+			_game.process_mode = Node.PROCESS_MODE_INHERIT
+		if dont_show:
+			Save.set_howto_hidden(Nav.game_id, true)
+	_how_to = o
+	if _game:
+		_game.process_mode = Node.PROCESS_MODE_DISABLED
+	add_child(o)
 
 
 ## Endless run over: keep the best score, then show the game-over card.

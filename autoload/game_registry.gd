@@ -3,9 +3,11 @@ extends Node
 ## Adding a game = add a folder under res://games/ and one entry in games.json.
 
 const REGISTRY_PATH := "res://data/games.json"
+const HOW_TO_PATH := "res://data/how_to_play.json"
 
 var games: Array = []
 var _levels_cache: Dictionary = {}
+var _how_to: Dictionary = {}
 
 
 func _ready() -> void:
@@ -43,6 +45,15 @@ func endless_level(id: String) -> Dictionary:
 	lv["id"] = 0
 	lv["seed"] = randi()
 	return lv
+
+
+## How-to-play card text from data/how_to_play.json: {"steps": [..], "endless": ".."}, {} if none.
+func how_to_play(id: String) -> Dictionary:
+	if _how_to.is_empty():
+		var parsed = JSON.parse_string(FileAccess.get_file_as_string(HOW_TO_PATH))
+		_how_to = parsed if typeof(parsed) == TYPE_DICTIONARY else {"_": {}}
+	var entry = _how_to.get(id, {})
+	return entry if typeof(entry) == TYPE_DICTIONARY else {}
 
 
 func get_levels(id: String) -> Array:

@@ -1,0 +1,73 @@
+{
+  "_comment": "How-to-play card text per game id, shown by scenes/how_to_play.gd. steps: 2-4 short lines; endless: extra line shown only in Endless mode.",
+  "fruit_merge": {
+    "steps": [
+      "Tap or drag to aim, release to drop the fruit.",
+      "Two matching fruits that touch merge into a bigger one.",
+      "Chain merges for big points and keep space in the bowl.",
+      "If fruit stays above the line for too long, the run is over."
+    ]
+  },
+  "color_sort": {
+    "steps": [
+      "Tap a tube to pick up its top colour, then tap another tube to pour.",
+      "You can only pour onto the same colour or into an empty tube.",
+      "Sort every tube into a single colour to win.",
+      "Fewer moves earn more stars."
+    ],
+    "endless": "Endless: solve puzzle after puzzle within the move budget. Run out and you lose a life."
+  },
+  "tower_stack": {
+    "steps": [
+      "Tap to drop the sliding block onto the tower.",
+      "Whatever hangs over the edge is cut off, so the block gets smaller.",
+      "Line it up exactly for a Perfect drop that keeps its size.",
+      "Reach the target height. More Perfects earn more stars."
+    ],
+    "endless": "Endless: stack as high as you can. The block speeds up as you climb."
+  },
+  "block_puzzle": {
+    "steps": [
+      "Drag a piece from the tray onto the 8x8 board.",
+      "Fill a whole row or column to clear it.",
+      "Clear several lines at once for bonus points.",
+      "If no piece fits anywhere, the game is over."
+    ],
+    "endless": "Endless: there is no goal, just keep clearing for the best score."
+  },
+  "number_merge": {
+    "steps": [
+      "Swipe to slide every tile in that direction.",
+      "Two tiles with the same number merge and double.",
+      "A new tile appears after every move. Keep big tiles in a corner.",
+      "Stones block the board for a while, then crumble. When nothing can move, the run ends."
+    ]
+  },
+  "klondike": {
+    "steps": [
+      "Build each foundation up by suit, from Ace to King.",
+      "On the table, stack cards down in alternating colours. Only a King can fill an empty column.",
+      "Tap the stock to draw cards. Drag cards to move them, or double tap to send one home.",
+      "Fewer moves and a faster time earn more stars. Hint and Undo are there if you get stuck."
+    ],
+    "endless": "Endless: win deal after deal for points and a streak. Tap the flag to end the run."
+  },
+  "bubble_shooter": {
+    "steps": [
+      "Drag to aim, release to shoot a bubble.",
+      "Hit a group of 3 or more of the same colour to pop it. Bubbles left hanging fall too.",
+      "Bounce shots off the walls to reach tricky spots.",
+      "Finish the level goal before you run out of shots. Shots left earn stars."
+    ],
+    "endless": "Endless: the ceiling drops more often as your score grows. Don't let the bubbles reach the bottom."
+  },
+  "mahjong_match": {
+    "steps": [
+      "Tap two matching tiles to remove them.",
+      "A tile is free when nothing lies on top of it and its left or right side is open.",
+      "Clear every tile from the board to win. A faster clear earns more stars.",
+      "Stuck? Use a hint or shuffle."
+    ],
+    "endless": "Endless: clear board after board. Quick matches build a combo."
+  }
+}

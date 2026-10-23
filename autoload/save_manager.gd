@@ -6,7 +6,7 @@ signal settings_changed(key: String, value: Variant)
 signal no_ads_changed(enabled: bool)
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 2  # 2: added "highscores" (additive, old saves load unchanged)
+const SAVE_VERSION := 3  # 2: added "highscores", 3: added "howto_hidden" (both additive, old saves load unchanged)
 
 var data: Dictionary = {}
 
@@ -22,6 +22,7 @@ func _default_data() -> Dictionary:
 		"no_ads": false,
 		"progress": {},  # game_id -> {"stars": [int per level]}
 		"highscores": {},  # game_id -> best endless score
+		"howto_hidden": {},  # game_id -> true once "Don't show again" was tapped on its how-to-play card
 	}
 
 
@@ -42,6 +43,8 @@ func load_game() -> void:
 	data.version = SAVE_VERSION
 	if typeof(data.get("highscores")) != TYPE_DICTIONARY:
 		data.highscores = {}
+	if typeof(data.get("howto_hidden")) != TYPE_DICTIONARY:
+		data.howto_hidden = {}
 
 
 func save_game() -> void:
@@ -105,6 +108,18 @@ func record_score(game_id: String, score: int) -> bool:
 	data.highscores[game_id] = score
 	save_game()
 	return true
+
+
+# --- How-to-play card -------------------------------------------------------
+
+## True when the player asked not to see this game's how-to-play card on load (the "i" button still opens it).
+func is_howto_hidden(game_id: String) -> bool:
+	return bool(data.howto_hidden.get(game_id, false))
+
+
+func set_howto_hidden(game_id: String, hidden: bool) -> void:
+	data.howto_hidden[game_id] = hidden
+	save_game()
 
 
 # --- Settings ---------------------------------------------------------------

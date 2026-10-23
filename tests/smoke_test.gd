@@ -16,6 +16,8 @@ func _run() -> void:
 		if not game is BaseGame:
 			push_error("%s root is not BaseGame" % g.id); errors += 1
 		game.free()
+		if games.how_to_play(g.id).get("steps", []).is_empty():
+			push_error("%s has no how-to-play steps in data/how_to_play.json" % g.id); errors += 1
 		# A game may ship res://games/<id>/check.gd with check_levels(levels) -> error count (e.g. solvability).
 		var check_path := "res://games/%s/check.gd" % g.id
 		if levels.size() > 0 and ResourceLoader.exists(check_path):
@@ -40,6 +42,9 @@ func _run() -> void:
 	assert(save.get_high_score("number_merge") == 120)
 	assert(games.has_endless("number_merge") and not games.has_levels("number_merge"))
 	assert(games.endless_level("number_merge").endless)
+	assert(not save.is_howto_hidden("color_sort"))
+	save.set_howto_hidden("color_sort", true)
+	assert(save.is_howto_hidden("color_sort") and not save.is_howto_hidden("klondike"))
 	save.reset_all()
 	errors += await _test_monetization()
 	errors += _test_cards()
