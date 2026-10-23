@@ -8,9 +8,9 @@ extends BaseGame
 ## Physics: one RigidBody2D circle per fruit, kept under a plain Node so the bodies live in this
 ## Control's local coordinates but ignore its transform (the host scales/fades the game; shakes move
 ## it). Bodies use shape-cast CCD, thick static walls and sleep when still; low friction and angular
-## damping let fruit roll. Landings are soft: low restitution, air drag that eases fruit into their top
-## speed instead of a hard cap, and a spring "jelly" squash that flattens a fruit onto what it hit. Nothing is drawn by
-## the bodies: _draw() paints each fruit from its body: the skin texture turns with the body, the light
+## damping let fruit roll; the jar's bottom corners are curved (a fan of triangles) so fruit roll off
+## them. Landings are soft: a small hop scaled by the fall, air drag that eases fruit into their top
+## speed, and a spring "jelly" squash that flattens a fruit onto what it hit. Nothing is drawn by the bodies: _draw() paints each fruit from its body: the skin texture turns with the body, the light
 ## layers on top do not. Art in art/ is painted by art/gen_art.py (re-run it to retune a fruit).
 
 const FX := preload("res://core/fx.gd")
@@ -45,6 +45,7 @@ const HOP_MIN := 260.0
 const JELLY_K := 380.0
 const JELLY_C := 8.0
 const JELLY_MAX := 0.2
+const CORNER := 70.0  # inner radius of the jar's curved bottom corners (design units)
 const JELLY_STEP := 1.0 / 120.0  # fixed sub-step: a long frame never blows the spring up
 const JAR_WIDTH := 600.0
 const WALL := 18.0  # drawn wall thickness; the physics walls are much thicker
@@ -150,6 +151,20 @@ func _try_build() -> void:
 		cs.shape = rs
 		cs.position = r.get_center()
 		walls.add_child(cs)
+	# curved bottom corners: a fan of triangles between each corner point and its arc
+	var cr := CORNER * u
+	for side in [-1.0, 1.0]:
+		var corner := Vector2(jar.position.x if side < 0.0 else jar.end.x, jar.end.y)
+		var centre := corner + Vector2(-side * cr, -cr)
+		for k in 10:
+			var a0 := PI / 2.0 * (k / 10.0)
+			var a1 := PI / 2.0 * ((k + 1) / 10.0)
+			var tri := ConvexPolygonShape2D.new()
+			tri.points = PackedVector2Array([corner, centre + Vector2(side * cos(a0), sin(a0)) * cr,
+				centre + Vector2(side * cos(a1), sin(a1)) * cr])
+			var tc := CollisionShape2D.new()
+			tc.shape = tri
+			walls.add_child(tc)
 	_world.add_child(walls)
 	queue_redraw()
 
@@ -228,7 +243,7 @@ func _add_fruit(tier: int, pos: Vector2, vel: Vector2, grown := true) -> Fruit:
 	b.continuous_cd = RigidBody2D.CCD_MODE_CAST_SHAPE
 	b.can_sleep = true
 	b.linear_damp = 0.05
-	b.angular_damp = 0.3
+	b.angular_damp = 0.1
 	var mat := PhysicsMaterial.new()
 	mat.friction = 0.3
 	mat.bounce = BOUNCE
@@ -265,9 +280,9 @@ func _physics_process(delta: float) -> void:
 			f.body.linear_velocity.y = minf(lv.y, -f.fall * HOP)
 		f.fall = maxf(0.0, f.body.linear_velocity.y)
 		var sp2 := f.body.linear_velocity.length_squared()
-		if sp2 < 900.0 and not f.body.sleeping:  # rolling resistance: free rolling, gentle settling
-			f.body.linear_velocity *= 0.97
-			f.body.angular_velocity *= 0.94
+		if sp2 < 225.0 and not f.body.sleeping:  # rolling resistance only at a crawl: roll on, then settle
+			f.body.linear_velocity *= 0.985
+			f.body.angular_velocity *= 0.97
 		if sp2 > 40000.0:  # air drag: speed eases toward a terminal velocity under the hard cap
 			var sp := sqrt(sp2)
 			f.body.linear_velocity *= 1.0 / (1.0 + DRAG / u * sp * delta)
@@ -561,6 +576,23 @@ func _draw_backdrop() -> void:
 		FX.draw_glow(self, Rect2(x - r, y - r, r * 2.0, r * 2.0), Color(col, 0.10 + 0.06 * sin(_time + i)))
 
 
+## Jar outline: small round top corners, big bottom ones that follow the physics curve.
+func _jar_points() -> PackedVector2Array:
+	var o := _jar_outline()
+	var top := 34.0
+	var bot := CORNER * u + WALL
+	var pts := PackedVector2Array()
+	var specs := [[Vector2(o.end.x - top, o.position.y + top), top, -PI / 2.0],
+		[Vector2(o.end.x - bot, o.end.y - bot), bot, 0.0],
+		[Vector2(o.position.x + bot, o.end.y - bot), bot, PI / 2.0],
+		[Vector2(o.position.x + top, o.position.y + top), top, PI]]
+	for sp in specs:
+		for k in 13:
+			var a: float = sp[2] + k * PI / 24.0
+			pts.append(sp[0] + Vector2(cos(a), sin(a)) * sp[1])
+	return pts
+
+
 func _jar_outline() -> Rect2:
 	return Rect2(jar.position.x - WALL, jar.position.y - 12.0, jar.size.x + WALL * 2.0, jar.size.y + 12.0 + WALL)
 
@@ -575,14 +607,18 @@ func _draw_jar_back() -> void:
 		var gx := stand.position.x + stand.size.x * (0.18 + 0.22 * i)
 		draw_line(Vector2(gx, stand.position.y + 9.0), Vector2(gx + 26.0, stand.position.y + 9.0), Color(0.35, 0.15, 0.05, 0.35), 2.0)
 	# glass body: dark tint, a soft inner glow and fine vertical reflections
-	FX.draw_round_gradient(self, o, 34.0, Color(0.09, 0.07, 0.24, 0.78), Color(0.14, 0.10, 0.32, 0.9))
+	var body := _jar_points()
+	var cols := PackedColorArray()
+	for p in body:
+		cols.append(Color(0.09, 0.07, 0.24, 0.78).lerp(Color(0.14, 0.10, 0.32, 0.9), clampf((p.y - o.position.y) / o.size.y, 0.0, 1.0)))
+	draw_polygon(body, cols)
 	FX.draw_glow(self, Rect2(jar.position.x, jar.position.y + jar.size.y * 0.3, jar.size.x, jar.size.y * 0.8),
 		Color(0.6, 0.5, 1.0, 0.10))
 
 
 func _draw_jar_front() -> void:
 	var o := _jar_outline()
-	var pts := FX.round_rect_points(o, 34.0)
+	var pts := _jar_points()
 	pts.append(pts[0])
 	draw_polyline(pts, Color(0.85, 0.85, 1.0, 0.55), 5.0, true)  # glass edge
 	draw_polyline(pts, Color(1, 1, 1, 0.12), 14.0, true)  # glass thickness
