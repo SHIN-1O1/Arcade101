@@ -65,7 +65,7 @@ func _ready() -> void:
 ## pieces don't keep going, and so the frame-time spike on return lands while paused.
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
-		_pause()
+		_pause.call_deferred()  # sent while the tree propagates it, so no add_child right now
 	elif what == NOTIFICATION_EXIT_TREE and _pause_card:
 		get_tree().paused = false
 
