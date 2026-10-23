@@ -1,5 +1,5 @@
 {
- "star_metric": "score",
+ "star_metric": "pieces used to reach the goal (lower is better)",
  "levels": [
   {
    "id": 1,
@@ -10,9 +10,9 @@
    "prefilled": 0,
    "piece_set": "basic",
    "stars": [
-    0,
-    66,
-    102
+    36,
+    18,
+    14
    ]
   },
   {
@@ -20,13 +20,13 @@
    "seed": 8919,
    "grid": 8,
    "goal": "lines",
-   "target_lines": 4,
+   "target_lines": 3,
    "prefilled": 0,
    "piece_set": "basic",
    "stars": [
-    0,
-    88,
-    136
+    46,
+    23,
+    16
    ]
   },
   {
@@ -38,9 +38,9 @@
    "prefilled": 7,
    "piece_set": "basic",
    "stars": [
-    0,
-    88,
-    136
+    56,
+    28,
+    15
    ]
   },
   {
@@ -48,13 +48,13 @@
    "seed": 24757,
    "grid": 8,
    "goal": "lines",
-   "target_lines": 5,
+   "target_lines": 4,
    "prefilled": 1,
    "piece_set": "basic",
    "stars": [
-    0,
-    110,
-    170
+    46,
+    23,
+    17
    ]
   },
   {
@@ -66,9 +66,9 @@
    "prefilled": 2,
    "piece_set": "basic",
    "stars": [
-    0,
-    110,
-    170
+    54,
+    27,
+    21
    ]
   },
   {
@@ -77,12 +77,12 @@
    "grid": 8,
    "goal": "clear",
    "target_lines": 0,
-   "prefilled": 9,
+   "prefilled": 8,
    "piece_set": "basic",
    "stars": [
-    0,
-    88,
-    136
+    56,
+    28,
+    21
    ]
   },
   {
@@ -90,13 +90,13 @@
    "seed": 48514,
    "grid": 8,
    "goal": "lines",
-   "target_lines": 7,
-   "prefilled": 3,
+   "target_lines": 5,
+   "prefilled": 2,
    "piece_set": "basic",
    "stars": [
-    0,
-    154,
-    238
+    52,
+    26,
+    19
    ]
   },
   {
@@ -104,13 +104,13 @@
    "seed": 56433,
    "grid": 8,
    "goal": "lines",
-   "target_lines": 7,
+   "target_lines": 6,
    "prefilled": 3,
    "piece_set": "basic",
    "stars": [
-    0,
-    154,
-    238
+    54,
+    27,
+    19
    ]
   },
   {
@@ -119,12 +119,12 @@
    "grid": 8,
    "goal": "clear",
    "target_lines": 0,
-   "prefilled": 12,
+   "prefilled": 9,
    "piece_set": "basic",
    "stars": [
-    0,
-    132,
-    204
+    44,
+    22,
+    13
    ]
   },
   {
@@ -132,13 +132,13 @@
    "seed": 72271,
    "grid": 8,
    "goal": "lines",
-   "target_lines": 8,
+   "target_lines": 7,
    "prefilled": 4,
    "piece_set": "basic",
    "stars": [
-    0,
-    176,
-    272
+    70,
+    35,
+    26
    ]
   },
   {
@@ -146,13 +146,14 @@
    "seed": 80190,
    "grid": 8,
    "goal": "lines",
-   "target_lines": 9,
-   "prefilled": 5,
+   "target_lines": 7,
+   "prefilled": 4,
    "piece_set": "extended",
+   "ext_weight": 0.3,
    "stars": [
-    0,
-    198,
-    306
+    56,
+    28,
+    21
    ]
   },
   {
@@ -161,12 +162,13 @@
    "grid": 8,
    "goal": "clear",
    "target_lines": 0,
-   "prefilled": 14,
+   "prefilled": 11,
    "piece_set": "extended",
+   "ext_weight": 0.32,
    "stars": [
-    0,
-    154,
-    238
+    72,
+    36,
+    25
    ]
   },
   {
@@ -174,13 +176,14 @@
    "seed": 96028,
    "grid": 8,
    "goal": "lines",
-   "target_lines": 10,
-   "prefilled": 6,
+   "target_lines": 8,
+   "prefilled": 5,
    "piece_set": "extended",
+   "ext_weight": 0.33,
    "stars": [
-    0,
-    220,
-    340
+    62,
+    31,
+    28
    ]
   },
   {
@@ -188,13 +191,14 @@
    "seed": 103947,
    "grid": 8,
    "goal": "lines",
-   "target_lines": 11,
-   "prefilled": 6,
+   "target_lines": 8,
+   "prefilled": 5,
    "piece_set": "extended",
+   "ext_weight": 0.35,
    "stars": [
-    0,
-    242,
-    374
+    60,
+    30,
+    25
    ]
   },
   {
@@ -203,12 +207,13 @@
    "grid": 8,
    "goal": "clear",
    "target_lines": 0,
-   "prefilled": 16,
+   "prefilled": 12,
    "piece_set": "extended",
+   "ext_weight": 0.36,
    "stars": [
-    0,
-    176,
-    272
+    68,
+    34,
+    17
    ]
   },
   {
@@ -216,13 +221,14 @@
    "seed": 119785,
    "grid": 8,
    "goal": "lines",
-   "target_lines": 12,
-   "prefilled": 7,
+   "target_lines": 9,
+   "prefilled": 6,
    "piece_set": "extended",
+   "ext_weight": 0.38,
    "stars": [
-    0,
-    264,
-    408
+    70,
+    35,
+    29
    ]
   },
   {
@@ -230,13 +236,14 @@
    "seed": 127704,
    "grid": 8,
    "goal": "lines",
-   "target_lines": 12,
-   "prefilled": 8,
+   "target_lines": 10,
+   "prefilled": 7,
    "piece_set": "extended",
+   "ext_weight": 0.39,
    "stars": [
-    0,
-    264,
-    408
+    74,
+    37,
+    31
    ]
   },
   {
@@ -245,12 +252,13 @@
    "grid": 8,
    "goal": "clear",
    "target_lines": 0,
-   "prefilled": 18,
+   "prefilled": 13,
    "piece_set": "extended",
+   "ext_weight": 0.41,
    "stars": [
-    0,
-    198,
-    306
+    72,
+    36,
+    16
    ]
   },
   {
@@ -258,13 +266,14 @@
    "seed": 143542,
    "grid": 8,
    "goal": "lines",
-   "target_lines": 14,
-   "prefilled": 9,
+   "target_lines": 10,
+   "prefilled": 7,
    "piece_set": "extended",
+   "ext_weight": 0.43,
    "stars": [
-    0,
-    308,
-    476
+    70,
+    35,
+    31
    ]
   },
   {
@@ -272,13 +281,14 @@
    "seed": 151461,
    "grid": 8,
    "goal": "lines",
-   "target_lines": 14,
-   "prefilled": 9,
+   "target_lines": 11,
+   "prefilled": 8,
    "piece_set": "extended",
+   "ext_weight": 0.44,
    "stars": [
-    0,
-    308,
-    476
+    74,
+    37,
+    32
    ]
   },
   {
@@ -287,12 +297,13 @@
    "grid": 8,
    "goal": "clear",
    "target_lines": 0,
-   "prefilled": 20,
+   "prefilled": 14,
    "piece_set": "extended",
+   "ext_weight": 0.46,
    "stars": [
-    0,
-    220,
-    340
+    76,
+    38,
+    26
    ]
   },
   {
@@ -300,13 +311,14 @@
    "seed": 167299,
    "grid": 8,
    "goal": "lines",
-   "target_lines": 15,
-   "prefilled": 10,
+   "target_lines": 12,
+   "prefilled": 9,
    "piece_set": "extended",
+   "ext_weight": 0.47,
    "stars": [
-    0,
-    330,
-    510
+    86,
+    43,
+    35
    ]
   },
   {
@@ -314,13 +326,14 @@
    "seed": 175218,
    "grid": 8,
    "goal": "lines",
-   "target_lines": 16,
-   "prefilled": 11,
+   "target_lines": 12,
+   "prefilled": 9,
    "piece_set": "extended",
+   "ext_weight": 0.49,
    "stars": [
-    0,
-    352,
-    544
+    84,
+    42,
+    36
    ]
   },
   {
@@ -329,12 +342,13 @@
    "grid": 8,
    "goal": "clear",
    "target_lines": 0,
-   "prefilled": 22,
+   "prefilled": 16,
    "piece_set": "extended",
+   "ext_weight": 0.51,
    "stars": [
-    0,
-    242,
-    374
+    72,
+    36,
+    15
    ]
   },
   {
@@ -342,13 +356,14 @@
    "seed": 191056,
    "grid": 8,
    "goal": "lines",
-   "target_lines": 17,
-   "prefilled": 12,
+   "target_lines": 13,
+   "prefilled": 10,
    "piece_set": "extended",
+   "ext_weight": 0.52,
    "stars": [
-    0,
-    374,
-    578
+    88,
+    44,
+    36
    ]
   },
   {
@@ -356,13 +371,14 @@
    "seed": 198975,
    "grid": 8,
    "goal": "lines",
-   "target_lines": 18,
-   "prefilled": 12,
+   "target_lines": 13,
+   "prefilled": 10,
    "piece_set": "extended",
+   "ext_weight": 0.54,
    "stars": [
-    0,
-    396,
-    612
+    82,
+    41,
+    36
    ]
   },
   {
@@ -371,12 +387,13 @@
    "grid": 8,
    "goal": "clear",
    "target_lines": 0,
-   "prefilled": 24,
+   "prefilled": 17,
    "piece_set": "extended",
+   "ext_weight": 0.55,
    "stars": [
-    0,
-    264,
-    408
+    70,
+    35,
+    18
    ]
   },
   {
@@ -384,13 +401,14 @@
    "seed": 214813,
    "grid": 8,
    "goal": "lines",
-   "target_lines": 19,
-   "prefilled": 13,
+   "target_lines": 14,
+   "prefilled": 11,
    "piece_set": "extended",
+   "ext_weight": 0.57,
    "stars": [
-    0,
-    418,
-    646
+    96,
+    48,
+    40
    ]
   },
   {
@@ -398,13 +416,14 @@
    "seed": 222732,
    "grid": 8,
    "goal": "lines",
-   "target_lines": 19,
-   "prefilled": 14,
+   "target_lines": 15,
+   "prefilled": 12,
    "piece_set": "extended",
+   "ext_weight": 0.58,
    "stars": [
-    0,
-    418,
-    646
+    100,
+    50,
+    41
    ]
   },
   {
@@ -413,12 +432,13 @@
    "grid": 8,
    "goal": "clear",
    "target_lines": 0,
-   "prefilled": 26,
+   "prefilled": 18,
    "piece_set": "extended",
+   "ext_weight": 0.6,
    "stars": [
-    0,
-    286,
-    442
+    60,
+    30,
+    18
    ]
   }
  ]

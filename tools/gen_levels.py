@@ -73,17 +73,35 @@ def tower_stack(i, t):
             "block_width": ri(360, 240, t), "tolerance": ri(14, 9, t), "wind": wind, "sway": sway,
             "stars": [0, max(3, round(target * 0.35)), max(5, round(target * 0.65))]}
 
+_BF_PAR = os.path.join(os.path.dirname(__file__), "..", "games", "block_puzzle", "par.json")
+_BF = json.load(open(_BF_PAR))["levels"] if os.path.exists(_BF_PAR) else None
+
+def _bf_stars(i, fallback):
+    # Star metric = pieces used to reach the goal (lower is better). games/block_puzzle/bot.gd plays
+    # every level and writes par.json: "best" = a careful player, "median" = a typical one.
+    # 3 stars = about the careful player, 2 stars = about the typical player, 1 star = any win
+    # (the first value only scales the HUD meter). Re-run the bot after changing these params.
+    if not _BF or _BF[i].get("best", -1) <= 0:
+        return [fallback * 3, fallback * 2, fallback]
+    three = int(_BF[i]["best"] * 1.1) + 1
+    two = max(three + 3, int(_BF[i]["median"] * 1.15) + 2)
+    return [two * 2, two, three]
+
 def block_puzzle(i, t):
     # Every 3rd level (from the 3rd) is "clear all marked blocks"; the rest are "clear N lines".
+    # From level 11 the big pieces join, at "ext_weight" of a basic piece's odds (rising slowly).
     piece_set = "basic" if i < 10 else "extended"
+    ext = round(lerp(0.3, 0.6, (i - 10) / 19), 2) if i >= 10 else 1.0
     if i % 3 == 2:
-        pre = ri(6, 26, t)
-        eq = max(4, pre // 2)
-        return {"grid": 8, "goal": "clear", "target_lines": 0, "prefilled": pre,
-                "piece_set": piece_set, "stars": [0, eq * 22, eq * 34]}
-    lines = ri(3, 20, t)
-    return {"grid": 8, "goal": "lines", "target_lines": lines, "prefilled": ri(0, 14, t),
-            "piece_set": piece_set, "stars": [0, lines * 22, lines * 34]}
+        pre = ri(6, 18, t)
+        d = {"grid": 8, "goal": "clear", "target_lines": 0, "prefilled": pre, "piece_set": piece_set}
+    else:
+        d = {"grid": 8, "goal": "lines", "target_lines": ri(3, 15, t), "prefilled": ri(0, 12, t),
+             "piece_set": piece_set}
+    if piece_set == "extended":
+        d["ext_weight"] = ext
+    d["stars"] = _bf_stars(i, 8 + i)
+    return d
 
 def bubble_shooter(i, t):
     # Goal cycles clear -> color -> gems (level 1 is always clear). More colours, taller and
@@ -182,7 +200,7 @@ _KL = None
 GAMES = {
     "color_sort":     (color_sort,     "moves_used (lower is better)"),
     "tower_stack":    (tower_stack,    "perfect_drops"),
-    "block_puzzle":   (block_puzzle,   "score"),
+    "block_puzzle":   (block_puzzle,   "pieces used to reach the goal (lower is better)"),
     "bubble_shooter": (bubble_shooter, "shots_left"),
     "mahjong_match":  (mahjong_match,  "seconds incl. hint/shuffle/undo penalty (lower is better)"),
     "klondike":       (klondike,       "effort = max(moves, seconds * time_k), lower is better"),

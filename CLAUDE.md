@@ -169,7 +169,7 @@ Per-game params (defined in tools/gen_levels.py):
 | fruit_merge | Fruit Fusion (drop & merge physics) | none: endless only (games.json `endless` block: ramp_score) | high score |
 | color_sort | Tube Sort (water/ball sort) | colors, capacity, empty_tubes | moves used, lower better |
 | tower_stack | Sky Stacker (one-tap stacker) | target_height, speed, speed_step, block_width | perfect drops |
-| block_puzzle | Block Fit (8x8 drag pieces, clear lines) | grid, goal (lines/clear), target_lines, prefilled, piece_set | score |
+| block_puzzle | Block Fit (8x8 drag pieces, clear lines) | grid, goal (lines/clear), target_lines, prefilled, piece_set, ext_weight | pieces used, lower better (thresholds from games/block_puzzle/bot.gd -> par.json) |
 | number_merge | Merge Tiles (2048-like swipe) | none: endless only (games.json `endless` block: ramp_score) | high score |
 | bubble_shooter | Bubble Burst (aim-and-pop) | goal (clear/color/gems), layout, rows, colors, shots, drop_every, target_color, target_n, gems; also has an endless mode | shots left (endless: score) |
 | klondike | Solitaire (Klondike rules; player-facing name is "Solitaire", id/paths stay klondike) | deck (52 card codes, verified winnable), draw 1/3, undos (-1 = unlimited), time_k | effort = max(moves, seconds * time_k), lower better |

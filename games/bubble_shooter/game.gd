@@ -14,6 +14,13 @@ const COLORS: Array[Color] = [
 ]
 const COLOR_NAMES: Array[String] = ["orange", "yellow", "pink", "teal", "blue", "violet"]
 const GEM := Color("#FFFFFF")
+## Bubble sprites are baked once at this size (px, with mipmaps) and tinted per colour, so they stay
+## smooth and round at any screen size instead of the jagged edge of a plain draw_circle.
+const TEX_SIZE := 256
+const TEX_PAD := 3.0
+
+static var _body_tex: ImageTexture  # greyscale lit sphere with a darker rim; modulate gives the colour
+static var _spec_tex: ImageTexture  # white gloss: soft highlight, sharp glint, bounce light at the bottom
 
 var rows: Array = []   # Array[PackedInt32Array], COLS entries per row
 var gem_rows: Array = []  # Array[PackedByteArray], 1 = bubble holds a gem
@@ -44,6 +51,7 @@ var fly_pos := Vector2.ZERO
 var fly_dir := Vector2.UP
 var fly_color := 0
 var slide := 0.0
+var base_col := Color(-1, 0, 0)  # shooter base colour, eases toward the loaded bubble's colour
 var pops: Array = []    # {pos, color, t}
 var falls: Array = []   # {pos, vel, color, gem}
 var rings: Array = []   # {pos, t}
@@ -58,6 +66,8 @@ var max_row := 10
 
 
 func _on_start() -> void:
+	_bake_textures()
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	rng = make_rng()
 	goal = str(level.get("goal", "clear"))
 	colors_n = clampi(int(level.get("colors", 3)), 2, COLORS.size())
@@ -356,6 +366,12 @@ func swap() -> void:
 
 func _process(delta: float) -> void:
 	var dirty := false
+	var want: Color = COLORS[cur]
+	if base_col.r < 0.0:
+		base_col = want
+	elif not base_col.is_equal_approx(want):
+		base_col = base_col.lerp(want, minf(1.0, delta * 12.0))
+		dirty = true
 	if flying:
 		_fly(delta)
 		dirty = true
@@ -604,14 +620,84 @@ func _aim_to(p: Vector2) -> void:
 
 # --- drawing -------------------------------------------------------------------
 
+static func _bake_textures() -> void:
+	if _body_tex != null:
+		return
+	var body := Image.create(TEX_SIZE, TEX_SIZE, false, Image.FORMAT_RGBA8)
+	var spec := Image.create(TEX_SIZE, TEX_SIZE, false, Image.FORMAT_RGBA8)
+	var half := TEX_SIZE / 2.0
+	var rad := half - TEX_PAD
+	var light := Vector3(-0.4, -0.55, 0.73).normalized()
+	for py in TEX_SIZE:
+		for px in TEX_SIZE:
+			var dx := px + 0.5 - half
+			var dy := py + 0.5 - half
+			var dist := sqrt(dx * dx + dy * dy)
+			var cov := clampf(rad - dist + 0.5, 0.0, 1.0)  # analytic anti-aliased edge
+			if cov <= 0.0:
+				continue
+			var u := dx / rad
+			var v := dy / rad
+			var d := minf(dist / rad, 1.0)
+			var n := Vector3(u, v, sqrt(maxf(0.0, 1.0 - d * d)))
+			var lit := minf(1.0, 0.6 + 0.48 * maxf(0.0, n.dot(light)))
+			lit *= 1.0 - 0.22 * smoothstep(0.76, 1.0, d)
+			lit *= 1.0 - 0.32 * smoothstep(0.93, 0.99, d)
+			body.set_pixel(px, py, Color(lit, lit, lit, cov))
+			var e := pow((u + 0.33) / 0.38, 2.0) + pow((v + 0.4) / 0.26, 2.0)
+			var g := 0.8 * (1.0 - smoothstep(0.25, 1.0, e))
+			var e2 := pow((u + 0.42) / 0.1, 2.0) + pow((v + 0.44) / 0.08, 2.0)
+			g = maxf(g, 1.0 - smoothstep(0.45, 1.0, e2))
+			var rim := smoothstep(0.62, 0.9, d) * (1.0 - smoothstep(0.9, 0.985, d))
+			g = maxf(g, 0.3 * rim * smoothstep(0.15, 0.75, v * 0.85 + u * 0.35))
+			if g > 0.0:
+				spec.set_pixel(px, py, Color(1, 1, 1, g * cov))
+	body.generate_mipmaps()
+	spec.generate_mipmaps()
+	_body_tex = ImageTexture.create_from_image(body)
+	_spec_tex = ImageTexture.create_from_image(spec)
+
+
 func _draw_bubble(c: Vector2, color: int, gem := false, scale_ := 1.0) -> void:
-	FX.draw_ball(self, c, r * 0.97 * scale_, COLORS[color])
+	var rad := r * 0.97 * scale_
+	var h := rad * (TEX_SIZE / 2.0) / (TEX_SIZE / 2.0 - TEX_PAD)
+	var rect := Rect2(c.x - h, c.y - h, h * 2.0, h * 2.0)
+	draw_texture_rect(_body_tex, Rect2(rect.position + Vector2(0, rad * 0.1), rect.size), false, Color(0, 0, 0, 0.22))
+	draw_texture_rect(_body_tex, rect, false, COLORS[color])
+	draw_texture_rect(_spec_tex, rect, false)
 	if gem:
-		var s := r * 0.42 * scale_
-		var pts := PackedVector2Array([c + Vector2(0, -s), c + Vector2(s * 0.8, 0), c + Vector2(0, s), c + Vector2(-s * 0.8, 0)])
-		draw_colored_polygon(pts, Color(1, 1, 1, 0.92))
-		draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[3], pts[0]]), Color(0.2, 0.2, 0.4, 0.8), 2.0, true)
-		draw_line(c + Vector2(-s * 0.8, 0), c + Vector2(s * 0.8, 0), Color(0.4, 0.5, 0.9, 0.7), 1.5)
+		_draw_diamond(c, r * 0.62 * scale_)
+
+
+## Blue cut diamond (side view: crown with a table on top, pointed pavilion below) on a soft glow,
+## so a gem reads clearly inside a bubble of any colour.
+func _draw_diamond(c: Vector2, s: float) -> void:
+	FX.draw_glow(self, Rect2(c - Vector2.ONE * s * 1.1, Vector2.ONE * s * 2.2), Color(1, 1, 1, 0.55))
+	var t1 := c + Vector2(-0.45, -0.55) * s
+	var t2 := c + Vector2(0.45, -0.55) * s
+	var g0 := c + Vector2(-0.9, -0.18) * s
+	var g1 := c + Vector2(-0.3, -0.18) * s
+	var g2 := c + Vector2(0.3, -0.18) * s
+	var g3 := c + Vector2(0.9, -0.18) * s
+	var tip := c + Vector2(0, 0.8) * s
+	var facets := [
+		[[g0, t1, g1], Color("#9FE3FF")], [[t1, t2, g2, g1], Color("#D2F4FF")], [[t2, g3, g2], Color("#5CC0FF")],
+		[[g0, g1, tip], Color("#2F8FE8")], [[g1, g2, tip], Color("#58B4FF")], [[g2, g3, tip], Color("#1A5FC4")],
+	]
+	for f in facets:
+		draw_colored_polygon(PackedVector2Array(f[0]), f[1])
+	var edge := Color("#0E3A8A")
+	var w := maxf(1.2, s * 0.06)
+	draw_polyline(PackedVector2Array([g0, t1, t2, g3, tip, g0]), edge, w, true)
+	draw_line(g0, g3, Color(edge, 0.7), w * 0.7, true)
+	draw_polyline(PackedVector2Array([t1, g1, tip, g2, t2]), Color(edge, 0.45), w * 0.6, true)
+	# sparkle on the table
+	var sp := c + Vector2(-0.18, -0.38) * s
+	var k := s * 0.22
+	draw_colored_polygon(PackedVector2Array([sp + Vector2(0, -k), sp + Vector2(k * 0.22, 0), sp + Vector2(0, k),
+		sp + Vector2(-k * 0.22, 0)]), Color(1, 1, 1, 0.95))
+	draw_colored_polygon(PackedVector2Array([sp + Vector2(-k, 0), sp + Vector2(0, k * 0.22), sp + Vector2(k, 0),
+		sp + Vector2(0, -k * 0.22)]), Color(1, 1, 1, 0.95))
 
 
 func _draw() -> void:
@@ -664,21 +750,25 @@ func _draw() -> void:
 			while dpos < seg:
 				var pp := a.lerp(b, dpos / seg)
 				var fade := clampf(1.0 - (alpha_n + dpos) / 1500.0, 0.2, 1.0)
-				draw_circle(pp, 5.0, Color(1, 1, 1, 0.8 * fade))
+				draw_texture_rect(_body_tex, Rect2(pp - Vector2(5.5, 5.5), Vector2(11, 11)), false,
+						Color(1, 1, 1, 0.8 * fade))
 				dpos += 30.0
 			carry = dpos - seg
 			alpha_n += seg
 		var cell: Vector2i = t.cell
 		if cell.x >= 0:
-			draw_circle(_pos(cell.y, cell.x), r * 0.95, Color(COLORS[cur], 0.28))
+			var gp := _pos(cell.y, cell.x)
+			draw_texture_rect(_body_tex, Rect2(gp - Vector2.ONE * r, Vector2.ONE * r * 2.0), false,
+					Color(COLORS[cur], 0.28))
 	# shooter, current and next bubble
 	FX.draw_shadow(self, Rect2(shooter.x - r * 1.6, shooter.y + r * 0.5, r * 3.2, r * 1.1), 0.5)
+	var bc: Color = base_col if base_col.r >= 0.0 else COLORS[cur]
 	FX.draw_round_gradient(self, Rect2(shooter.x - r * 1.5, shooter.y - r * 0.2, r * 3.0, r * 1.5), r * 0.6,
-			FX.TANGERINE, FX.TANGERINE.darkened(0.45))
+			bc, bc.darkened(0.45))
 	if not flying:
 		_draw_bubble(shooter, cur)
 	var np := Vector2(shooter.x - r * 4.2, shooter.y + r * 0.2)
-	draw_circle(np, r * 1.05, Color(0, 0, 0, 0.25))
+	draw_texture_rect(_body_tex, Rect2(np - Vector2.ONE * r * 1.07, Vector2.ONE * r * 2.14), false, Color(0, 0, 0, 0.25))
 	_draw_bubble(np, nxt, false, 0.72)
 	FX.draw_text_centered(self, np + Vector2(0, r * 1.45), "NEXT", 18, Color(1, 1, 1, 0.6), FX.font())
 	if flying:
