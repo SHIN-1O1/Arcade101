@@ -163,7 +163,18 @@ Per-game params (defined in tools/gen_levels.py):
 | number_merge | Merge Tiles (2048-like swipe) | none: endless only (games.json `endless` block: ramp_score) | high score |
 | bubble_shooter | Bubble Burst (aim-and-pop) | goal (clear/color/gems), layout, rows, colors, shots, drop_every, target_color, target_n, gems; also has an endless mode | shots left (endless: score) |
 | klondike | Klondike Solitaire | deck (52 card codes, verified winnable), draw 1/3, undos (-1 = unlimited), time_k | effort = max(moves, seconds * time_k), lower better |
-Tube Sort, Block Fit, Sky Stacker, Klondike, Bubble Burst and Merge Tiles (endless only) are playable; Fruit Fusion is a placeholder (stub_game.gd). `status` in games.json tracks this.
+| mahjong_match | Mahjong Match (stacked tile pairs) | shape, layers, tiles, types, hints, shuffles, undos | seconds + penalties, lower better |
+Tube Sort, Block Fit, Sky Stacker, Klondike, Mahjong Match, Bubble Burst and Merge Tiles (endless only) are playable; Fruit Fusion is a placeholder (stub_game.gd). `status` in games.json tracks this.
+
+## Mahjong Match (games/mahjong_match/)
+`layout.gd` is the logic with no drawing (shapes, stacking, free rule, solvable pair order, shuffle); `faces.gd` draws the
+27 tile faces; `look.gd` + `icons.gd` hold the table backdrop, per-tile nodes, icon buttons and HUD chips; `game.gd` is the scene
+(each tile is a Node2D so only changed tiles redraw). Boards are built by removing random free pairs until empty, then giving each pair one
+match key, so every board is solvable. Levels store params only (the board is regenerated from `seed`); `tools/gen_levels.py`
+mirrors the shape/size maths so `tiles` is what the board really holds. Campaign stars use time plus penalties (hint 8 s,
+shuffle 12 s, undo 4 s); endless scores pairs with a combo and refills a shuffle and hint per cleared board.
+`check.gd` (`check_levels`) proves all 30 layouts solvable with an independent free-rule and search; the smoke test runs it for
+any game that ships a `check.gd`.
 
 ## Add or implement a game
 1. Create `games/<id>/` with `game.gd` (`extends BaseGame`) and `game.tscn` whose

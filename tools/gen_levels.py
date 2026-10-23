@@ -103,6 +103,59 @@ def bubble_shooter(i, t):
     d["stars"] = [0, d["shots"] * 3 // 10, d["shots"] // 2]
     return d
 
+MJ_SHAPES = ["rect", "oct", "diamond", "cross", "ring", "towers"]
+MJ_SIZES = [(4, 3), (4, 4), (5, 4), (5, 5), (6, 5), (6, 6), (7, 6), (7, 7), (8, 7), (8, 8), (8, 9)]  # same as layout.gd
+
+def _mj_cell(shape, i, j, w, h):
+    cx, cy = (w - 1) / 2.0, (h - 1) / 2.0
+    if shape == "oct":
+        c = max(1, min(w, h) // 3)
+        return i + j >= c and (w - 1 - i) + j >= c and i + (h - 1 - j) >= c and (w - 1 - i) + (h - 1 - j) >= c
+    if shape == "diamond": return abs(i - cx) / (w / 2.0) + abs(j - cy) / (h / 2.0) <= 1.0001
+    if shape == "cross": return abs(i - cx) < max(1.0, w / 4.0 + 0.01) or abs(j - cy) < max(1.0, h / 4.0 + 0.01)
+    if shape == "ring": return i < 2 or j < 2 or i >= w - 2 or j >= h - 2
+    if shape == "towers": return w < 5 or i != w // 2 or abs(j - cy) <= 1.0
+    return True
+
+def _mj_layer_sizes(shape, w, h, layers):
+    # Mirrors layout.gd stack(): layer k sits on four tiles of layer k-1 (offset by one unit).
+    cur = {(2 * i, 2 * j) for j in range(h) for i in range(w) if _mj_cell(shape, i, j, w, h)}
+    out = [len(cur)]
+    for _ in range(1, layers):
+        cur = {(x + 1, y + 1) for (x, y) in cur if {(x + 2, y), (x, y + 2), (x + 2, y + 2)} <= cur}
+        out.append(len(cur))
+    return out
+
+def _mj_fit(shape, layers, want):
+    """(tiles, layers actually used) for the smallest base that holds `want` tiles (layout.gd make_board)."""
+    for w, h in MJ_SIZES:
+        sizes = _mj_layer_sizes(shape, w, h, layers)
+        if sum(sizes) >= want: break
+    tiles = min(want, sum(sizes))
+    tiles -= tiles % 2
+    used, acc = 0, 0
+    for n in sizes:
+        if acc >= tiles: break
+        used += 1
+        acc += n
+    return tiles, used
+
+def mahjong_match(i, t):
+    # Taller stacks, more tiles and kinds, fewer hints/shuffles/undos. "tiles" is what the board really
+    # holds (the shape may not reach the target); stars are seconds, lower is better.
+    layers = 1 if i < 3 else 2 if i < 9 else 3 if i < 16 else 4 if i < 23 else 5
+    want = ri(16, 128, t)
+    # Rotate through the shapes; take the first that holds the target with the full stack height,
+    # else the first that holds the target, else rect (which always can).
+    fits = [(MJ_SHAPES[(i + k) % len(MJ_SHAPES)],) + _mj_fit(MJ_SHAPES[(i + k) % len(MJ_SHAPES)], layers, want)
+            for k in range(len(MJ_SHAPES))]
+    pick = next((f for f in fits if f[1] >= want and f[2] >= layers), None) \
+        or next((f for f in fits if f[1] >= want), None) or ("rect",) + _mj_fit("rect", layers, want)
+    shape, tiles = pick[0], pick[1]
+    pairs = tiles // 2
+    return {"shape": shape, "layers": layers, "tiles": tiles, "types": ri(6, 27, t),
+            "hints": ri(5, 2, t), "shuffles": ri(4, 1, t), "undos": ri(6, 3, t),
+            "stars": [int(pairs * 9), int(pairs * 5.5), int(pairs * 3.6)]}
 def klondike(i, t):
     """Verified-winnable deals from tools/klondike_deals.json (python tools/klondike_solver.py build).
     Levels 1-12 draw 1 (easiest deals first), 13-30 draw 3. Undo limits tighten as levels rise."""
@@ -131,6 +184,7 @@ GAMES = {
     "tower_stack":    (tower_stack,    "perfect_drops"),
     "block_puzzle":   (block_puzzle,   "score"),
     "bubble_shooter": (bubble_shooter, "shots_left"),
+    "mahjong_match":  (mahjong_match,  "seconds incl. hint/shuffle/undo penalty (lower is better)"),
     "klondike":       (klondike,       "effort = max(moves, seconds * time_k), lower is better"),
 }
 
