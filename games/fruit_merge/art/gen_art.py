@@ -104,7 +104,28 @@ def lit(col, amount):
     return np.where(a >= 0, col + (1 - col) * a, col * (1 + a))
 
 
+RELIEF = {"amount": 0.0}  # set per fruit in main(); 0 = flat
+
+
+def emboss(rgb, amount, mask=None):
+    """Fake bump mapping: the fine detail (luminance minus its blur) is treated as height and lit from
+    the top left, so dimples, pores, fibres and eyes read as raised or sunk, not printed on."""
+    if amount <= 0:
+        return rgb
+    lum = np.clip(rgb.mean(axis=-1), 0, 1)
+    if mask is None:
+        mask = INSIDE
+    li = Image.fromarray((lum * 255).astype(np.uint8))
+    blur = np.asarray(li.filter(ImageFilter.GaussianBlur(R * 0.05)), dtype=np.float64) / 255.0
+    h = (lum - blur) * mask
+    gy, gx = np.gradient(h)
+    shade = -(gx * -0.55 + gy * -0.75) * amount * R * 0.08
+    rim = smooth(0.92, 1.0, np.sqrt(D2))  # fade out at the silhouette
+    return lit(rgb, np.clip(shade * (1 - rim), -0.45, 0.45))
+
+
 def disc_rgba(rgb):
+    rgb = emboss(rgb, RELIEF["amount"])
     img = np.zeros((W, W, 4))
     img[..., :3] = np.clip(rgb, 0, 1)
     img[..., 3] = INSIDE.astype(float)
@@ -311,10 +332,11 @@ def pineapple():  # oval body of raised eyes, tall spiky crown
     # game.gd skips the overlays for tiers in SELF_LIT.
     L = np.array([-0.45, -0.65, 0.62]) / np.linalg.norm([-0.45, -0.65, 0.62])
     ndl = np.clip(uu * L[0] + V * L[1] + z * L[2], 0, 1)
-    rgb = lit(rgb, -(1 - (0.3 + 0.7 * ndl)) * 0.5 - (1 - z) ** 3 * 0.2)
+    rgb = lit(rgb, -(1 - (0.2 + 0.8 * ndl)) * 0.55 - (1 - z) ** 2.2 * 0.3)
     Hh = (L + np.array([0, 0, 1.0])) / np.linalg.norm(L + np.array([0, 0, 1.0]))
     ndh = np.clip(uu * Hh[0] + V * Hh[1] + z * Hh[2], 0, 1)
     rgb = lit(rgb, ndh ** 40 * 0.6)
+    rgb = emboss(rgb, RELIEF["amount"], inside)
     img = np.zeros((W, W, 4))
     img[..., :3] = np.clip(rgb, 0, 1)
     img[..., 3] = inside.astype(float)
@@ -367,6 +389,9 @@ def watermelon():
 
 # Distinct hue (and silhouette) per tier, smallest first: blue, red, violet, yellow, orange, green,
 # crimson with a crown, brown, gold oval, ribbed orange, striped green. Keep game.gd COLORS (burst particles) in step with these.
+# relief strength per fruit (see emboss): smooth skins low, pitted or fibrous ones high
+RELIEF_BY = {"blueberry": 0.6, "cherry": 0.3, "grape": 0.5, "lemon": 1.6, "orange": 1.1, "green_apple": 0.6,
+             "pomegranate": 0.9, "coconut": 2.0, "pineapple": 2.2, "pumpkin": 1.4, "watermelon": 0.9}
 SELF_LIT = [8]  # pineapple: oval, lit in its own recipe
 FRUITS = [blueberry, cherry, grape, lemon, orange, green_apple, pomegranate, coconut, pineapple, pumpkin, watermelon]
 
@@ -377,15 +402,15 @@ def light_layers():
     L = np.array([-0.45, -0.65, 0.62])
     L = L / np.linalg.norm(L)
     ndl = np.clip(U * L[0] + V * L[1] + Z * L[2], 0, 1)
-    shade = (1 - (0.28 + 0.72 * ndl)) * 0.46 + (1 - Z) ** 3 * 0.2
-    shade += smooth(0.2, 1.0, V) * 0.1  # contact occlusion at the bottom
+    shade = (1 - (0.2 + 0.8 * ndl)) * 0.55 + (1 - Z) ** 2.2 * 0.3
+    shade += smooth(0.2, 1.0, V) * 0.14  # contact occlusion at the bottom
     s = np.zeros((W, W, 4))
     s[..., 3] = np.clip(shade, 0, 0.85) * INSIDE
     H = L + np.array([0, 0, 1.0])
     H = H / np.linalg.norm(H)
     ndh = np.clip(U * H[0] + V * H[1] + Z * H[2], 0, 1)
-    spec = ndh ** 70 * 0.85 + ndh ** 10 * 0.24
-    rim = (1 - Z) ** 4 * np.clip(U * 0.5 + V * 0.6, 0, 1) * 0.5  # cool bounce light, bottom right
+    spec = ndh ** 90 * 0.95 + ndh ** 12 * 0.28
+    rim = (1 - Z) ** 3 * np.clip(U * 0.5 + V * 0.6, 0, 1) * 0.65  # cool bounce light, bottom right
     p = np.zeros((W, W, 4))
     p[..., :3] = 1.0
     p[..., 3] = np.clip(spec + rim, 0, 1) * INSIDE
@@ -456,6 +481,7 @@ def backdrop(w=540, h=960):
 
 def main():
     for i, fn in enumerate(FRUITS):
+        RELIEF["amount"] = RELIEF_BY.get(fn.__name__, 0.8)
         finish(fn()).save(OUT / f"fruit_{i}.png", optimize=True)
         print("fruit", i, fn.__name__)
     shade, spec = light_layers()
