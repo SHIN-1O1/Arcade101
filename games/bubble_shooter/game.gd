@@ -51,6 +51,7 @@ var fly_pos := Vector2.ZERO
 var fly_dir := Vector2.UP
 var fly_color := 0
 var slide := 0.0
+var base_col := Color(-1, 0, 0)  # shooter base colour, eases toward the loaded bubble's colour
 var pops: Array = []    # {pos, color, t}
 var falls: Array = []   # {pos, vel, color, gem}
 var rings: Array = []   # {pos, t}
@@ -361,6 +362,12 @@ func swap() -> void:
 
 func _process(delta: float) -> void:
 	var dirty := false
+	var want: Color = COLORS[cur]
+	if base_col.r < 0.0:
+		base_col = want
+	elif not base_col.is_equal_approx(want):
+		base_col = base_col.lerp(want, minf(1.0, delta * 12.0))
+		dirty = true
 	if flying:
 		_fly(delta)
 		dirty = true
@@ -751,8 +758,9 @@ func _draw() -> void:
 					Color(COLORS[cur], 0.28))
 	# shooter, current and next bubble
 	FX.draw_shadow(self, Rect2(shooter.x - r * 1.6, shooter.y + r * 0.5, r * 3.2, r * 1.1), 0.5)
+	var bc: Color = base_col if base_col.r >= 0.0 else COLORS[cur]
 	FX.draw_round_gradient(self, Rect2(shooter.x - r * 1.5, shooter.y - r * 0.2, r * 3.0, r * 1.5), r * 0.6,
-			FX.TANGERINE, FX.TANGERINE.darkened(0.45))
+			bc, bc.darkened(0.45))
 	if not flying:
 		_draw_bubble(shooter, cur)
 	var np := Vector2(shooter.x - r * 4.2, shooter.y + r * 0.2)
