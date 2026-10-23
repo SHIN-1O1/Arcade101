@@ -135,6 +135,7 @@ func refresh(animated := true, moving: Array = []) -> void:
 				continue
 			move_child(v, -1)
 			v.sync_face(animated)
+			v.buried = i < p.cards.size() - 1 and p.card_pos(i + 1) == p.card_pos(i)
 			_place(v, p.card_pos(i), animated, delays.get(c.uid, 0.0))
 			z += 1
 	queue_redraw()

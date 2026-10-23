@@ -490,59 +490,89 @@ func _hide_banner() -> void:
 
 ## The table: green-teal felt with a woven lattice, a faint suit emblem, gold trim and vignette.
 class Felt extends Control:
+	static var _grain: ImageTexture
+
+	func _init() -> void:
+		texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_RESIZED:
+			queue_redraw()
+
+	## Tileable felt fibres: short random strokes in a small alpha texture, made once.
+	static func grain() -> ImageTexture:
+		if _grain == null:
+			var n := 128
+			var img := Image.create(n, n, false, Image.FORMAT_LA8)
+			img.fill(Color(1, 1, 1, 0))
+			var rng := RandomNumberGenerator.new()
+			rng.seed = 5
+			for k in 2600:
+				var x := rng.randi_range(0, n - 1)
+				var y := rng.randi_range(0, n - 1)
+				var v := 1.0 if rng.randf() < 0.5 else 0.0
+				var a := rng.randf_range(0.05, 0.16)
+				var dx := rng.randi_range(-1, 1)
+				for s in rng.randi_range(1, 3):
+					img.set_pixel(posmod(x + dx * s, n), (y + s) % n, Color(v, v, v, a))
+			_grain = ImageTexture.create_from_image(img)
+		return _grain
+
 	func _draw() -> void:
-		var r := Rect2(Vector2(5, 3), size - Vector2(10, 8))
-		var rad := 42.0
-		FX.draw_round_gradient(self, r, rad, Color("#27876b"), Color("#0c3c3e"))
-		FX.draw_glow(self, Rect2(r.position + Vector2(-r.size.x * 0.12, r.size.y * 0.0), Vector2(r.size.x * 1.24, r.size.y * 0.8)),
-			Color(0.75, 1.0, 0.85, 0.2))
-		# woven lattice
-		var inner := r.grow(-16.0)
-		var step := 30.0
-		var col := Color(1, 1, 1, 0.04)
-		var k := -inner.size.y
-		while k < inner.size.x:
-			var a := Vector2(inner.position.x + k, inner.position.y)
-			var b := a + Vector2(inner.size.y, inner.size.y)
-			var t1 := maxf(0.0, inner.position.x - a.x)
-			a += Vector2(t1, t1)
-			var t2 := maxf(0.0, b.x - inner.end.x)
-			b -= Vector2(t2, t2)
-			if a.x < b.x:
-				draw_line(a, b, col, 1.5)
-			var c := Vector2(inner.position.x + k + inner.size.y, inner.position.y)
-			var d := c + Vector2(-inner.size.y, inner.size.y)
-			var u1 := maxf(0.0, c.x - inner.end.x)
-			c += Vector2(-u1, u1)
-			var u2 := maxf(0.0, inner.position.x - d.x)
-			d += Vector2(u2, -u2)
-			if c.x > d.x:
-				draw_line(c, d, col, 1.5)
-			k += step
-		# emblem: ring, four suits and a star in the lower half
+		var outer := Rect2(Vector2(4, 2), size - Vector2(8, 6))
+		var rad := 40.0
+		# lacquered walnut rail with a gold inlay
+		FX.draw_shadow(self, Rect2(outer.position + Vector2(-10, 14), outer.size + Vector2(20, 16)), 0.6)
+		FX.draw_round_gradient(self, outer, rad, Color("#5a3420"), Color("#24130b"))
+		var rail := FX.round_rect_points(outer.grow(-2.0), rad - 2.0)
+		rail.append(rail[0])
+		draw_polyline(rail, Color(1, 0.85, 0.6, 0.25), 1.5, true)
+		var r := outer.grow(-11.0)
+		var frad := rad - 10.0
+		var gold := FX.round_rect_points(r.grow(3.0), frad + 3.0)
+		gold.append(gold[0])
+		draw_polyline(gold, Color("#8a6212"), 4.0, true)
+		draw_polyline(gold, Color("#f2c14e"), 2.0, true)
+		# felt with a lamp-lit centre
+		FX.draw_round_gradient(self, r, frad, Color("#21876a"), Color("#0b3d3a"))
+		FX.draw_glow(self, Rect2(r.position + Vector2(-r.size.x * 0.2, -r.size.y * 0.05), Vector2(r.size.x * 1.4, r.size.y * 0.85)),
+			Color(0.7, 1.0, 0.82, 0.22))
+		# felt fibres, clipped to the rounded felt by drawing them as a textured polygon
+		var pts := FX.round_rect_points(r, frad)
+		var uvs := PackedVector2Array()
+		for q in pts:
+			uvs.append(q / 128.0)
+		draw_polygon(pts, PackedColorArray([Color(1, 1, 1, 1)]), uvs, grain())
+		# emblem: rosette ring with the four suits in the lower half
 		var mid := Vector2(r.get_center().x, r.position.y + r.size.y * 0.66)
 		var er := minf(r.size.x * 0.34, 190.0)
-		draw_arc(mid, er, 0.0, TAU, 64, Color(FX.LEMON, 0.07), 3.0, true)
-		draw_arc(mid, er * 0.78, 0.0, TAU, 64, Color(FX.LEMON, 0.05), 2.0, true)
+		var ring := PackedVector2Array()
+		for k in 181:
+			var a := TAU * k / 180.0
+			ring.append(mid + Vector2(cos(a), sin(a)) * er * (0.93 + 0.04 * cos(a * 16.0)))
+		draw_polyline(ring, Color(FX.LEMON, 0.08), 2.0, true)
+		draw_arc(mid, er, 0.0, TAU, 96, Color(FX.LEMON, 0.09), 2.5, true)
+		draw_arc(mid, er * 0.78, 0.0, TAU, 96, Color(FX.LEMON, 0.06), 1.5, true)
 		for i in 4:
 			var ang := -PI / 2.0 + i * PI / 2.0
-			CardArt.draw_pip(self, i, mid + Vector2(cos(ang), sin(ang)) * er * 0.5, er * 0.2, Color(1, 1, 1, 0.07))
-		FX.draw_star(self, mid, er * 0.2, Color(FX.LEMON, 0.09))
-		# vignette
-		FX.draw_vgradient(self, Rect2(r.position, Vector2(r.size.x, 90)), Color(0, 0.02, 0.12, 0.4), Color(0, 0.02, 0.12, 0.0))
-		FX.draw_vgradient(self, Rect2(r.position.x, r.end.y - 120, r.size.x, 120), Color(0, 0.02, 0.12, 0.0), Color(0, 0.02, 0.12, 0.5))
-		# gold trim
-		var pts := FX.round_rect_points(r, rad)
-		pts.append(pts[0])
-		draw_polyline(pts, Color(0.02, 0.1, 0.1, 0.8), 6.0, true)
-		draw_polyline(pts, Color("#f2a900"), 3.0, true)
-		var pts2 := FX.round_rect_points(r.grow(-7.0), rad - 5.0)
-		pts2.append(pts2[0])
-		draw_polyline(pts2, Color(FX.LEMON, 0.28), 1.2, true)
-		for corner in [r.position + Vector2(22, 22), Vector2(r.end.x - 22, r.position.y + 22),
-				Vector2(r.position.x + 22, r.end.y - 22), r.end - Vector2(22, 22)]:
-			draw_circle(corner, 4.0, Color("#f2a900"))
-			draw_circle(corner + Vector2(-1, -1), 1.6, Color(1, 1, 1, 0.7))
+			CardArt.draw_pip(self, i, mid + Vector2(cos(ang), sin(ang)) * er * 0.5, er * 0.17, Color(1, 1, 1, 0.07))
+		for i in 4:
+			var ang := -PI / 4.0 + i * PI / 2.0
+			var c := mid + Vector2(cos(ang), sin(ang)) * er
+			var d := 6.0
+			draw_colored_polygon(PackedVector2Array([c + Vector2(0, -d), c + Vector2(d, 0), c + Vector2(0, d), c + Vector2(-d, 0)]),
+				Color(FX.LEMON, 0.14))
+		FX.draw_star(self, mid, er * 0.17, Color(FX.LEMON, 0.1))
+		# inner shade under the rail and a vignette at the bottom
+		FX.draw_vgradient(self, Rect2(r.position + Vector2(frad * 0.5, 0), Vector2(r.size.x - frad, 40)),
+			Color(0, 0.02, 0.06, 0.45), Color(0, 0.02, 0.06, 0.0))
+		FX.draw_vgradient(self, Rect2(r.position.x + frad * 0.5, r.end.y - 140, r.size.x - frad, 140),
+			Color(0, 0.02, 0.06, 0.0), Color(0, 0.02, 0.06, 0.45))
+		for corner in [r.position + Vector2(16, 16), Vector2(r.end.x - 16, r.position.y + 16),
+				Vector2(r.position.x + 16, r.end.y - 16), r.end - Vector2(16, 16)]:
+			draw_circle(corner, 4.5, Color("#8a6212"))
+			draw_circle(corner, 3.4, Color("#f2c14e"))
+			draw_circle(corner + Vector2(-1, -1), 1.3, Color(1, 1, 1, 0.75))
 
 
 ## Slow drifting suit shapes and sparkles over the felt.

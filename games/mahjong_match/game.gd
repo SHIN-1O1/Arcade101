@@ -20,8 +20,8 @@ const TANGERINE := Color("#FF8A1F")
 const LEMON := Color("#FFD23F")
 const IVORY := Color("#fff6df")
 const IVORY_SEL := Color("#ffe58a")
-const SIDE := Color("#2fb383")
-const SIDE_DARK := Color("#0f4f3a")
+const SIDE := Color("#1f9a74")
+const SIDE_DARK := Color("#0a3d30")
 
 const BOTTOM_BAR := 128.0
 const HUD_H := 70.0  # chip strip at the top
@@ -773,30 +773,42 @@ func draw_tile_node(ci: CanvasItem, i: int) -> void:
 		0.55 if lay == 0 else 0.45)
 	_sb.draw_center = true
 	_sb.set_corner_radius_all(radius)
-	for k in range(4, 0, -1):  # the jade slab under the ivory face, in four steps
-		var d := tt * k / 4.0
-		_sb.bg_color = SIDE.lerp(SIDE_DARK, float(k) / 4.0)
-		ci.draw_style_box(_sb, Rect2(r.position + Vector2(d, d), ts))
-	var top_c := Color("#fffaf0")
-	var bot_c := Color("#f1dfb4")
+	# two-layer tile seen from above: a jade back, an ivory body and a thin gold seam between them
+	_sb.bg_color = SIDE_DARK
+	ci.draw_style_box(_sb, Rect2(r.position + Vector2(tt, tt), ts))
+	_sb.bg_color = SIDE
+	ci.draw_style_box(_sb, Rect2(r.position + Vector2(tt * 0.72, tt * 0.72), ts))
+	_sb.bg_color = Color("#f6e7b0")
+	ci.draw_style_box(_sb, Rect2(r.position + Vector2(tt * 0.5, tt * 0.5), ts))
+	_sb.bg_color = Color("#dcc595") if free else Color("#c9b484")
+	ci.draw_style_box(_sb, Rect2(r.position + Vector2(tt * 0.42, tt * 0.42), ts))
+	var top_c := Color("#fffcf3")
+	var bot_c := Color("#f0dfb6")
 	if sel:
 		top_c = Color("#fff3a8")
 		bot_c = Color("#ffd35a")
 	elif not free:
-		top_c = Color("#e6dfd0")
-		bot_c = Color("#c9bb98")
+		top_c = Color("#f3ead6")
+		bot_c = Color("#dfcda4")
 	FX.draw_round_gradient(ci, r, float(radius), top_c, bot_c)
-	_sb_line.set_border_width_all(2)
+	_sb_line.set_border_width_all(1)
+	_sb_line.set_corner_radius_all(radius)
+	_sb_line.border_color = Color(0.4, 0.27, 0.08, 0.45)
+	ci.draw_style_box(_sb_line, r)
+	# carved inner frame: a dark groove with a bright lip under it
+	var inner := r.grow(-ts.x * 0.06)
+	_sb_line.set_border_width_all(maxi(1, int(ts.x * 0.025)))
 	_sb_line.set_corner_radius_all(maxi(2, radius - 3))
-	_sb_line.border_color = Color(0.62, 0.46, 0.2, 0.32)
-	ci.draw_style_box(_sb_line, r.grow(-ts.x * 0.055))
-	FX.draw_glow(ci, Rect2(r.position + ts * Vector2(-0.05, -0.05), ts * Vector2(0.95, 0.55)), Color(1, 1, 1, 0.45 if free else 0.22))
-	ci.draw_line(r.position + Vector2(radius, 1.5), Vector2(r.end.x - radius, r.position.y + 1.5), Color(1, 1, 1, 0.85), 2.0, true)
-	ci.draw_line(Vector2(r.position.x + radius, r.end.y - 2.5), Vector2(r.end.x - radius, r.end.y - 2.5), Color(0.5, 0.35, 0.1, 0.18), 2.0, true)
+	_sb_line.border_color = Color(1, 1, 1, 0.9 if free else 0.5)
+	ci.draw_style_box(_sb_line, Rect2(inner.position + Vector2(1, 1), inner.size))
+	_sb_line.border_color = Color(0.62, 0.44, 0.16, 0.42)
+	ci.draw_style_box(_sb_line, inner)
+	FX.draw_glow(ci, Rect2(r.position + ts * Vector2(-0.05, -0.08), ts * Vector2(0.9, 0.5)), Color(1, 1, 1, 0.4 if free else 0.15))
+	ci.draw_line(r.position + Vector2(radius, 1.5), Vector2(r.end.x - radius, r.position.y + 1.5), Color(1, 1, 1, 0.9), 2.0, true)
 	Faces.draw_face(ci, Rect2(r.position + ts * Vector2(0.1, 0.1), ts * Vector2(0.8, 0.78)), keys[i], variants[i], FX.font())
 	if not free:
 		_sb.set_corner_radius_all(radius)
-		_sb.bg_color = Color(0.2, 0.18, 0.46, 0.3)
+		_sb.bg_color = Color(0.12, 0.08, 0.26, 0.15)
 		ci.draw_style_box(_sb, r)
 	if _shake[i] > 0.0:
 		_sb.set_corner_radius_all(radius)

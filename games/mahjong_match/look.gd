@@ -19,6 +19,7 @@ class Backdrop extends Control:
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		set_anchors_preset(Control.PRESET_FULL_RECT)
+		texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
 		_sb.draw_center = false
 
 	func set_mat(r: Rect2) -> void:
@@ -37,15 +38,8 @@ class Backdrop extends Control:
 		FX.draw_vgradient(self, Rect2(0, h * 0.5, w, h * 0.5), Color("#0f4150"), Color("#0a1630"))
 		FX.draw_glow(self, Rect2(-w * 0.25, h * 0.18, w * 1.5, h * 0.64), Color(0.2, 0.85, 0.65, 0.2))
 		FX.draw_glow(self, Rect2(w * 0.1, -h * 0.1, w * 0.8, h * 0.4), Color(1.0, 0.55, 0.15, 0.1))
-		# Diagonal lattice, every third line in gold.
-		var step := 78.0
-		var n := int((w + h) / step) + 2
-		for k in n:
-			var x := k * step - h
-			var gold := k % 3 == 0
-			var col := Color(1.0, 0.82, 0.3, 0.07) if gold else Color(1, 1, 1, 0.035)
-			draw_line(Vector2(x, 0), Vector2(x + h, h), col, 2.0)
-			draw_line(Vector2(x + h, 0), Vector2(x, h), col, 2.0)
+		# Seigaiha wave pattern, faint gold on the lacquer (one tiled texture).
+		draw_texture_rect(_waves(), Rect2(0, 0, w, h), true, Color(1.0, 0.82, 0.3, 0.09))
 		# Big ornamental rings behind the board.
 		var c := mat.get_center() if mat.size.x > 0.0 else size / 2.0
 		for i in 3:
@@ -72,37 +66,118 @@ class Backdrop extends Control:
 			_draw_mat()
 
 	func _draw_mat() -> void:
-		FX.draw_shadow(self, Rect2(mat.position + Vector2(-26, 18), mat.size + Vector2(52, 44)), 0.85)
-		FX.draw_round_gradient(self, mat, 44.0, Color("#17806a"), Color("#093c33"))
-		FX.draw_glow(self, mat.grow(-6), Color(0.45, 1.0, 0.8, 0.14))
-		# felt speckle, seeded so it never shimmers
-		var rng := RandomNumberGenerator.new()
-		rng.seed = 7
-		for i in 220:
-			var p := mat.position + Vector2(rng.randf(), rng.randf()) * mat.size
-			draw_circle(p, rng.randf_range(0.8, 1.8), Color(1, 1, 1, rng.randf_range(0.02, 0.07)))
+		FX.draw_shadow(self, Rect2(mat.position + Vector2(-26, 18), mat.size + Vector2(52, 44)), 0.9)
+		# lacquered frame, then a brocade band, then the jade felt
+		FX.draw_round_gradient(self, mat, 44.0, Color("#6b2a1e"), Color("#2a0e0b"))
+		var band := mat.grow(-9.0)
+		var felt := mat.grow(-22.0)
+		FX.draw_round_gradient(self, band, 36.0, Color("#0e4d40"), Color("#06281f"))
+		FX.draw_round_gradient(self, felt, 26.0, Color("#1b8f71"), Color("#0a4436"))
+		var pts := FX.round_rect_points(felt, 26.0)
+		var uvs := PackedVector2Array()
+		for q in pts:
+			uvs.append(q / 128.0)
+		draw_polygon(pts, PackedColorArray([Color(1, 1, 1, 0.8)]), uvs, _grain())
+		# gold diamonds along the brocade band
+		var per := band.size.x + band.size.y
+		var n := int(per * 2.0 / 34.0)
+		for i in n:
+			var t := float(i) / n
+			var p := _on_rect(mat.grow(-15.5), t)
+			var d := 3.6
+			draw_colored_polygon(PackedVector2Array([p + Vector2(0, -d), p + Vector2(d, 0), p + Vector2(0, d), p + Vector2(-d, 0)]),
+				Color(LEMON, 0.55))
 		# faint medallion in the middle of the felt
-		var mc := mat.get_center()
-		var mr := minf(mat.size.x, mat.size.y) * 0.36
+		var mc := felt.get_center()
+		var mr := minf(felt.size.x, felt.size.y) * 0.36
 		for i in 3:
 			draw_arc(mc, mr * (1.0 - i * 0.18), 0.0, TAU, 64, Color(1.0, 0.85, 0.35, 0.09 - i * 0.02), 3.0, true)
 		for i in 12:
 			var a := TAU * i / 12.0
-			draw_circle(mc + Vector2(cos(a), sin(a)) * mr * 1.0, 5.0, Color(1.0, 0.85, 0.35, 0.12))
+			draw_circle(mc + Vector2(cos(a), sin(a)) * mr, 5.0, Color(1.0, 0.85, 0.35, 0.12))
 			draw_line(mc + Vector2(cos(a), sin(a)) * mr * 0.64, mc + Vector2(cos(a), sin(a)) * mr * 0.82, Color(1.0, 0.85, 0.35, 0.07), 3.0, true)
-		_sb.set_corner_radius_all(44)
-		_sb.set_border_width_all(5)
-		_sb.border_color = Color(LEMON, 0.8)
-		draw_style_box(_sb, mat)
-		_sb.set_corner_radius_all(34)
-		_sb.set_border_width_all(2)
-		_sb.border_color = Color(TANGERINE, 0.55)
-		draw_style_box(_sb, mat.grow(-11))
-		for k in 4:  # corner studs
-			var cp := mat.position + Vector2(18 if k % 2 == 0 else mat.size.x - 18, 18 if k < 2 else mat.size.y - 18)
-			draw_circle(cp, 7.0, Color("#a8741a"))
-			draw_circle(cp, 5.5, LEMON)
-			draw_circle(cp + Vector2(-1.5, -1.5), 2.0, Color(1, 1, 1, 0.8))
+		# inner shade below the frame
+		FX.draw_vgradient(self, Rect2(felt.position + Vector2(20, 0), Vector2(felt.size.x - 40, 30)), Color(0, 0, 0, 0.35), Color(0, 0, 0, 0))
+		_line(mat, 44.0, Color("#f2c14e"), 3.0)
+		_line(mat.grow(-1.5), 43.0, Color(1, 1, 1, 0.25), 1.0)
+		_line(band, 36.0, Color("#c8961e"), 2.0)
+		_line(felt, 26.0, Color("#f2c14e"), 2.5)
+		for k in 4:  # corner rosettes
+			var cp := mat.position + Vector2(20 if k % 2 == 0 else mat.size.x - 20, 20 if k < 2 else mat.size.y - 20)
+			draw_circle(cp, 11.0, Color("#6b4710"))
+			for j in 6:
+				var a := TAU * j / 6.0
+				draw_circle(cp + Vector2(cos(a), sin(a)) * 5.5, 4.0, Color("#f2c14e"))
+			draw_circle(cp, 4.0, Color("#ff8a1f"))
+			draw_circle(cp + Vector2(-1.2, -1.2), 1.5, Color(1, 1, 1, 0.85))
+
+	func _line(r: Rect2, rad: float, col: Color, w: float) -> void:
+		var pts := FX.round_rect_points(r, rad)
+		pts.append(pts[0])
+		draw_polyline(pts, col, w, true)
+
+	## Point at fraction t (0..1) around the rectangle's perimeter, clockwise from the top-left.
+	func _on_rect(r: Rect2, t: float) -> Vector2:
+		var per := (r.size.x + r.size.y) * 2.0
+		var d := t * per
+		if d < r.size.x:
+			return r.position + Vector2(d, 0)
+		d -= r.size.x
+		if d < r.size.y:
+			return Vector2(r.end.x, r.position.y + d)
+		d -= r.size.y
+		if d < r.size.x:
+			return Vector2(r.end.x - d, r.end.y)
+		d -= r.size.x
+		return Vector2(r.position.x, r.end.y - d)
+
+	static var _grain_tex: ImageTexture
+	static var _waves_tex: ImageTexture
+
+	## Tileable seigaiha (overlapping fans of rings): each pixel takes the ring of the lowest
+	## circle covering it, like scales laid row over row.
+	static func _waves() -> ImageTexture:
+		if _waves_tex == null:
+			var wr := 36.0
+			var tw := int(wr * 2.0)
+			var th := int(wr)
+			var img := Image.create(tw, th, false, Image.FORMAT_LA8)
+			for py in th:
+				for px in tw:
+					var p := Vector2(px + 0.5, py + 0.5)
+					var best := -1.0e9
+					var dist := 0.0
+					for j in range(-1, 4):
+						for i in range(-1, 3):
+							var cc := Vector2(i * wr * 2.0 + (wr if posmod(j, 2) == 1 else 0.0), j * wr * 0.5)
+							var d := p.distance_to(cc)
+							if d < wr and cc.y > best:
+								best = cc.y
+								dist = d
+					var f := fposmod(dist / (wr * 0.25), 1.0)
+					var a := clampf(1.0 - absf(f - 0.5) * 2.0 * 3.0, 0.0, 1.0) if dist > wr * 0.2 else 0.0
+					img.set_pixel(px, py, Color(1, 1, 1, a))
+			_waves_tex = ImageTexture.create_from_image(img)
+		return _waves_tex
+
+	## Tileable felt fibres, made once.
+	static func _grain() -> ImageTexture:
+		if _grain_tex == null:
+			var n := 128
+			var img := Image.create(n, n, false, Image.FORMAT_LA8)
+			img.fill(Color(1, 1, 1, 0))
+			var rng := RandomNumberGenerator.new()
+			rng.seed = 9
+			for k in 2600:
+				var x := rng.randi_range(0, n - 1)
+				var y := rng.randi_range(0, n - 1)
+				var v := 1.0 if rng.randf() < 0.5 else 0.0
+				var a := rng.randf_range(0.05, 0.15)
+				var dx := rng.randi_range(-1, 1)
+				for s in rng.randi_range(1, 3):
+					img.set_pixel(posmod(x + dx * s, n), (y + s) % n, Color(v, v, v, a))
+			_grain_tex = ImageTexture.create_from_image(img)
+		return _grain_tex
 
 
 ## A few soft lights drifting up the table.
