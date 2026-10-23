@@ -119,7 +119,7 @@ level select, endless-only starts the run, both shows a Campaign / Endless picke
 Per-game params (defined in tools/gen_levels.py):
 | id | name | params | star metric |
 |---|---|---|---|
-| fruit_merge | Fruit Fusion (Suika-like drop & merge) | target_tier, spawn_max_tier, jar_width | score |
+| fruit_merge | Fruit Fusion (drop & merge physics) | none: endless only (games.json `endless` block: ramp_score) | high score |
 | color_sort | Tube Sort (water/ball sort) | colors, capacity, empty_tubes | moves used, lower better |
 | tower_stack | Sky Stacker (one-tap stacker) | target_height, speed, speed_step, block_width | perfect drops |
 | block_puzzle | Block Fit (8x8 drag pieces, clear lines) | grid, goal (lines/clear), target_lines, prefilled, piece_set | score |

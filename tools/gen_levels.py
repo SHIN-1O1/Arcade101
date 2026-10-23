@@ -1,4 +1,4 @@
-"""Regenerates games/<id>/levels.json (endless-only games such as number_merge have none) with a smooth difficulty curve.
+"""Regenerates games/<id>/levels.json (endless-only games such as number_merge and fruit_merge have none) with a smooth difficulty curve.
 Run from the project root:  python tools/gen_levels.py
 Hand-edit the JSON afterwards if a level needs tuning; re-running overwrites it.
 Every level has "seed" (deterministic layout) and "stars": [1-star, 2-star, 3-star]
@@ -9,12 +9,6 @@ N = 30
 
 def lerp(a, b, t): return a + (b - a) * t
 def ri(a, b, t): return int(round(lerp(a, b, t)))
-
-def fruit_merge(i, t):
-    # Score attack: reach target_tier before the jar overflows.
-    target = ri(6, 11, t)
-    return {"target_tier": target, "spawn_max_tier": 3 if i < 10 else 4,
-            "jar_width": ri(520, 440, t), "stars": [ri(400, 4000, t), ri(700, 6500, t), ri(1000, 9000, t)]}
 
 def _pour(tubes, a, b, cap):
     src, dst = tubes[a], tubes[b]
@@ -110,7 +104,6 @@ def bubble_shooter(i, t):
     return d
 
 GAMES = {
-    "fruit_merge":    (fruit_merge,    "score"),
     "color_sort":     (color_sort,     "moves_used (lower is better)"),
     "tower_stack":    (tower_stack,    "perfect_drops"),
     "block_puzzle":   (block_puzzle,   "score"),
