@@ -3,6 +3,7 @@ extends Control
 
 const FX := preload("res://core/fx.gd")
 const Toast := preload("res://core/toast.gd")
+const CardArt := preload("res://core/cards/card_art.gd")
 
 var _ads_button: Button
 
@@ -229,5 +230,12 @@ class GameCard extends Button:
 					for i in 3 - row:
 						var p := c + Vector2((i - (2 - row) / 2.0) * br * 2.05, (row - 1) * br * 1.8)
 						FX.draw_ball(self, p, br, bcols[(i + row) % 4])
+			"klondike":
+				var cw := s * 1.0
+				var ch := cw * 1.4
+				for i in 3:
+					draw_set_transform(c + Vector2((i - 1) * s * 0.42, s * 0.78), deg_to_rad((i - 1) * 19.0), Vector2.ONE)
+					CardArt.draw_face(self, Rect2(Vector2(-cw / 2.0, -ch), Vector2(cw, ch)), [0, 1, 2][i], 1, 0.0, true)
+				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 			_:
 				FX.draw_ball(self, c, s * 0.7, col.lightened(0.3), String(game.get("name", "?")).left(1))

@@ -103,11 +103,35 @@ def bubble_shooter(i, t):
     d["stars"] = [0, d["shots"] * 3 // 10, d["shots"] // 2]
     return d
 
+def klondike(i, t):
+    """Verified-winnable deals from tools/klondike_deals.json (python tools/klondike_solver.py build).
+    Levels 1-12 draw 1 (easiest deals first), 13-30 draw 3. Undo limits tighten as levels rise."""
+    global _KL
+    if _KL is None:
+        path = os.path.join(os.path.dirname(__file__), "klondike_deals.json")
+        data = json.load(open(path))
+        _KL = {}
+        for name, count in (("draw1", 12), ("draw3", 18)):
+            pool = sorted(data[name], key=lambda d: d["nodes"] * 0.05 + d["moves"] * 2)
+            top = pool[: max(count, int(len(pool) * 0.85))]
+            picks = [top[round(k * (len(top) - 1) / (count - 1))] for k in range(count)]
+            _KL[name] = picks
+            _KL[name + "_all"] = [d["deck"] for d in pool]
+    draw = 1 if i < 12 else 3
+    d = _KL["draw1" if draw == 1 else "draw3"][i if draw == 1 else i - 12]
+    undos = -1 if i < 6 else (30 - (i - 6) * 3 if i < 12 else max(3, 30 - (i - 12) * 1.5))
+    par = d["moves"]
+    return {"seed": d["seed"], "draw": draw, "undos": int(undos), "deck": d["deck"], "time_k": 0.5,
+            "stars": [round(par * 3), round(par * 1.5), round(par * 1.1)]}
+
+_KL = None
+
 GAMES = {
     "color_sort":     (color_sort,     "moves_used (lower is better)"),
     "tower_stack":    (tower_stack,    "perfect_drops"),
     "block_puzzle":   (block_puzzle,   "score"),
     "bubble_shooter": (bubble_shooter, "shots_left"),
+    "klondike":       (klondike,       "effort = max(moves, seconds * time_k), lower is better"),
 }
 
 root = os.path.join(os.path.dirname(__file__), "..", "games")
@@ -120,4 +144,7 @@ for gid, (fn, metric) in GAMES.items():
     os.makedirs(os.path.join(root, gid), exist_ok=True)
     with open(os.path.join(root, gid, "levels.json"), "w") as f:
         json.dump({"star_metric": metric, "levels": levels}, f, indent=1)
+if _KL:  # endless pool for Klondike: every verified deal
+    with open(os.path.join(root, "klondike", "deals.json"), "w") as f:
+        json.dump({"draw1": _KL["draw1_all"], "draw3": _KL["draw3_all"]}, f, separators=(",", ":"))
 print("wrote", len(GAMES), "games x", N, "levels")

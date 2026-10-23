@@ -22,6 +22,8 @@ core/
                    star_pill(), card_box(), stagger_pop(), widgets Backdrop/IconButton/Switch
   fonts/           LilitaOne-Regular.ttf (OFL, licence in OFL.txt), via FX.font()/FX.theme()
   fx.gd            shared visual kit, preload as FX (see "Look and feel")
+  cards/           card kit for solitaire-style games (see "Card kit"): card, deck, pile, card_layout,
+                   card_art, card_view, card_hud, card_table, card_rules
   toast.gd         Toast.show_text(root, msg) floating one-liner (preload it)
   monetization/    ad_config.gd (test IDs, pacing, flags), ad_provider*.gd, iap_provider*.gd
 scenes/            hub, level_select, game_host, settings (.tscn + .gd);
@@ -29,6 +31,7 @@ scenes/            hub, level_select, game_host, settings (.tscn + .gd);
 data/games.json    game registry (order = hub order)
 games/<id>/        game.tscn (+ scripts/assets) and levels.json (30 levels)
 tools/gen_levels.py  regenerates every levels.json (overwrites hand edits!)
+tools/klondike_solver.py  finds verified-winnable Klondike deals -> tools/klondike_deals.json (gen_levels.py reads it)
 tests/smoke_test.gd  headless check: registry, levels, save logic, scenes load
 ```
 
@@ -69,6 +72,40 @@ a fresh pull into an open editor does not know new global classes yet).
 - Menus: `UI.screen(root, accent)` sets `FX.theme()` (Lilita One, outlined text) and the
   gradient Backdrop; `FX.draw_star`, `draw_lock`, `draw_icon` draw icons (the font has no ★).
   Screens: scenes/hub.gd (game cards with drawn emblems), level_select.gd (LevelTile states).
+
+## Card kit (core/cards/): for Klondike, Spider, FreeCell and any other card game
+Load each script with `const X := preload("res://core/cards/x.gd")` (no class_name, same reason as FX).
+Cards are data (`Card`: rank 1..13, suit 0 spades/1 hearts/2 diamonds/3 clubs, `face_up`, unique `uid`, `code()` = suit*13+rank-1).
+- `deck.gd` Deck: `codes(decks, suits)` (suits < 4 repeats the first suits, for Spider), `shuffled(codes, seed)` (seeded
+  Fisher-Yates, same seed = same deal), `make_cards(codes)`, `permute_suits(codes, perm)`.
+- `pile.gd` Pile: `id`, `kind` (free text: "tableau", "foundation", "stock", "waste", "cell"), `cards`, `fan` (NONE / DOWN / RIGHT),
+  `origin`, `max_extent` (height a DOWN fan may use; it shrinks to fit), `slot_label`, `recycle`, `show_slot`, `fan_step`.
+- `card_layout.gd` CardLayout: `card_size(width, columns, margin, gap)`, `column_x(...)`, `fan_down`, `fan_right`. Everything
+  derives from the size the game gives it, so 9:16 to 9:21 portrait all work (no fixed pixels).
+- `card_art.gd` / `card_view.gd`: glossy cream faces with vector pips and court cards, indigo/tangerine backs, soft shadows,
+  squash flip, hint glow. `CardArt.draw_face(ci, rect, suit, rank)` / `draw_back` can be reused anywhere (hub emblem does).
+- `card_hud.gd` CardHud: `StatPill` (title + popping value) and `ActionButton` (glossy tile with a vector icon: undo, hint,
+  auto, draw, flag, tap; badge, attention pulse, compact toggle) so card games share one HUD look. Klondike also draws its felt
+  table and drifting suits itself (games/klondike/game.gd `Felt`, `Motes`): copy that for a consistent table.
+- `card_rules.gd` CardRules: THE interface each game implements (override what you need):
+  `can_pick(t, pile, index)`, `can_drop(t, cards, from, to)`, `on_tap(t, pile, index)` (stock draw; index -1 = empty slot),
+  `auto_target(t, pile, index)` (double-tap / tap-to-move destination), `after_move(t, from, to, count)` (flip exposed
+  card, scoring, Spider run removal via `t.move_cards(..., false)`), `hints(t)`, `auto_step(t)` ({} when done; may return
+  `{"action": Callable}`), `is_won(t)`, `get_extra()/set_extra()` (your counters, saved in every undo snapshot).
+  A move is `{"from": Pile, "index": int, "to": Pile}` (cards from[index:] move).
+- `card_table.gd` CardTable (Control): add piles (`add_pile(id, kind, fan)`), set `rules` and `layout_callback`
+  (`func(t)`: set `t.card_size` and every pile's `origin`/`max_extent`; called on every resize), then `add_cards(cards, pile_id)`
+  and `refresh(true, moving_cards)`. It handles drag and drop with snap-back (drop target = best overlap that `can_drop`
+  accepts), double-tap auto-move, optional `tap_to_move`, `move_cards()/move_list()` (tweened, one undo snapshot each),
+  `undo()` (whole-table snapshots: piles, face-up flags, rules extra), `show_hint()` (cycles `rules.hints`),
+  `sparkle(pile_id)`, `auto_complete(step)`, `play_win()` (foundation cascade with trails, tap skips) and signals `moved`, `changed`,
+  `win_animation_finished`, `auto_complete_finished`. Input skips emulated duplicate events. Kit plays select/place/locked/tap sfx
+  (`sfx = false` to mute). `busy` is true during auto-complete and the win cascade.
+- Game side: `BaseGame` subclass that owns a CardTable plus its own buttons/HUD. Example: games/klondike/game.gd (rules in
+  klondike_rules.gd). Spider = 10 tableau piles, stock deals a card to each, `after_move` removes a K..A same-suit run to a
+  foundation; FreeCell = "cell" piles + a `can_drop` that checks the free-cell move limit.
+- Deals that must be winnable: store verified deck orders in levels.json (Klondike: `tools/klondike_solver.py`) instead of
+  relying on the shuffle; permuting suits keeps a Klondike deal winnable.
 
 ## Sound (autoload/feedback.gd, audio/)
 All audio is synthesised by `python tools/gen_audio.py` (numpy + ffmpeg) into `audio/sfx/*.ogg` and
@@ -125,7 +162,8 @@ Per-game params (defined in tools/gen_levels.py):
 | block_puzzle | Block Fit (8x8 drag pieces, clear lines) | grid, goal (lines/clear), target_lines, prefilled, piece_set | score |
 | number_merge | Merge Tiles (2048-like swipe) | none: endless only (games.json `endless` block: ramp_score) | high score |
 | bubble_shooter | Bubble Burst (aim-and-pop) | goal (clear/color/gems), layout, rows, colors, shots, drop_every, target_color, target_n, gems; also has an endless mode | shots left (endless: score) |
-Tube Sort, Block Fit, Bubble Burst and Merge Tiles (endless only) are playable; the other two are placeholders (stub_game.gd). `status` in games.json tracks this.
+| klondike | Klondike Solitaire | deck (52 card codes, verified winnable), draw 1/3, undos (-1 = unlimited), time_k | effort = max(moves, seconds * time_k), lower better |
+Tube Sort, Block Fit, Sky Stacker, Klondike, Bubble Burst and Merge Tiles (endless only) are playable; Fruit Fusion is a placeholder (stub_game.gd). `status` in games.json tracks this.
 
 ## Add or implement a game
 1. Create `games/<id>/` with `game.gd` (`extends BaseGame`) and `game.tscn` whose
