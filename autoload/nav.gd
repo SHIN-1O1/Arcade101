@@ -78,7 +78,7 @@ func play(id: String, level: int) -> void:
 
 
 func back() -> void:
-	if _busy:
+	if _busy or Ads.is_showing():  # the ad's own close continues the flow
 		return
 	match _current():
 		GAME_HOST:

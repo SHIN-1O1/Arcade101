@@ -66,6 +66,11 @@ func on_level_finished(won := true, level_index := -1) -> void:
 		_due = true
 
 
+## True while a full-screen ad is on screen (Nav ignores Back meanwhile).
+func is_showing() -> bool:
+	return _busy
+
+
 func interstitial_due() -> bool:
 	return (_due and ads_enabled() and not _busy
 		and _now_msec() - _last_ad_msec >= Cfg.INTERSTITIAL_COOLDOWN_SEC * 1000
