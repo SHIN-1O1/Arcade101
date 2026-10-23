@@ -303,9 +303,9 @@ class StarRow extends Control:
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		for sp in _sparks:  # four-point twinkles
 			var age: float = sp[1]
-			if age < 0.0:
-				continue
 			var k := sin(age / 0.55 * PI)
+			if age < 0.0 or sp[2] * k < 0.5:
+				continue  # not born yet, or too small to triangulate
 			var p: Vector2 = sp[0]
 			var sz: float = sp[2] * k
 			var w := sz * 0.22

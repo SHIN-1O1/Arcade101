@@ -1,6 +1,53 @@
 # QA report
 
-Last run: 2026-10-23, on `main` at #15 (Klondike) plus the fixes in this PR. Covers Fruit Fusion,
+## Final regression pass (2026-10-23, `main` after #19 to #22)
+Covers all 8 games in every mode on the new neon UI and art: Fruit Fusion, Tube Sort, Sky Stacker,
+Block Fit, Merge Tiles, Solitaire, Bubble Burst and Mahjong Match.
+
+**Runs:** smoke test on Godot 4.7.2 and 4.3; the full driver walk (below) on 4.7.2 with touch at 9:19,
+4.7.2 with mouse at 9:16 and 4.3 with mouse at 9:19; then the interrupt, ads, edge-case, hub-scroll and
+per-screen cost scripts.
+
+**Passed**
+- Every game and mode plays, finishes and returns to the hub with touch and mouse on both versions.
+  No script errors, node counts back to the hub baseline, 0 orphan nodes after 5 restart cycles.
+- How-to card pops up on first entry only and freezes the game underneath; "i" reopens it.
+- Ads: none mid-level or on the result card; the first ad after level 2, then every 2nd win; fails
+  never count; endless "Play again" / "Home" are wrapped; No Ads suppresses them; Back during a
+  slow (real-SDK-like) ad does not pull the player back into a game.
+- Pause on interrupt (Sky Stacker, Fruit Fusion, Solitaire): Paused card on focus-out, Back or
+  Resume continues; never over the result card or menus. Fruit Fusion squash stays bounded on
+  200 ms frames.
+- Hub list scrolls by dragging on a card, a plain tap still opens the mode picker; tap outside
+  and Back close the picker.
+- The Solitaire bottom bar no longer looks cramped at 9:16 (new layout in #22). Solitaire now
+  costs about 600 draw calls a frame (was 3,200) thanks to the card atlas.
+
+**Fixed in this PR**
+1. **Mahjong Match: big boards cost up to about 4,200 draw calls a frame** (level 30; level 15
+   about 2,400), the heaviest screen in the app and likely to drop frames on low-end phones. Resting
+   tiles now come from a pre-rendered atlas (`games/mahjong_match/tile_cache.gd`, same idea as the
+   Solitaire card atlas): level 30 drops to about 650 calls and primitives from 285k to 19k.
+   Selected, hinted and shaking tiles still draw as vectors; pixel diffs against the vector tiles
+   differ only by sub-pixel edges. Headless runs keep the vector path.
+2. **Result card logged "Invalid polygon data, triangulation failed"** when a star twinkle was
+   born at size zero. Zero-size twinkles are skipped.
+3. **Result card logged "Tween started with no Tweeners"** after a level that ends with no status
+   line (fixed in #18's last commit, rechecked here).
+
+**Findings, not fixed here**
+- **Hub:** about 1,600 draw calls a frame (animated neon backdrop about 430, game cards about 1,200).
+  It is a menu, so a dropped frame matters less than in play, but caching each card into a texture
+  would bring it down if low-end phones stutter on the hub.
+- **Block Fit balance:** a greedy bot still wins only 11 of 30 campaign levels. It plays
+  worse than people, so this needs the human playtest to judge.
+- Frame times under xvfb are software-rendered (all screens 30 to 100 ms), so only the relative
+  costs above mean anything; real-device frame times still need the playtest.
+
+---
+
+## First pass (2026-10-23, #18)
+Run on `main` at #15 (Klondike) plus the fixes in this PR. Covers Fruit Fusion,
 Tube Sort, Sky Stacker, Block Fit, Merge Tiles, Klondike and Bubble Burst in every mode.
 Mahjong Match (#16) was not mergeable with main at the time, so it is not covered yet.
 
