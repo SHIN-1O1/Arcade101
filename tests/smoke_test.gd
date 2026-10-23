@@ -60,6 +60,10 @@ func _run() -> void:
 		change_scene_to_file(path)
 		await process_frame
 		await process_frame
+		# A script with a parse error still "loads" as a bare Control; catch that here.
+		if current_scene == null or current_scene.get_script() == null:
+			push_error("%s did not load with its script" % path); errors += 1
+			continue
 		print("ok ", path)
 	for id in ["fruit_merge", "number_merge"]:  # endless runs
 		root.get_node("Nav").game_id = id

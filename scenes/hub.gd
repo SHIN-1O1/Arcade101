@@ -163,6 +163,26 @@ class GameCard extends Button:
 	var max_stars := 90
 	var levels := true  # has a campaign (star bar)
 	var best := -1  # endless best score, -1 = no endless mode
+	var _press_at := Vector2.INF  # where a press started (canvas space), to tell a tap from a scroll
+
+	func _init() -> void:
+		# Cards cover most of the list: let drags through to the ScrollContainer so the list
+		# scrolls on a phone (with STOP it only scrolled from the thin gaps between cards).
+		mouse_filter = Control.MOUSE_FILTER_PASS
+
+	func _gui_input(e: InputEvent) -> void:
+		var at: Vector2 = get_global_transform() * (e.position if "position" in e else Vector2.ZERO)
+		if e is InputEventMouseButton or e is InputEventScreenTouch:
+			if e.pressed:
+				_press_at = at
+			else:
+				_press_at = Vector2.INF
+				if disabled:
+					set_deferred("disabled", false)
+		elif (e is InputEventMouseMotion or e is InputEventScreenDrag) and _press_at != Vector2.INF:
+			if not disabled and at.distance_to(_press_at) > 24.0:
+				disabled = true  # it is a scroll, so lifting the finger must not open the game
+				create_tween().tween_property(self, "scale", Vector2.ONE, 0.15)
 
 	func _draw() -> void:
 		var col := Color(game.get("color", "#8e7dbe"))
