@@ -28,7 +28,9 @@ core/
   monetization/    ad_config.gd (test IDs, pacing, flags), ad_provider*.gd, iap_provider*.gd
 scenes/            hub, level_select, game_host, settings (.tscn + .gd);
                    result_overlay.gd = level complete/failed card (preloaded by game_host)
+                   how_to_play.gd = how-to-play card (host shows it on load unless hidden, and from the "i" button)
 data/games.json    game registry (order = hub order)
+data/how_to_play.json  how-to-play text per game id: steps (2-4 lines) + optional endless tip; every game needs one
 games/<id>/        game.tscn (+ scripts/assets) and levels.json (30 levels)
 tools/gen_levels.py  regenerates every levels.json (overwrites hand edits!)
 tools/klondike_solver.py  finds verified-winnable Klondike deals -> tools/klondike_deals.json (gen_levels.py reads it)
@@ -162,7 +164,7 @@ Per-game params (defined in tools/gen_levels.py):
 | block_puzzle | Block Fit (8x8 drag pieces, clear lines) | grid, goal (lines/clear), target_lines, prefilled, piece_set | score |
 | number_merge | Merge Tiles (2048-like swipe) | none: endless only (games.json `endless` block: ramp_score) | high score |
 | bubble_shooter | Bubble Burst (aim-and-pop) | goal (clear/color/gems), layout, rows, colors, shots, drop_every, target_color, target_n, gems; also has an endless mode | shots left (endless: score) |
-| klondike | Klondike Solitaire | deck (52 card codes, verified winnable), draw 1/3, undos (-1 = unlimited), time_k | effort = max(moves, seconds * time_k), lower better |
+| klondike | Solitaire (Klondike rules; player-facing name is "Solitaire", id/paths stay klondike) | deck (52 card codes, verified winnable), draw 1/3, undos (-1 = unlimited), time_k | effort = max(moves, seconds * time_k), lower better |
 Tube Sort, Block Fit, Sky Stacker, Klondike, Bubble Burst and Merge Tiles (endless only) are playable; Fruit Fusion is a placeholder (stub_game.gd). `status` in games.json tracks this.
 
 ## Add or implement a game
@@ -170,7 +172,8 @@ Tube Sort, Block Fit, Sky Stacker, Klondike, Bubble Burst and Merge Tiles (endle
    root Control uses it (copy an existing game.tscn, change the script path).
 2. Add a generator function + entry in `GAMES` in tools/gen_levels.py, run
    `python tools/gen_levels.py` (or hand-write levels.json).
-3. Add/update the entry in data/games.json (id, name, tagline, color, scene, status).
+3. Add/update the entry in data/games.json (id, name, tagline, color, scene, status) and its
+   how-to-play text in data/how_to_play.json (the smoke test fails without it).
 4. Run the smoke test (below). Nothing else needs changing.
 
 ## Commands

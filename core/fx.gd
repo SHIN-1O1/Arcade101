@@ -233,6 +233,11 @@ static func draw_icon(ci: CanvasItem, icon: String, c: Vector2, s: float, col :=
 				pts.append(c + Vector2(cos(a + PI / 16.0), sin(a + PI / 16.0)) * s * 0.4 * tooth)
 			ci.draw_colored_polygon(pts, col)
 			ci.draw_circle(c, s * 0.13, Color(0, 0, 0, 0.45))
+		"info":  # lowercase i: dot over a stem with a little foot
+			ci.draw_circle(c + Vector2(0, -s * 0.27), w * 0.75, col)
+			ci.draw_line(c + Vector2(-s * 0.07, -s * 0.06), c + Vector2(0, -s * 0.06), col, w)
+			ci.draw_line(c + Vector2(0, -s * 0.06 - w / 2.0), c + Vector2(0, s * 0.3), col, w)
+			ci.draw_line(c + Vector2(-s * 0.12, s * 0.3), c + Vector2(s * 0.12, s * 0.3), col, w)
 
 
 static func ease_smooth(x: float) -> float:

@@ -16,6 +16,8 @@ func _run() -> void:
 		if not game is BaseGame:
 			push_error("%s root is not BaseGame" % g.id); errors += 1
 		game.free()
+		if games.how_to_play(g.id).get("steps", []).is_empty():
+			push_error("%s has no how-to-play steps in data/how_to_play.json" % g.id); errors += 1
 	var fb: Node = root.get_node("Feedback")
 	for sfx_name in fb.SFX:
 		if load("%s%s.ogg" % [fb.SFX_DIR, fb.SFX[sfx_name][0]]) == null:
@@ -36,6 +38,9 @@ func _run() -> void:
 	assert(save.get_high_score("number_merge") == 120)
 	assert(games.has_endless("number_merge") and not games.has_levels("number_merge"))
 	assert(games.endless_level("number_merge").endless)
+	assert(not save.is_howto_hidden("color_sort"))
+	save.set_howto_hidden("color_sort", true)
+	assert(save.is_howto_hidden("color_sort") and not save.is_howto_hidden("klondike"))
 	save.reset_all()
 	errors += await _test_monetization()
 	errors += _test_cards()
