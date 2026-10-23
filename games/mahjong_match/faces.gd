@@ -24,6 +24,32 @@ const PIPS: Array = [
 ]
 
 
+## Filled polygon with an anti-aliased rim (Godot polygons have hard edges).
+static func _fill(ci: CanvasItem, pts: PackedVector2Array, col: Color, cols := PackedColorArray()) -> void:
+	var loop := pts.duplicate()
+	loop.append(pts[0])
+	if cols.is_empty():
+		ci.draw_colored_polygon(pts, col)
+		ci.draw_polyline(loop, col, 1.0, true)
+	else:
+		ci.draw_polygon(pts, cols)
+		var lc := cols.duplicate()
+		lc.append(cols[0])
+		ci.draw_polyline_colors(loop, lc, 1.0, true)
+
+
+## Rounded bar (pill) outline from top to bottom centre points.
+static func _pill(top: Vector2, bottom: Vector2, half_w: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for k in 9:
+		var a := PI + PI * k / 8.0
+		pts.append(top + Vector2(cos(a), sin(a) * 0.6) * half_w)
+	for k in 9:
+		var a := PI * k / 8.0
+		pts.append(bottom + Vector2(cos(a), sin(a) * 0.6) * half_w)
+	return pts
+
+
 static func draw_face(ci: CanvasItem, r: Rect2, key: int, variant: int, font: Font) -> void:
 	var c := r.get_center()
 	var w := r.size.x
@@ -84,16 +110,24 @@ static func _sticks(ci: CanvasItem, c: Vector2, w: float, h: float, n: int) -> v
 	for i in n:
 		var p: Array = PIPS[n - 1][i]
 		var pc := c + Vector2(p[0] * w * 1.05, p[1] * h)
-		var col := GREEN if (n == 1 or i % 2 == 0) else RED.lerp(GREEN, 0.15)
+		var col := GREEN if (n == 1 or i % 2 == 0) else Color("#1f7a8c")
 		if n == 1:
 			col = ORANGE
-		var bar := Rect2(pc - Vector2(bw, bh) / 2.0, Vector2(bw, bh))
-		ci.draw_rect(bar, col.darkened(0.25))
-		ci.draw_rect(Rect2(bar.position + Vector2(bw * 0.15, 0), Vector2(bw * 0.55, bh)), col)
-		ci.draw_rect(Rect2(bar.position + Vector2(bw * 0.2, 0), Vector2(bw * 0.14, bh)), col.lightened(0.45))
-		for k in 2:  # bamboo-like joints
-			ci.draw_rect(Rect2(bar.position + Vector2(-bw * 0.08, bh * (0.3 + 0.4 * k) - 1.5), Vector2(bw * 1.16, 3.0)),
-				col.darkened(0.45))
+		var hw := bw * 0.5
+		var top := pc - Vector2(0, bh * 0.5 - hw * 0.6)
+		var bot := pc + Vector2(0, bh * 0.5 - hw * 0.6)
+		var pts := _pill(top, bot, hw)
+		ci.draw_colored_polygon(_pill(top + Vector2(1.2, 2.0), bot + Vector2(1.2, 2.0), hw), Color(0, 0, 0, 0.16))
+		var cols := PackedColorArray()
+		for q in pts:  # rounded stalk: light on the left, deep on the right
+			var t := clampf((q.x - (pc.x - hw)) / (hw * 2.0), 0.0, 1.0)
+			cols.append(col.lightened(0.35).lerp(col.darkened(0.35), t))
+		_fill(ci, pts, col, cols)
+		for k in 2:  # bamboo joints
+			var jy := pc.y - bh * 0.5 + bh * (0.33 + 0.34 * k)
+			ci.draw_line(Vector2(pc.x - hw * 1.08, jy), Vector2(pc.x + hw * 1.08, jy), col.darkened(0.5), maxf(1.5, bw * 0.13), true)
+			ci.draw_line(Vector2(pc.x - hw * 0.8, jy + bw * 0.13), Vector2(pc.x + hw * 0.6, jy + bw * 0.13), Color(1, 1, 1, 0.35), 1.0, true)
+		ci.draw_line(Vector2(pc.x - hw * 0.4, top.y), Vector2(pc.x - hw * 0.4, bot.y), Color(1, 1, 1, 0.45), maxf(1.0, bw * 0.1), true)
 
 
 static func _numeral(ci: CanvasItem, c: Vector2, w: float, h: float, n: int, font: Font) -> void:
@@ -102,15 +136,22 @@ static func _numeral(ci: CanvasItem, c: Vector2, w: float, h: float, n: int, fon
 	ci.draw_string(font, tp + Vector2(2, 3), str(n), HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0, 0, 0, 0.2))
 	ci.draw_string_outline(font, tp, str(n), HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 5, RED.darkened(0.5))
 	ci.draw_string(font, tp, str(n), HORIZONTAL_ALIGNMENT_LEFT, -1, fs, RED.lightened(0.05))
-	var by := c.y + h * 0.33  # a little brush mark under the numeral
-	ci.draw_rect(Rect2(c.x - w * 0.3, by, w * 0.6, h * 0.045), INK)
-	ci.draw_circle(Vector2(c.x, by + h * 0.12), h * 0.05, BLUE)
+	var by := c.y + h * 0.35  # a tapered brush stroke and a small gold seal under the numeral
+	_fill(ci, PackedVector2Array([Vector2(c.x - w * 0.32, by + h * 0.01), Vector2(c.x + w * 0.3, by - h * 0.012),
+		Vector2(c.x + w * 0.33, by + h * 0.02), Vector2(c.x - w * 0.28, by + h * 0.045)]), INK)
+	var sc := Vector2(c.x, by + h * 0.13)
+	var d := h * 0.06
+	_fill(ci, PackedVector2Array([sc + Vector2(0, -d), sc + Vector2(d, 0), sc + Vector2(0, d), sc + Vector2(-d, 0)]), Color("#c8961e"))
+	ci.draw_circle(sc, d * 0.35, Color("#fff4cf"))
 
 
 static func _wind(ci: CanvasItem, c: Vector2, w: float, h: float, n: int, font: Font) -> void:
 	var rad := w * 0.38
+	ci.draw_circle(c + Vector2(0, rad * 0.08), rad * 1.04, Color(0, 0, 0, 0.16))
 	ci.draw_circle(c, rad, DEEP)
-	ci.draw_circle(c, rad * 0.86, Color("#dbe6ff"))
+	ci.draw_arc(c, rad * 0.93, 0.0, TAU, 40, Color(LEMON, 0.9), maxf(1.0, rad * 0.06), true)
+	ci.draw_circle(c, rad * 0.84, Color("#e8efff"))
+	ci.draw_circle(c + Vector2(0, -rad * 0.2), rad * 0.6, Color(1, 1, 1, 0.5))
 	var fs := int(rad * 1.35)
 	var t := "NESW"[n]
 	var tp := c + Vector2(-font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x / 2.0, fs * 0.34)
@@ -123,11 +164,17 @@ static func _wind(ci: CanvasItem, c: Vector2, w: float, h: float, n: int, font: 
 static func _gem(ci: CanvasItem, c: Vector2, w: float, h: float, n: int) -> void:
 	var col: Color = [RED, GREEN, BLUE][n]
 	var s := w * 0.36
-	if n == 0:  # red: faceted diamond
+	if n == 0:  # red: cut gem with a table and eight facets
 		var pts := PackedVector2Array([c + Vector2(0, -s * 1.3), c + Vector2(s, 0), c + Vector2(0, s * 1.3), c + Vector2(-s, 0)])
-		ci.draw_colored_polygon(pts, col.darkened(0.15))
-		ci.draw_colored_polygon(PackedVector2Array([pts[0], pts[1], c, pts[3]]), col.lightened(0.25))
-		ci.draw_polyline(pts + PackedVector2Array([pts[0]]), col.darkened(0.5), 2.5, true)
+		var tab := PackedVector2Array([c + Vector2(0, -s * 0.6), c + Vector2(s * 0.46, 0), c + Vector2(0, s * 0.6), c + Vector2(-s * 0.46, 0)])
+		var shades := [0.35, 0.05, -0.25, 0.15]
+		for k in 4:
+			var f := PackedVector2Array([pts[k], pts[(k + 1) % 4], tab[(k + 1) % 4], tab[k]])
+			var sh: float = shades[k]
+			_fill(ci, f, col.lightened(sh) if sh > 0.0 else col.darkened(-sh))
+		_fill(ci, tab, col.lightened(0.18))
+		ci.draw_colored_polygon(PackedVector2Array([tab[0], tab[3], c + Vector2(-s * 0.1, -s * 0.12)]), Color(1, 1, 1, 0.45))
+		ci.draw_polyline(pts + PackedVector2Array([pts[0]]), col.darkened(0.55), 2.0, true)
 	elif n == 1:  # green: four-leaf clover
 		for k in 4:
 			var a := k * PI / 2.0 + PI / 4.0
