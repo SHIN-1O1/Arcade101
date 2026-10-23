@@ -1,6 +1,8 @@
 extends BaseGame
 ## Block Fit: drag one of three shapes onto an 8x8 grid; full rows/columns clear.
-## Campaign goal: clear N lines ("lines") or clear every pre-placed block ("clear").
+## Campaign goal: clear N lines ("lines") or clear every pre-placed block ("clear"). Campaign stars
+## count the pieces used to reach the goal (lower is better, so multi-line clears pay off); the
+## thresholds come from bot.gd, a greedy player run over every level (see tools/gen_levels.py).
 ## Endless: no goal, score only; shapes get more awkward and garbage blocks appear as
 ## difficulty(score) rises. Both end when none of the offered shapes fits.
 ## Everything is drawn in _draw().
@@ -34,6 +36,7 @@ var cells: Array[int] = []
 var pre: Array[bool] = []
 var score := 0
 var lines_done := 0
+var placed := 0  # pieces used: the campaign star metric
 var goal := "lines"
 var target_lines := 5
 var blockers_left := 0
@@ -69,6 +72,7 @@ func _on_start() -> void:
 	pre.fill(false)
 	score = 0
 	lines_done = 0
+	placed = 0
 	over = false
 	drag_slot = -1
 	flashes.clear()
@@ -123,10 +127,16 @@ func _line_full(n: int, column: bool) -> bool:
 	return true
 
 
+## Campaign: big pieces (EXTENDED) come up at the level's "ext_weight" relative to the basic ones.
 ## Endless ramp: small pieces fade out and awkward ones (long bars, zigzags, big Ls) take over.
 func _pick_shape() -> Dictionary:
 	if not endless:
-		return shapes[rng.randi_range(0, shapes.size() - 1)]
+		var ext := float(level.get("ext_weight", 1.0))
+		var n_ext := shapes.size() - BASIC.size()
+		var roll_c := rng.randf() * (BASIC.size() + n_ext * ext)
+		if roll_c < BASIC.size() or n_ext == 0:
+			return shapes[mini(int(roll_c), BASIC.size() - 1)]
+		return shapes[BASIC.size() + mini(int((roll_c - BASIC.size()) / ext), n_ext - 1)]
 	var d := difficulty(score)
 	var total := 0.0
 	var weights: Array[float] = []
@@ -175,7 +185,10 @@ func _refill() -> void:
 		for s in SLOTS:
 			var sh: Dictionary = _pick_shape()
 			pieces.append({"cells": sh.cells, "w": sh.w, "h": sh.h, "color": rng.randi_range(0, PIECE_COLORS.size() - 1)})
-		if _any_fits():
+		# Campaign trays are fair: for the first tries every piece must fit somewhere on its own.
+		if (endless or attempt >= 10) and _any_fits():
+			return
+		if not endless and attempt < 10 and _all_fit():
 			return
 	# No fair trio found: guarantee a dot so the board is not an instant loss.
 	pieces[0] = {"cells": [Vector2i.ZERO] as Array[Vector2i], "w": 1, "h": 1, "color": 0}
@@ -198,6 +211,13 @@ func _fits_anywhere(p: Dictionary) -> bool:
 	return false
 
 
+func _all_fit() -> bool:
+	for p in pieces:
+		if p != null and not _fits_anywhere(p):
+			return false
+	return true
+
+
 func _any_fits() -> bool:
 	for p in pieces:
 		if p != null and _fits_anywhere(p):
@@ -210,6 +230,7 @@ func _place(slot: int, ox: int, oy: int) -> void:
 	for c: Vector2i in p.cells:
 		cells[(oy + c.y) * g + ox + c.x] = p.color + 1
 	score += p.cells.size()
+	placed += 1
 	if endless:
 		report_score(score)
 	pieces[slot] = null
@@ -277,7 +298,7 @@ func _finish(won: bool) -> void:
 	if endless:
 		end_run(score)
 	elif won:
-		win(maxi(1, stars_for(score)))
+		win(maxi(1, stars_for(placed, true)))
 	else:
 		fail()
 
@@ -285,11 +306,11 @@ func _finish(won: bool) -> void:
 func _report() -> void:
 	if endless:
 		return
-	report_progress(score)
+	report_progress(placed, true)
 	if goal == "clear":
-		status_changed.emit("%d / %d left  ·  Score %d" % [blockers_left, blockers_total, score])
+		status_changed.emit("%d / %d left  ·  Pieces %d" % [blockers_left, blockers_total, placed])
 	else:
-		status_changed.emit("Lines %d/%d  ·  Score %d" % [lines_done, target_lines, score])
+		status_changed.emit("Lines %d/%d  ·  Pieces %d" % [lines_done, target_lines, placed])
 
 
 # ---------- layout & input ----------
