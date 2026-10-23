@@ -25,6 +25,7 @@ const SFX := {
 	"back": ["back", -4.0, 0.04],
 	"locked": ["locked", -4.0, 0.03],
 	"unlock": ["unlock", -3.0, 0.0],
+	"swoosh": ["swoosh", -6.0, 0.05],
 }
 ## Old names still used in existing code.
 const ALIASES := {"lose": "fail"}
@@ -52,7 +53,8 @@ func _ready() -> void:
 
 
 ## Plays a named effect (see SFX). Silent when the sound toggle is off.
-func sfx(sfx_name: String) -> void:
+## pitch scales the playback rate, e.g. rising notes for a run of stars.
+func sfx(sfx_name: String, pitch := 1.0) -> void:
 	if not Save.get_setting("sound"):
 		return
 	sfx_name = ALIASES.get(sfx_name, sfx_name)
@@ -69,7 +71,7 @@ func sfx(sfx_name: String) -> void:
 	_next = (_next + 1) % POOL_SIZE
 	p.stream = stream
 	p.volume_db = def[1]
-	p.pitch_scale = 1.0 + randf_range(-def[2], def[2])
+	p.pitch_scale = pitch * (1.0 + randf_range(-def[2], def[2]))
 	p.play()
 
 

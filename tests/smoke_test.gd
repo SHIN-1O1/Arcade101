@@ -42,9 +42,16 @@ func _run() -> void:
 	assert(save.get_high_score("number_merge") == 120)
 	assert(games.has_endless("number_merge") and not games.has_levels("number_merge"))
 	assert(games.endless_level("number_merge").endless)
-	assert(not save.is_howto_hidden("color_sort"))
-	save.set_howto_hidden("color_sort", true)
-	assert(save.is_howto_hidden("color_sort") and not save.is_howto_hidden("klondike"))
+	assert(not save.is_howto_seen("color_sort"))
+	save.set_howto_seen("color_sort")
+	assert(save.is_howto_seen("color_sort") and not save.is_howto_seen("klondike"))
+	# A damaged save must load as defaults, not crash later lookups.
+	var f := FileAccess.open(save.SAVE_PATH, FileAccess.WRITE)
+	f.store_string('{"version":1,"progress":{"color_sort":{"stars":[3,null]},"block_puzzle":7},"highscores":[1]}')
+	f.close()
+	save.load_game()
+	assert(save.total_stars("color_sort") == 3 and save.total_stars("block_puzzle") == 0)
+	assert(save.get_high_score("number_merge") == 0)
 	save.reset_all()
 	errors += await _test_monetization()
 	errors += _test_cards()
@@ -53,6 +60,10 @@ func _run() -> void:
 		change_scene_to_file(path)
 		await process_frame
 		await process_frame
+		# A script with a parse error still "loads" as a bare Control; catch that here.
+		if current_scene == null or current_scene.get_script() == null:
+			push_error("%s did not load with its script" % path); errors += 1
+			continue
 		print("ok ", path)
 	for id in ["fruit_merge", "number_merge"]:  # endless runs
 		root.get_node("Nav").game_id = id
@@ -94,7 +105,7 @@ func _test_monetization() -> int:
 	ads.run_after_interstitial(go)
 	if ads.provider.shown_interstitials != 1 or shown.size() != 1:
 		push_error("interstitial not shown exactly once"); errors += 1
-	# Cooldown: more wins right away must not show another ad within 60 s.
+	# Cooldown: more wins right away must not show another ad within the cooldown.
 	for i in 2:
 		ads.on_level_finished(true, 5 + i)
 	if ads.interstitial_due(): push_error("cooldown ignored"); errors += 1
@@ -125,6 +136,7 @@ func _test_monetization() -> int:
 	ads.show_rewarded()
 	await create_timer(0.6).timeout
 	if granted != [true]: push_error("rewarded not granted"); errors += 1
+	save.set_no_ads(false)  # reset_all keeps purchases; don't leave No Ads on in the dev save
 	save.reset_all()
 	print("monetization checks done")
 	return errors
