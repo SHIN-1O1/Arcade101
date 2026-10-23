@@ -36,7 +36,11 @@ const COOLDOWN := [0.55, 0.38]  # seconds between drops at difficulty 0 and 1
 const GRAVITY_SCALE := 1.35
 const MAX_SPEED := 820.0  # px/s: under one berry radius per physics step, so nothing sinks into a fruit
 const DRAG := 0.0016  # quadratic air drag (1/px): terminal speed ~ sqrt(g / DRAG), eased instead of clipped
-const BOUNCE := 0.07  # fruit restitution (Godot adds both bodies' values: fruit on fruit ~0.14)
+const BOUNCE := 0.03  # material restitution, kept tiny: the landing hop below is what players see
+## Landing hop: a fruit that stops a fall faster than HOP_MIN px/s rebounds at HOP of its impact speed,
+## so the hop grows with the drop height (a fall from the top rises about 12 px, short drops barely lift).
+const HOP := 0.22
+const HOP_MIN := 260.0
 ## Jelly spring (per second squared / per second) and the strongest squash an impact may cause.
 const JELLY_K := 380.0
 const JELLY_C := 8.0
@@ -62,6 +66,7 @@ class Fruit:
 	var jelly_v := 0.0
 	var jelly_dir := PI / 2.0
 	var vel := Vector2.ZERO  # last velocity, to spot impacts
+	var fall := 0.0  # downward speed at the last physics step, to spot landings
 	var dead := false
 
 
@@ -133,7 +138,7 @@ func _try_build() -> void:
 	var walls := StaticBody2D.new()
 	var mat := PhysicsMaterial.new()
 	mat.friction = 0.35
-	mat.bounce = 0.05
+	mat.bounce = 0.0
 	walls.physics_material_override = mat
 	var t := 400.0  # thick walls: nothing can pass through in one step
 	for r in [Rect2(jar.position.x - t, -2000.0, t, jar.end.y + 2000.0 + t),
@@ -255,6 +260,10 @@ func _physics_process(delta: float) -> void:
 		if f.grow < 1.0:
 			f.grow = minf(1.0, f.grow + delta / 0.12)
 			f.shape.radius = f.r * lerpf(0.6, 1.0, f.grow)
+		var lv := f.body.linear_velocity
+		if f.fall > HOP_MIN * u and lv.y < f.fall * 0.35:  # just landed: one small hop
+			f.body.linear_velocity.y = minf(lv.y, -f.fall * HOP)
+		f.fall = maxf(0.0, f.body.linear_velocity.y)
 		var sp2 := f.body.linear_velocity.length_squared()
 		if sp2 < 900.0 and not f.body.sleeping:  # rolling resistance: free rolling, gentle settling
 			f.body.linear_velocity *= 0.97
