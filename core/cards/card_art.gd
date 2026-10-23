@@ -69,8 +69,11 @@ static func _body(ci: CanvasItem, r: Rect2, top: Color, bottom: Color, edge: Col
 	_outline(ci, r.grow(-2.2), rad * 0.8, Color(1, 1, 1, 0.75), 1.1)
 
 
-## Card face. `r` is the card rect in the item's space.
-static func draw_face(ci: CanvasItem, r: Rect2, suit: int, rank: int, lift := 0.0, shadow := true) -> void:
+## Card face. `r` is the card rect in the item's space. Pass `xform` when drawing under your own
+## draw_set_transform (e.g. a fanned hand): the upside-down corner index sets a transform of its
+## own and restores `xform` afterwards instead of identity.
+static func draw_face(ci: CanvasItem, r: Rect2, suit: int, rank: int, lift := 0.0, shadow := true,
+		xform := Transform2D.IDENTITY) -> void:
 	if shadow:
 		draw_shadow(ci, r, lift)
 	_body(ci, r, FACE_TOP, FACE_BOTTOM, Color(0.14, 0.12, 0.4, 0.6))
@@ -81,9 +84,9 @@ static func draw_face(ci: CanvasItem, r: Rect2, suit: int, rank: int, lift := 0.
 	FX.draw_glow(ci, Rect2(r.position + Vector2(w * 0.04, 2.0), Vector2(w * 0.92, h * 0.5)), Color(1, 1, 1, 0.55))
 	_index(ci, r, suit, rank, col)
 	# the same index upside down in the opposite corner (visible on the top card of a pile)
-	ci.draw_set_transform(r.position * 2.0 + r.size, PI, Vector2.ONE)
+	ci.draw_set_transform_matrix(xform * Transform2D(PI, r.position * 2.0 + r.size))
 	_index(ci, r, suit, rank, col)
-	_reset(ci)
+	ci.draw_set_transform_matrix(xform)
 	var area := Rect2(r.position + Vector2(w * 0.22, h * 0.3), Vector2(w * 0.56, h * 0.4))
 	if rank == 1:
 		draw_pip(ci, suit, r.get_center() + Vector2(0, h * 0.02), w * 0.3, col)
