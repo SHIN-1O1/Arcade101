@@ -3,6 +3,7 @@ extends Control
 
 const ResultOverlay := preload("res://scenes/result_overlay.gd")
 const HowToPlay := preload("res://scenes/how_to_play.gd")
+const PauseOverlay := preload("res://scenes/pause_overlay.gd")
 const FX := preload("res://core/fx.gd")
 
 var _game_def: Dictionary
@@ -15,6 +16,7 @@ var _score_bar: ScoreBar
 var _overlay: Control
 var _how_to: Control
 var _endless := false
+var _pause_card: Control  # shown while the app is in the background / unfocused
 
 
 func _ready() -> void:
@@ -34,7 +36,7 @@ func _ready() -> void:
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS  # never push the buttons off a narrow screen
 	top.add_child(title)
 	if not Games.how_to_play(Nav.game_id).get("steps", []).is_empty():
-		top.add_child(UI.icon_button("info", _show_how_to.bind(false)))
+		top.add_child(UI.icon_button("info", _show_how_to))
 	top.add_child(UI.icon_button("restart", _start))
 
 	_status = UI.label("", 28, UI.ACCENT)
@@ -55,8 +57,43 @@ func _ready() -> void:
 	col.add_child(_area)
 	Ads.hide_banner()
 	_start()
-	if not Save.is_howto_hidden(Nav.game_id):
-		_show_how_to(true)
+	if not Save.is_howto_seen(Nav.game_id):  # first time in this game only, not every level
+		_show_how_to()
+		Save.set_howto_seen(Nav.game_id)
+
+
+## Interrupts (call, home button, notification shade): freeze the run so timers and falling
+## pieces don't keep going, and so the frame-time spike on return lands while paused.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
+		_pause.call_deferred()  # sent while the tree propagates it, so no add_child right now
+	elif what == NOTIFICATION_EXIT_TREE and _pause_card:
+		get_tree().paused = false
+
+
+func _pause() -> void:
+	if _pause_card or _overlay or _how_to or Ads.is_showing() or Nav.is_transitioning() \
+			or get_tree().current_scene != self:
+		return  # nothing running to protect (result card, how-to card, ad, or a slide)
+	_pause_card = PauseOverlay.new()
+	_pause_card.on_resume = _resume
+	add_child(_pause_card)
+	get_tree().paused = true
+
+
+func _resume() -> void:
+	if _pause_card:
+		_pause_card.queue_free()
+		_pause_card = null
+	get_tree().paused = false
+
+
+## Android Back while paused resumes instead of leaving (Nav is paused too). Called by Nav.back().
+func handle_back() -> bool:
+	if _pause_card:
+		_resume()
+		return true
+	return false
 
 
 func _start() -> void:
@@ -111,8 +148,7 @@ func _on_finished(won: bool, stars: int) -> void:
 
 
 ## How-to-play card over the game, which is paused (no timers, physics or input) until it closes.
-## auto: shown on load, with a "Don't show again" button that is saved per game.
-func _show_how_to(auto: bool) -> void:
+func _show_how_to() -> void:
 	var info := Games.how_to_play(Nav.game_id)
 	if _how_to or _overlay or info.get("steps", []).is_empty():
 		return
@@ -121,13 +157,10 @@ func _show_how_to(auto: bool) -> void:
 	o.steps = info.steps
 	o.extra = str(info.get("endless", "")) if _endless else ""
 	o.accent = Color(_game_def.get("color", "#FF8A1F"))
-	o.auto = auto
-	o.on_close = func(dont_show: bool):
+	o.on_close = func():
 		_how_to = null
 		if _game:
 			_game.process_mode = Node.PROCESS_MODE_INHERIT
-		if dont_show:
-			Save.set_howto_hidden(Nav.game_id, true)
 	_how_to = o
 	if _game:
 		_game.process_mode = Node.PROCESS_MODE_DISABLED
@@ -162,7 +195,7 @@ func _show_result(won: bool, stars: int, best: bool) -> void:
 	o.accent = Color(_game_def.get("color", "#FF8A1F"))
 	if Nav.level_index + 1 < _levels.size():
 		o.on_next = func(): Ads.run_after_interstitial(func(): Nav.play(Nav.game_id, Nav.level_index + 1))
-	o.on_retry = _start
+	o.on_retry = func(): Ads.run_after_interstitial(_start)  # a no-op after a fail (fails never make an ad due)
 	o.on_levels = func(): Ads.run_after_interstitial(func(): Nav.to_level_select(Nav.game_id))
 	_overlay = o
 	add_child(o)

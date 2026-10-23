@@ -6,6 +6,7 @@ const Toast := preload("res://core/toast.gd")
 const CardArt := preload("res://core/cards/card_art.gd")
 
 var _ads_button: Button
+var _picker: Control  # mode picker overlay while it is open
 
 
 func _ready() -> void:
@@ -103,9 +104,11 @@ func _pick_mode(id: String) -> void:
 	var dim := ColorRect.new()
 	dim.color = Color(0.03, 0.02, 0.1, 0.7)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# Any press outside the card closes it. Phones send a touch (plus an emulated mouse
+	# click), desktops a click (plus an emulated touch); closing twice is harmless.
 	dim.gui_input.connect(func(e: InputEvent):
-		if e is InputEventMouseButton and e.pressed and e.device != InputEvent.DEVICE_ID_EMULATION:
-			layer.queue_free())
+		if (e is InputEventMouseButton or e is InputEventScreenTouch) and e.pressed:
+			handle_back())
 	layer.add_child(dim)
 	var card := PanelContainer.new()
 	card.add_theme_stylebox_override("panel", UI.card_box())
@@ -127,8 +130,19 @@ func _pick_mode(id: String) -> void:
 	center.add_child(card)
 	layer.add_child(center)
 	add_child(layer)
+	_picker = layer
 	card.pivot_offset = card.size / 2.0
 	FX.pop(card, 0.8, 0.25)
+
+
+## Android back / outside tap: close the mode picker if it is open. Called by Nav.back().
+func handle_back() -> bool:
+	if not is_instance_valid(_picker) or _picker.is_queued_for_deletion():
+		return false
+	_picker.queue_free()
+	_picker = null
+	Feedback.sfx("back")
+	return true
 
 
 func _refresh_ads_button() -> void:
@@ -179,6 +193,26 @@ class GameCard extends Button:
 	var max_stars := 90
 	var levels := true  # has a campaign (star bar)
 	var best := -1  # endless best score, -1 = no endless mode
+	var _press_at := Vector2.INF  # where a press started (canvas space), to tell a tap from a scroll
+
+	func _init() -> void:
+		# Cards cover most of the list: let drags through to the ScrollContainer so the list
+		# scrolls on a phone (with STOP it only scrolled from the thin gaps between cards).
+		mouse_filter = Control.MOUSE_FILTER_PASS
+
+	func _gui_input(e: InputEvent) -> void:
+		var at: Vector2 = get_global_transform() * (e.position if "position" in e else Vector2.ZERO)
+		if e is InputEventMouseButton or e is InputEventScreenTouch:
+			if e.pressed:
+				_press_at = at
+			else:
+				_press_at = Vector2.INF
+				if disabled:
+					set_deferred("disabled", false)
+		elif (e is InputEventMouseMotion or e is InputEventScreenDrag) and _press_at != Vector2.INF:
+			if not disabled and at.distance_to(_press_at) > 24.0:
+				disabled = true  # it is a scroll, so lifting the finger must not open the game
+				create_tween().tween_property(self, "scale", Vector2.ONE, 0.15)
 
 	func _ready() -> void:
 		texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED  # scanlines

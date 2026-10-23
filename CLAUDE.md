@@ -28,7 +28,7 @@ core/
   monetization/    ad_config.gd (test IDs, pacing, flags), ad_provider*.gd, iap_provider*.gd
 scenes/            hub, level_select, game_host, settings (.tscn + .gd);
                    result_overlay.gd = level complete/failed card (preloaded by game_host)
-                   how_to_play.gd = how-to-play card (host shows it on load unless hidden, and from the "i" button)
+                   how_to_play.gd = how-to-play card (host pops it up on the first entry to each game, Save.howto_seen; the "i" button reopens it)
 data/games.json    game registry (order = hub order)
 data/how_to_play.json  how-to-play text per game id: steps (2-4 lines) + optional endless tip; every game needs one
 games/<id>/        game.tscn (+ scripts/assets) and levels.json (30 levels)
@@ -45,6 +45,9 @@ calls `start_level(level_dict, index)`. On `finished(won, stars)` it saves via
 overlay (Next/Retry/Levels). Restart button re-instances the game scene (fades the new board in).
 Scenes change via Nav only (never change_scene_* directly) so transitions stay consistent.
 Level N unlocks when level N-1 has >= 1 star.
+Interrupts: game_host pauses the tree behind a Paused card on app focus-out/pause (scenes/pause_overlay.gd),
+so games need no pause code. Android Back: a screen may define `handle_back() -> bool` to close its own
+popup first (hub mode picker, pause card); Nav ignores Back during slides and full-screen ads.
 
 ## BaseGame contract (core/base_game.gd)
 - Root of game.tscn extends `BaseGame` (a full-rect Control inside the host's area;
@@ -129,7 +132,7 @@ New sound: add a recipe in gen_audio.py `SFX`, an entry in `Feedback.SFX`, and l
 ## Ads and purchases (autoload/ad_service.gd, iap_service.gd, core/monetization/, docs/MONETIZATION.md)
 Games never touch ads: the host does. `Ads.on_level_finished(won, level_index)` records a finished level;
 the interstitial plays only via `Ads.run_after_interstitial(next)` wrapped around the result card's
-Next/Levels buttons (every 2nd win (`INTERSTITIAL_EVERY` in ad_config.gd), 60 s cooldown, not after level 1, never on fail, off with No Ads).
+Next/Retry/Levels buttons (every 2nd win (`INTERSTITIAL_EVERY` in ad_config.gd), 30 s cooldown, not after level 1, never on fail, off with No Ads).
 Endless modes: call `on_level_finished(won)` with level_index -1 and wrap their "play again/home" the same way.
 Rewarded hook for hints/undo: `Ads.rewarded_available()`, `Ads.show_rewarded()`, signal `rewarded_finished(granted)`.
 Backends are chosen at startup: AdMob / Play Billing plugins on Android when `addons/admob` /

@@ -149,9 +149,10 @@ func _intro(head: Control, info: Array[Control], buttons: Array) -> void:
 		FX.shake(_card, 12.0, 0.35)
 		await get_tree().create_timer(0.3).timeout
 
-	var tw2 := create_tween().set_parallel()
-	for n in info:
-		tw2.tween_property(n, "modulate:a", 1.0, 0.25)
+	if not info.is_empty():  # an empty tween logs "started with no Tweeners"
+		var tw2 := create_tween().set_parallel()
+		for n in info:
+			tw2.tween_property(n, "modulate:a", 1.0, 0.25)
 	for b in buttons:
 		b.modulate.a = 1.0
 		b.mouse_filter = Control.MOUSE_FILTER_STOP

@@ -1,6 +1,6 @@
 extends Control
-## How-to-play card that game_host lays over a game: on load (unless the player tapped
-## "Don't show again", saved per game) and from the "i" button. Text comes from
+## How-to-play card that game_host lays over a game: automatically the first time a player
+## enters that game (saved per game), and from the "i" button any time. Text comes from
 ## data/how_to_play.json via Games.how_to_play(id). Set the vars, then add it as a full-rect child.
 
 const FX := preload("res://core/fx.gd")
@@ -14,8 +14,7 @@ var game_name := ""
 var steps: Array = []
 var extra := ""  # mode tip (Endless), shown after the steps in lemon
 var accent := FX.TANGERINE
-var auto := false  # shown on load: offers "Don't show again"
-var on_close := Callable()  # called with dont_show: bool once the card starts closing
+var on_close := Callable()  # called once the card starts closing
 
 var _dim: Control
 var _card: PanelContainer
@@ -67,15 +66,10 @@ func _ready() -> void:
 	gap2.custom_minimum_size.y = 8
 	box.add_child(gap2)
 	var buttons: Array = []
-	var ok := UI.button("Got it!", _press.bind(false), UI.GOOD.darkened(0.08), 44)
+	var ok := UI.button("Got it!", _press, UI.GOOD.darkened(0.08), 44)
 	ok.custom_minimum_size.y = 104
 	box.add_child(ok)
 	buttons.append(ok)
-	if auto:
-		var hide := UI.button("Don't show again", _press.bind(true), UI.VIOLET, 30)
-		hide.custom_minimum_size.y = 78
-		box.add_child(hide)
-		buttons.append(hide)
 
 	resized.connect(_layout)
 	_intro(rows, buttons)
@@ -136,12 +130,12 @@ func _intro(rows: Array, buttons: Array) -> void:
 		UI.stagger_pop(buttons, 0.06, 0.0))
 
 
-func _press(dont_show: bool) -> void:
+func _press() -> void:
 	if _closing:
 		return
 	close()
 	if on_close.is_valid():
-		on_close.call(dont_show)
+		on_close.call()
 
 
 ## Fade out, then free.

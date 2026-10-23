@@ -37,8 +37,8 @@ static func _radial(offsets: Array, colors: Array) -> GradientTexture2D:
 	t.fill = GradientTexture2D.FILL_RADIAL
 	t.fill_from = Vector2(0.5, 0.5)
 	t.fill_to = Vector2(1.0, 0.5)
-	t.width = 128
-	t.height = 128
+	t.width = 256  # sharp rims on big balls at 1440p; still tiny and built once
+	t.height = 256
 	return t
 
 
@@ -88,12 +88,19 @@ static func draw_vgradient(ci: CanvasItem, r: Rect2, top: Color, bottom: Color) 
 ## Rounded rect with a vertical gradient (cards, banners). round_bottom = false keeps
 ## the bottom corners square, e.g. for a coloured header band across a card's top.
 static func draw_round_gradient(ci: CanvasItem, r: Rect2, radius: float, top: Color, bottom: Color,
-		round_bottom := true) -> void:
+		round_bottom := true, smooth_edge := true) -> void:
 	var pts := round_rect_points(r, radius, round_bottom)
 	var cols := PackedColorArray()
 	for p in pts:
 		cols.append(top.lerp(bottom, clampf((p.y - r.position.y) / r.size.y, 0.0, 1.0)))
 	ci.draw_polygon(pts, cols)
+	if not smooth_edge:  # caller draws its own anti-aliased outline (e.g. playing cards)
+		return
+	# Polygons have no anti-aliasing in the Compatibility renderer: a 1 px smoothed rim in the
+	# same colours keeps card edges crisp instead of stair-stepped on high-density screens.
+	pts.append(pts[0])
+	cols.append(cols[0])
+	ci.draw_polyline_colors(pts, cols, 1.0, true)
 
 
 ## Outline of a rounded rect, clockwise from the top edge (for draw_polygon / draw_polyline).
